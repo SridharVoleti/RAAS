@@ -1,0 +1,13 @@
+{
+  "users": [
+    {
+      "id": "usr_U-mOp9BjZt5blA",
+      "email": "sridhar.voleti@gmail.com",
+      "password_hash": "scrypt:32768:8:1$EG4Ss7UezoJn6hpV$9fe95a7fc782cf14f289bda5d2ff676589ca35ce8e23b6c59e15975dbf7b7405192a2e714678bff7af0e9ce35144ca75c3fc82ef7ef9ef0fd9acd958a6cc8d94",
+      "role": "admin",
+      "referral_code": "ADMIN",
+      "referred_by": null,
+      "created_at": "2025-12-23T10:56:52.164477+00:00"
+    }
+  ]
+}
