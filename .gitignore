@@ -24,6 +24,11 @@ frontend/dist/
 frontend/dist-ssr/
 *.local
 
+# Next.js build artifacts
+.next/
+out/
+tsconfig.tsbuildinfo
+
 # Logs
 logs/
 *.log

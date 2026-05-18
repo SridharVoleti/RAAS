@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #1a0f00;
+  --card: #120a00;
+  --gold: #f0b429;
+  --gold-secondary: #c8973a;
+  --gold-muted: #a07030;
+  --border: #3a2800;
+  --success: #5dca85;
+  --error: #c0392b;
+  --body: #f5e6c8;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  background-color: var(--bg);
+  color: var(--body);
+  font-family: 'Segoe UI', sans-serif;
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--card); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gold-muted); }
+::selection { background: var(--gold); color: var(--bg); }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+@keyframes progress-fill { from { width: 0; } }
+.progress-animated { animation: progress-fill 0.8s ease-out forwards; }
+
+@keyframes slide-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
+.animate-slide-in { animation: slide-in 0.3s ease-out; }
