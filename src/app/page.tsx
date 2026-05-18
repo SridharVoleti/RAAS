@@ -168,7 +168,7 @@ function TestimonialCard({ testimonial, lang }: { testimonial: typeof TESTIMONIA
           ))}
         </div>
       </div>
-      <p className="text-brand-body text-xs leading-relaxed italic">"{content}"</p>
+      <p className="text-brand-body text-xs leading-relaxed italic">&ldquo;{content}&rdquo;</p>
       <p className="text-brand-gold-muted text-xs mt-2">{testimonial.created_at}</p>
     </div>
   )

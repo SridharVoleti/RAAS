@@ -18,8 +18,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
     // Strip youtube_video_id from lesson data for public API
     if (course.lessons) {
       course.lessons = course.lessons.map((l: Record<string, unknown>) => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { youtube_video_id, ...rest } = l
+        const { youtube_video_id: _vid, ...rest } = l
         return rest
       })
     }

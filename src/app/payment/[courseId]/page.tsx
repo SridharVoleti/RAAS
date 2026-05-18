@@ -27,7 +27,7 @@ export default function PaymentPage() {
     const found = COURSES.find(c => c.id === Number(params.courseId) || c.slug === params.courseId)
     if (found) setCourse(found)
     else router.push('/explore')
-  }, [params.courseId])
+  }, [params.courseId, router])
 
   async function handleCompletePayment() {
     if (!course) return

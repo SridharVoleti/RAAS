@@ -35,22 +35,24 @@ export default function CourseDetailOverlay({ course, onClose }: Props) {
   useEffect(() => {
     if (!course) return
     document.body.style.overflow = 'hidden'
-    checkEnrollment()
-    return () => { document.body.style.overflow = '' }
-  }, [course])
 
-  async function checkEnrollment() {
-    if (!course) return
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    const { data } = await supabase
-      .from('enrollments')
-      .select('is_active')
-      .eq('user_id', user.id)
-      .eq('course_id', course.id)
-      .single()
-    setIsEnrolled(!!data?.is_active)
-  }
+    async function checkEnrollment() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data } = await supabase
+        .from('enrollments')
+        .select('is_active')
+        .eq('user_id', user.id)
+        .eq('course_id', course!.id)
+        .single()
+      setIsEnrolled(!!data?.is_active)
+    }
+    checkEnrollment()
+
+    return () => { document.body.style.overflow = '' }
+  // supabase client is stable within a session
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [course])
 
   async function handleEnroll() {
     if (!course) return

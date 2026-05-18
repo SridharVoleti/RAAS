@@ -19,22 +19,23 @@ export default function MyCoursesPage() {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
 
   useEffect(() => {
+    async function loadData() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { router.push('/login?returnTo=/my-courses'); return }
+
+      const [{ data: prof }, { data: enrolled }] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
+        supabase.from('vw_my_courses').select('*').eq('user_id', user.id),
+      ])
+
+      setProfile(prof)
+      setCourses(enrolled || [])
+      setLoading(false)
+    }
     loadData()
+  // supabase client is stable; router is stable from Next.js
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  async function loadData() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { router.push('/login?returnTo=/my-courses'); return }
-
-    const [{ data: prof }, { data: enrolled }] = await Promise.all([
-      supabase.from('profiles').select('*').eq('id', user.id).single(),
-      supabase.from('vw_my_courses').select('*').eq('user_id', user.id),
-    ])
-
-    setProfile(prof)
-    setCourses(enrolled || [])
-    setLoading(false)
-  }
 
   if (loading) {
     return (

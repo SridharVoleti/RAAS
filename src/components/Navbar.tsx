@@ -23,7 +23,7 @@ export default function Navbar() {
       }
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).single()
         setProfile(data)
@@ -33,6 +33,8 @@ export default function Navbar() {
     })
 
     return () => subscription.unsubscribe()
+  // supabase client is module-level stable; adding it would cause infinite re-renders
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function handleSignOut() {
