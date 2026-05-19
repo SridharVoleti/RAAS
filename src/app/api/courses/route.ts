@@ -8,7 +8,6 @@ export async function GET() {
       .from('courses')
       .select('*')
       .eq('is_published', true)
-      .eq('is_deleted', false)
       .order('order_index')
 
     if (error) throw error

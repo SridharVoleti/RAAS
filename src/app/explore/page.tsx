@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useLang } from '@/contexts/LanguageContext'
 import CourseCard from '@/components/CourseCard'
 import CourseDetailOverlay from '@/components/CourseDetailOverlay'
@@ -17,18 +17,28 @@ export default function ExplorePage() {
   const [view, setView] = useState<ViewMode>('category')
   const [sort, setSort] = useState<SortMode>('popular')
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
+  const [courses, setCourses] = useState<Course[]>(COURSES)
+
+  useEffect(() => {
+    fetch('/api/courses')
+      .then(r => (r.ok ? r.json() : null))
+      .then((data: Course[] | null) => {
+        if (Array.isArray(data) && data.length) setCourses(data)
+      })
+      .catch(() => {})
+  }, [])
 
   const sorted = useMemo(() => {
-    const c = [...COURSES.filter(x => x.is_published)]
+    const c = [...courses.filter(x => x.is_published)]
     switch (sort) {
-      case 'popular': return c.sort((a, b) => b.student_count - a.student_count)
-      case 'newest': return c.sort((a, b) => b.id - a.id)
+      case 'popular':   return c.sort((a, b) => b.student_count - a.student_count)
+      case 'newest':    return c.sort((a, b) => b.id - a.id)
       case 'price-asc': return c.sort((a, b) => a.price - b.price)
-      case 'price-desc': return c.sort((a, b) => b.price - a.price)
-      case 'rated': return c.sort((a, b) => b.rating - a.rating)
-      default: return c
+      case 'price-desc':return c.sort((a, b) => b.price - a.price)
+      case 'rated':     return c.sort((a, b) => b.rating - a.rating)
+      default:          return c
     }
-  }, [sort])
+  }, [courses, sort])
 
   const categories = useMemo(() => {
     const cats: Record<string, Course[]> = {}
@@ -48,12 +58,9 @@ export default function ExplorePage() {
   return (
     <div className="min-h-screen bg-brand-bg">
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
         <h1 className="text-brand-gold font-bold text-2xl mb-6">{t.explore.title}</h1>
 
-        {/* Filter bar */}
         <div className="flex flex-wrap items-center gap-4 mb-8 p-4 bg-brand-card border border-brand-border rounded-xl">
-          {/* View toggle */}
           <div className="flex bg-brand-bg rounded-lg border border-brand-border overflow-hidden">
             <button
               onClick={() => setView('category')}
@@ -73,7 +80,6 @@ export default function ExplorePage() {
             </button>
           </div>
 
-          {/* Sort */}
           <select
             value={sort}
             onChange={e => setSort(e.target.value as SortMode)}
@@ -87,24 +93,23 @@ export default function ExplorePage() {
           </select>
 
           <span className="text-brand-gold-muted text-sm ml-auto">
-            {COURSES.length} courses
+            {courses.length} {lang === 'te' ? 'కోర్సులు' : 'courses'}
           </span>
         </div>
 
-        {/* By Category */}
         {view === 'category' && (
           <div className="space-y-10">
-            {Object.entries(categories).map(([cat, courses]) => (
+            {Object.entries(categories).map(([cat, catCourses]) => (
               <section key={cat}>
                 <div className="flex items-center gap-3 mb-4">
                   <span className="text-2xl">{CATEGORY_ICONS[cat] || '📚'}</span>
                   <h2 className="text-brand-gold font-bold text-lg">
                     {lang === 'te' ? (t.categories as Record<string, string>)[cat] || cat : cat}
                   </h2>
-                  <span className="text-brand-gold-muted text-sm">({courses.length})</span>
+                  <span className="text-brand-gold-muted text-sm">({catCourses.length})</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {courses.map(c => (
+                  {catCourses.map(c => (
                     <CourseCard key={c.id} course={c} onClick={setSelectedCourse} />
                   ))}
                 </div>
@@ -113,25 +118,26 @@ export default function ExplorePage() {
           </div>
         )}
 
-        {/* By Level */}
         {view === 'level' && (
           <div className="space-y-10">
-            {(Object.entries(levels) as [string, Course[]][]).filter(([, c]) => c.length > 0).map(([level, courses]) => (
-              <section key={level}>
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="text-2xl">{LEVEL_EMOJIS[level as keyof typeof LEVEL_EMOJIS]}</span>
-                  <h2 className="text-brand-gold font-bold text-lg">
-                    {t.levels[level as keyof typeof t.levels]}
-                  </h2>
-                  <span className="text-brand-gold-muted text-sm">({courses.length})</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {courses.map(c => (
-                    <CourseCard key={c.id} course={c} onClick={setSelectedCourse} />
-                  ))}
-                </div>
-              </section>
-            ))}
+            {(Object.entries(levels) as [string, Course[]][])
+              .filter(([, c]) => c.length > 0)
+              .map(([level, lvlCourses]) => (
+                <section key={level}>
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-2xl">{LEVEL_EMOJIS[level as keyof typeof LEVEL_EMOJIS]}</span>
+                    <h2 className="text-brand-gold font-bold text-lg">
+                      {t.levels[level as keyof typeof t.levels]}
+                    </h2>
+                    <span className="text-brand-gold-muted text-sm">({lvlCourses.length})</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {lvlCourses.map(c => (
+                      <CourseCard key={c.id} course={c} onClick={setSelectedCourse} />
+                    ))}
+                  </div>
+                </section>
+              ))}
           </div>
         )}
       </div>

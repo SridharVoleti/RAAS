@@ -90,15 +90,18 @@ create index if not exists idx_lessons_course_id on lessons(course_id);
 -- ─── PROFILES ───────────────────────────────────────────────
 -- Mirrors auth.users; created via trigger on signup
 create table if not exists profiles (
-  id              uuid primary key references auth.users(id) on delete cascade,
-  full_name       text not null default '',
-  mobile          text,
-  isd_code        text not null default '+91',
-  avatar_initials text not null default '?',
-  is_admin        boolean not null default false,
-  preferred_lang  lang_type not null default 'en',
-  created_at      timestamptz not null default now(),
-  updated_at      timestamptz not null default now()
+  id               uuid primary key references auth.users(id) on delete cascade,
+  full_name        text not null default '',
+  mobile           text,
+  isd_code         text not null default '+91',
+  city             text,
+  country          text not null default 'India',
+  avatar_initials  text not null default '?',
+  is_admin         boolean not null default false,
+  preferred_lang   lang_type not null default 'en',
+  profile_complete boolean not null default false,
+  created_at       timestamptz not null default now(),
+  updated_at       timestamptz not null default now()
 );
 
 -- ─── ENROLLMENTS ────────────────────────────────────────────
@@ -168,15 +171,19 @@ create table if not exists testimonials (
 create or replace function handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare
-  raw_name  text;
-  initials  text;
-  words     text[];
+  raw_name   text;
+  initials   text;
+  words      text[];
+  raw_mobile text;
 begin
   raw_name := coalesce(
     new.raw_user_meta_data->>'full_name',
     new.raw_user_meta_data->>'name',
     split_part(new.email, '@', 1)
   );
+
+  -- Mobile stored as full string e.g. "+919876543210" in email-register metadata
+  raw_mobile := new.raw_user_meta_data->>'mobile';
 
   -- Build initials (up to 2 chars)
   words := string_to_array(trim(raw_name), ' ');
@@ -186,8 +193,8 @@ begin
     initials := upper(left(raw_name, 2));
   end if;
 
-  insert into profiles (id, full_name, avatar_initials)
-  values (new.id, raw_name, initials)
+  insert into profiles (id, full_name, avatar_initials, mobile)
+  values (new.id, raw_name, initials, raw_mobile)
   on conflict (id) do nothing;
 
   return new;
@@ -382,3 +389,17 @@ create policy "payments_own_insert" on payment_logs for insert with check (auth.
 -- vw_my_courses and vw_course_progress: grant select via service_role in API routes
 grant select on vw_my_courses to authenticated;
 grant select on vw_course_progress to authenticated;
+
+-- ─── MIGRATION: existing databases ──────────────────────────
+-- Run this block if the schema was already applied before the onboarding feature.
+-- Safe to run multiple times (IF NOT EXISTS guards):
+alter table profiles add column if not exists city             text;
+alter table profiles add column if not exists country          text not null default 'India';
+alter table profiles add column if not exists profile_complete boolean not null default false;
+
+-- Mark profiles that already have a mobile number as complete so existing users
+-- (including admins) are not sent to the onboarding form on their next login.
+update profiles set profile_complete = true
+where profile_complete = false
+  and mobile is not null
+  and mobile != '';

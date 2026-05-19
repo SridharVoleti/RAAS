@@ -36,6 +36,20 @@ function LoginForm() {
       if (err) {
         setError(t.auth.incorrectCredentials)
       } else {
+        // Check if the student needs to complete their profile
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('profile_complete')
+            .eq('id', user.id)
+            .maybeSingle()
+
+          if (!profile?.profile_complete) {
+            router.push(`/onboarding?returnTo=${encodeURIComponent(returnTo)}`)
+            return
+          }
+        }
         router.push(returnTo)
         router.refresh()
       }

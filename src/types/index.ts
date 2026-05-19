@@ -57,9 +57,12 @@ export interface Profile {
   full_name: string
   mobile?: string
   isd_code: string
+  city?: string
+  country: string
   avatar_initials: string
   is_admin: boolean
   preferred_lang: Language
+  profile_complete: boolean
 }
 
 export interface Enrollment {

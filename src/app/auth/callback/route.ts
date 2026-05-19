@@ -25,8 +25,28 @@ export async function GET(request: Request) {
         },
       }
     )
+
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('profile_complete')
+            .eq('id', user.id)
+            .maybeSingle()
+
+          if (!profile?.profile_complete) {
+            return NextResponse.redirect(
+              `${origin}/onboarding?returnTo=${encodeURIComponent(next)}`
+            )
+          }
+        }
+      } catch {
+        // Profile check failed — let the user through rather than blocking
+      }
+
       return NextResponse.redirect(`${origin}${next}`)
     }
   }

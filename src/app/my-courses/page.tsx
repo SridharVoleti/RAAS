@@ -6,8 +6,7 @@ import Link from 'next/link'
 import { Trophy } from 'lucide-react'
 import { useLang } from '@/contexts/LanguageContext'
 import { createClient } from '@/lib/supabase/client'
-import CourseDetailOverlay from '@/components/CourseDetailOverlay'
-import type { CourseWithProgress, Profile, Course } from '@/types'
+import type { CourseWithProgress, Profile } from '@/types'
 
 export default function MyCoursesPage() {
   const { lang, t } = useLang()
@@ -16,7 +15,6 @@ export default function MyCoursesPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [courses, setCourses] = useState<CourseWithProgress[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
 
   useEffect(() => {
     async function loadData() {
@@ -162,7 +160,7 @@ export default function MyCoursesPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-brand-gold-muted text-xs">{course.duration}</span>
                       <button
-                        onClick={() => setSelectedCourse(course as Course)}
+                        onClick={() => router.push(`/watch/${course.slug}`)}
                         className="px-3 py-1 bg-brand-gold text-brand-bg text-xs font-semibold rounded-lg hover:bg-yellow-400 transition-colors"
                       >
                         {getActionLabel(course)}
@@ -176,7 +174,6 @@ export default function MyCoursesPage() {
         )}
       </div>
 
-      <CourseDetailOverlay course={selectedCourse} onClose={() => setSelectedCourse(null)} />
     </div>
   )
 }
