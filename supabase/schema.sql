@@ -92,17 +92,54 @@ create index if not exists idx_lessons_course_id on lessons(course_id);
 create table if not exists profiles (
   id               uuid primary key references auth.users(id) on delete cascade,
   full_name        text not null default '',
+  username         text,
+  fathers_name     text,
+  address          text,
+  referral_source  text,
   mobile           text,
   isd_code         text not null default '+91',
   city             text,
   country          text not null default 'India',
   avatar_initials  text not null default '?',
   is_admin         boolean not null default false,
+  mobile_verified  boolean not null default false,
   preferred_lang   lang_type not null default 'en',
   profile_complete boolean not null default false,
   created_at       timestamptz not null default now(),
   updated_at       timestamptz not null default now()
 );
+
+-- ─── OTP TOKENS ─────────────────────────────────────────────
+create table if not exists otp_tokens (
+  id         bigserial primary key,
+  mobile     text not null,
+  token      text not null,
+  expires_at timestamptz not null default (now() + interval '10 minutes'),
+  used       boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_otp_tokens_mobile
+  on otp_tokens(mobile, used, expires_at);
+
+alter table otp_tokens enable row level security;
+
+create unique index if not exists idx_profiles_username
+  on profiles(username) where username is not null;
+
+-- Public helper so the register page can check availability with the anon key
+create or replace function check_username_available(uname text)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select not exists (
+    select 1 from profiles where username = lower(trim(uname))
+  );
+$$;
+
+grant execute on function check_username_available(text) to anon, authenticated;
 
 -- ─── ENROLLMENTS ────────────────────────────────────────────
 create table if not exists enrollments (
@@ -182,10 +219,8 @@ begin
     split_part(new.email, '@', 1)
   );
 
-  -- Mobile stored as full string e.g. "+919876543210" in email-register metadata
   raw_mobile := new.raw_user_meta_data->>'mobile';
 
-  -- Build initials (up to 2 chars)
   words := string_to_array(trim(raw_name), ' ');
   if array_length(words, 1) >= 2 then
     initials := upper(left(words[1], 1)) || upper(left(words[array_length(words,1)], 1));
@@ -193,8 +228,20 @@ begin
     initials := upper(left(raw_name, 2));
   end if;
 
-  insert into profiles (id, full_name, avatar_initials, mobile)
-  values (new.id, raw_name, initials, raw_mobile)
+  insert into profiles (
+    id, full_name, avatar_initials, mobile, city,
+    username, fathers_name, address, referral_source,
+    profile_complete
+  )
+  values (
+    new.id, raw_name, initials, raw_mobile,
+    new.raw_user_meta_data->>'city',
+    lower(trim(new.raw_user_meta_data->>'username')),
+    new.raw_user_meta_data->>'fathers_name',
+    new.raw_user_meta_data->>'address',
+    new.raw_user_meta_data->>'referral_source',
+    true
+  )
   on conflict (id) do nothing;
 
   return new;

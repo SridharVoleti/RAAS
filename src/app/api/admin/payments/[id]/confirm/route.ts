@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { getAdminUser, forbidden } from '@/lib/admin'
+import { sendEnrollmentEmail } from '@/lib/email'
 
 export async function POST(
   _req: Request,
@@ -38,5 +39,6 @@ export async function POST(
       activated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,course_id' })
 
+  sendEnrollmentEmail(payment.user_id, payment.course_id)
   return NextResponse.json({ success: true })
 }

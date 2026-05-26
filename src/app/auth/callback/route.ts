@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import type { CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
+// Handles email confirmation redirects (PKCE flow)
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
@@ -33,23 +34,23 @@ export async function GET(request: Request) {
         if (user) {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('profile_complete')
+            .select('mobile_verified, mobile')
             .eq('id', user.id)
             .maybeSingle()
 
-          if (!profile?.profile_complete) {
+          if (!profile?.mobile_verified && profile?.mobile) {
             return NextResponse.redirect(
-              `${origin}/onboarding?returnTo=${encodeURIComponent(next)}`
+              `${origin}/verify-mobile?returnTo=${encodeURIComponent(next)}`
             )
           }
         }
       } catch {
-        // Profile check failed — let the user through rather than blocking
+        // Profile check failed — let the user through
       }
 
       return NextResponse.redirect(`${origin}${next}`)
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=oauth_failed`)
+  return NextResponse.redirect(`${origin}/login`)
 }

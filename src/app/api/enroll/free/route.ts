@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { sendEnrollmentEmail } from '@/lib/email'
 
 export async function POST(req: Request) {
   try {
@@ -29,6 +30,8 @@ export async function POST(req: Request) {
     }, { onConflict: 'user_id,course_id' })
 
     if (error) throw error
+
+    sendEnrollmentEmail(user.id, courseId)
     return NextResponse.json({ success: true })
   } catch {
     return NextResponse.json({ error: 'Enrollment failed' }, { status: 500 })
