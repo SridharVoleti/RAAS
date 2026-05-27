@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { Copy, Check } from 'lucide-react'
 import { useLang } from '@/contexts/LanguageContext'
 import { createClient } from '@/lib/supabase/client'
-import { COURSES } from '@/lib/courseData'
+import { getCourseById, getCourseBySlug } from '@/lib/getCourses'
 import { getISTHour } from '@/lib/utils'
 import type { Course } from '@/types'
 
@@ -24,9 +24,31 @@ export default function PaymentPage() {
   const [istHour] = useState(() => getISTHour())
 
   useEffect(() => {
-    const found = COURSES.find(c => c.id === Number(params.courseId) || c.slug === params.courseId)
-    if (found) setCourse(found)
-    else router.push('/explore')
+    async function loadCourse() {
+      const courseId = params.courseId
+      if (!courseId) {
+        router.push('/explore')
+        return
+      }
+
+      // Try to fetch by slug first, then by ID
+      const isNumeric = /^\d+$/.test(String(courseId))
+      let found: Course | null = null
+
+      if (!isNumeric) {
+        found = await getCourseBySlug(String(courseId))
+      } else {
+        found = await getCourseById(Number(courseId))
+      }
+
+      if (found) {
+        setCourse(found)
+      } else {
+        router.push('/explore')
+      }
+    }
+
+    loadCourse()
   }, [params.courseId, router])
 
   async function handleCompletePayment() {

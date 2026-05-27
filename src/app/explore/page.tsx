@@ -4,7 +4,8 @@ import { useState, useMemo, useEffect } from 'react'
 import { useLang } from '@/contexts/LanguageContext'
 import CourseCard from '@/components/CourseCard'
 import CourseDetailOverlay from '@/components/CourseDetailOverlay'
-import { COURSES, CATEGORY_ICONS } from '@/lib/courseData'
+import { CATEGORY_ICONS } from '@/lib/courseData'
+import { getCourses } from '@/lib/getCourses'
 import type { Course } from '@/types'
 
 type ViewMode = 'category' | 'level'
@@ -17,15 +18,15 @@ export default function ExplorePage() {
   const [view, setView] = useState<ViewMode>('category')
   const [sort, setSort] = useState<SortMode>('popular')
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
-  const [courses, setCourses] = useState<Course[]>(COURSES)
+  const [courses, setCourses] = useState<Course[]>([])
 
   useEffect(() => {
-    fetch('/api/courses')
-      .then(r => (r.ok ? r.json() : null))
-      .then((data: Course[] | null) => {
-        if (Array.isArray(data) && data.length) setCourses(data)
+    getCourses({ limit: 100 })
+      .then(data => setCourses(data))
+      .catch(err => {
+        console.error('Failed to load courses:', err)
+        // Fallback handled by getCourses() utility
       })
-      .catch(() => {})
   }, [])
 
   const sorted = useMemo(() => {
