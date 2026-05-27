@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Course } from '@/types'
 
-const CATEGORIES = ['Scripture', 'Chanting', 'Philosophy', 'Rituals', 'Yoga', 'Puranas', 'Music', 'Language', 'Jyotisha', 'Vastu']
+const CATEGORY_SUGGESTIONS = ['Scripture', 'Chanting', 'Philosophy', 'Rituals', 'Yoga', 'Puranas', 'Music', 'Language', 'Jyotisha', 'Vastu']
 const LEVELS = ['Beginner', 'Intermediate', 'Advanced']
 const BADGES = ['', 'Popular', 'New', 'Free']
 
@@ -175,9 +175,16 @@ export default function CourseForm({ course }: Props) {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div>
             <label className={labelCls}>Category</label>
-            <select value={form.category} onChange={e => set('category', e.target.value)} className={inputCls}>
-              {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-            </select>
+            <input
+              list="category-suggestions"
+              value={form.category}
+              onChange={e => set('category', e.target.value)}
+              className={inputCls}
+              placeholder="e.g. Scripture"
+            />
+            <datalist id="category-suggestions">
+              {CATEGORY_SUGGESTIONS.map(c => <option key={c} value={c} />)}
+            </datalist>
           </div>
           <div>
             <label className={labelCls}>Level</label>

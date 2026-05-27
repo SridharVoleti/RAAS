@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { getAdminUser, forbidden } from '@/lib/admin'
+import { parseBody, EmailTemplateSchema } from '@/lib/validation'
 
 export async function GET(
   _req: Request,
@@ -29,13 +30,11 @@ export async function PUT(
   const admin = await getAdminUser()
   if (!admin) return forbidden()
 
+  const parsed = await parseBody(req, EmailTemplateSchema)
+  if (!parsed.success) return parsed.response
+  const { subject, body } = parsed.data
+
   const { type } = await params
-  const { subject, body } = await req.json()
-
-  if (!subject?.trim() || !body?.trim()) {
-    return NextResponse.json({ error: 'Subject and body are required' }, { status: 400 })
-  }
-
   const supabase = await createAdminClient()
 
   const { error } = await supabase

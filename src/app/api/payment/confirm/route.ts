@@ -1,21 +1,35 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
+import { getAdminUser, forbidden } from '@/lib/admin'
+import { parseBody, PaymentConfirmSchema } from '@/lib/validation'
 
 export async function POST(req: Request) {
+  const admin = await getAdminUser()
+  if (!admin) return forbidden()
+
+  const parsed = await parseBody(req, PaymentConfirmSchema)
+  if (!parsed.success) return parsed.response
+  const { paymentLogId } = parsed.data
+
   try {
-    const { paymentLogId, userId, courseId } = await req.json()
+
     const supabase = await createAdminClient()
 
-    // Update payment log
-    await supabase
+    // Fetch user_id and course_id from the payment log — never trust request body for these
+    const { data: payment, error: fetchError } = await supabase
       .from('payment_logs')
-      .update({ status: 'paid' })
+      .select('user_id, course_id, status')
       .eq('id', paymentLogId)
+      .single()
 
-    // Activate enrollment
+    if (fetchError || !payment) return NextResponse.json({ error: 'Payment not found' }, { status: 404 })
+    if (payment.status === 'paid') return NextResponse.json({ error: 'Already confirmed' }, { status: 400 })
+
+    await supabase.from('payment_logs').update({ status: 'paid' }).eq('id', paymentLogId)
+
     await supabase.from('enrollments').upsert({
-      user_id: userId,
-      course_id: courseId,
+      user_id: payment.user_id,
+      course_id: payment.course_id,
       is_active: true,
       activated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,course_id' })

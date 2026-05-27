@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
+import { parseBody, SendOtpSchema } from '@/lib/validation'
 
 function generateOtp(): string {
   return String(Math.floor(100000 + Math.random() * 900000))
@@ -41,11 +42,11 @@ async function sendSmsFast2SMS(mobile: string, otp: string): Promise<void> {
 }
 
 export async function POST(req: Request) {
+  const parsed = await parseBody(req, SendOtpSchema)
+  if (!parsed.success) return parsed.response
+  const { mobile } = parsed.data
+
   try {
-    const { mobile } = await req.json()
-    if (!mobile) {
-      return NextResponse.json({ error: 'Mobile number required' }, { status: 400 })
-    }
 
     const supabase = await createAdminClient()
 

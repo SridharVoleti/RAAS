@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { parseBody, PaymentInitiateSchema } from '@/lib/validation'
 
 export async function POST(req: Request) {
+  const parsed = await parseBody(req, PaymentInitiateSchema)
+  if (!parsed.success) return parsed.response
+  const { courseId, amount } = parsed.data
+
   try {
-    const { courseId, amount } = await req.json()
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 

@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
+import { parseBody, VerifyOtpSchema } from '@/lib/validation'
 
 export async function POST(req: Request) {
-  try {
-    const { mobile, otp } = await req.json()
-    if (!mobile || !otp) {
-      return NextResponse.json({ error: 'Mobile and OTP are required' }, { status: 400 })
-    }
+  const parsed = await parseBody(req, VerifyOtpSchema)
+  if (!parsed.success) return parsed.response
+  const { mobile, otp } = parsed.data
 
+  try {
     const supabase = await createAdminClient()
 
     // Find the most recent valid, unused OTP for this mobile

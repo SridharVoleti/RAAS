@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { getAdminUser, forbidden } from '@/lib/admin'
+import { parseBody, CreateLessonSchema } from '@/lib/validation'
 
 export async function GET(
   _req: Request,
@@ -29,8 +30,11 @@ export async function POST(
   const admin = await getAdminUser()
   if (!admin) return forbidden()
 
+  const parsed = await parseBody(req, CreateLessonSchema)
+  if (!parsed.success) return parsed.response
+  const body = parsed.data
+
   const { id } = await params
-  const body = await req.json()
   const supabase = await createAdminClient()
 
   // Auto-assign order_index if not provided

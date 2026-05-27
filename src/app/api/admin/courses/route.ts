@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { getAdminUser, forbidden } from '@/lib/admin'
+import { parseBody, CreateCourseSchema } from '@/lib/validation'
 
 export async function GET() {
   const admin = await getAdminUser()
@@ -27,7 +28,10 @@ export async function POST(req: Request) {
   const admin = await getAdminUser()
   if (!admin) return forbidden()
 
-  const body = await req.json()
+  const parsed = await parseBody(req, CreateCourseSchema)
+  if (!parsed.success) return parsed.response
+  const body = parsed.data
+
   const supabase = await createAdminClient()
 
   const { data, error } = await supabase
@@ -35,8 +39,8 @@ export async function POST(req: Request) {
     .insert({
       path_id:        body.path_id,
       slug:           body.slug,
-      emoji:          body.emoji || '📖',
-      bg_color:       body.bg_color || '#1a0f00',
+      emoji:          body.emoji ?? '📖',
+      bg_color:       body.bg_color ?? '#1a0f00',
       title_en:       body.title_en,
       title_te:       body.title_te,
       description_en: body.description_en,
@@ -45,8 +49,8 @@ export async function POST(req: Request) {
       instructor_te:  body.instructor_te,
       category:       body.category,
       level:          body.level,
-      badge:          body.badge || null,
-      duration:       body.duration || '4 weeks',
+      badge:          body.badge ?? null,
+      duration:       body.duration ?? '4 weeks',
       is_free:        body.is_free ?? false,
       price:          body.is_free ? 0 : Number(body.price ?? 0),
       has_quiz:       body.has_quiz ?? false,

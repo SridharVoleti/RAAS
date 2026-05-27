@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { getAdminUser, forbidden } from '@/lib/admin'
+import { parseBody, UpdateLessonSchema } from '@/lib/validation'
 
 export async function PUT(
   req: Request,
@@ -9,19 +10,22 @@ export async function PUT(
   const admin = await getAdminUser()
   if (!admin) return forbidden()
 
+  const parsed = await parseBody(req, UpdateLessonSchema)
+  if (!parsed.success) return parsed.response
+  const body = parsed.data
+
   const { id } = await params
-  const body = await req.json()
   const supabase = await createAdminClient()
 
   const { data, error } = await supabase
     .from('lessons')
     .update({
-      section_title:    body.section_title || null,
+      section_title:    body.section_title ?? null,
       title_en:         body.title_en,
-      title_te:         body.title_te || null,
+      title_te:         body.title_te ?? null,
       youtube_video_id: body.youtube_video_id,
-      duration:         body.duration || null,
-      order_index:      Number(body.order_index),
+      duration:         body.duration ?? null,
+      order_index:      body.order_index,
       is_preview:       body.is_preview ?? false,
     })
     .eq('id', Number(id))
