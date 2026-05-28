@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { getAdminUser, forbidden } from '@/lib/admin'
 import { parseBody, PaymentConfirmSchema } from '@/lib/validation'
+import { logger } from '@/lib/logger'
 
 export async function POST(req: Request) {
   const admin = await getAdminUser()
@@ -23,7 +24,10 @@ export async function POST(req: Request) {
       .single()
 
     if (fetchError || !payment) return NextResponse.json({ error: 'Payment not found' }, { status: 404 })
-    if (payment.status === 'paid') return NextResponse.json({ error: 'Already confirmed' }, { status: 400 })
+    if (payment.status === 'paid') {
+      logger.warn({ paymentLogId }, 'payment.confirm.duplicate')
+      return NextResponse.json({ error: 'Already confirmed' }, { status: 400 })
+    }
 
     await supabase.from('payment_logs').update({ status: 'paid' }).eq('id', paymentLogId)
 
@@ -34,8 +38,10 @@ export async function POST(req: Request) {
       activated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,course_id' })
 
+    logger.info({ paymentLogId, userId: payment.user_id, courseId: payment.course_id }, 'payment.confirmed')
     return NextResponse.json({ success: true })
-  } catch {
+  } catch (err) {
+    logger.error({ paymentLogId, error: String(err) }, 'payment.confirm.failed')
     return NextResponse.json({ error: 'Confirmation failed' }, { status: 500 })
   }
 }

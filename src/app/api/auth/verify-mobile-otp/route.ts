@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { parseBody, VerifyOtpSchema } from '@/lib/validation'
+import { logger } from '@/lib/logger'
 
 export async function POST(req: Request) {
   const parsed = await parseBody(req, VerifyOtpSchema)
@@ -22,25 +23,26 @@ export async function POST(req: Request) {
       .maybeSingle()
 
     if (!token) {
+      logger.warn({ mobile }, 'otp.verify.expired')
       return NextResponse.json({ error: 'OTP expired or not found. Please request a new one.' }, { status: 400 })
     }
 
     if (token.token !== otp.trim()) {
+      logger.warn({ mobile }, 'otp.verify.wrong')
       return NextResponse.json({ error: 'Incorrect OTP. Please try again.' }, { status: 400 })
     }
 
-    // Mark token as used
     await supabase.from('otp_tokens').update({ used: true }).eq('id', token.id)
 
-    // Mark mobile as verified in the profile row that has this mobile number
     await supabase
       .from('profiles')
       .update({ mobile_verified: true })
       .eq('mobile', mobile)
 
+    logger.info({ mobile }, 'otp.verified')
     return NextResponse.json({ verified: true })
   } catch (err) {
-    console.error('verify-mobile-otp error:', err)
+    logger.error({ mobile, error: String(err) }, 'otp.verify.failed')
     return NextResponse.json({ error: 'Verification failed' }, { status: 500 })
   }
 }

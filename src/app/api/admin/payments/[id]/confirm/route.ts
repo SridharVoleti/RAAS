@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { getAdminUser, forbidden } from '@/lib/admin'
 import { sendEnrollmentEmail } from '@/lib/email'
+import { logger } from '@/lib/logger'
 
 export async function POST(
   _req: Request,
@@ -21,15 +22,16 @@ export async function POST(
     .single()
 
   if (fetchError || !payment) return NextResponse.json({ error: 'Payment not found' }, { status: 404 })
-  if (payment.status === 'paid') return NextResponse.json({ error: 'Already confirmed' }, { status: 400 })
+  if (payment.status === 'paid') {
+    logger.warn({ paymentId: id }, 'admin.payment.confirm.duplicate')
+    return NextResponse.json({ error: 'Already confirmed' }, { status: 400 })
+  }
 
-  // Mark payment as paid
   await supabase
     .from('payment_logs')
     .update({ status: 'paid' })
     .eq('id', Number(id))
 
-  // Activate enrollment
   await supabase
     .from('enrollments')
     .upsert({
@@ -39,6 +41,7 @@ export async function POST(
       activated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,course_id' })
 
+  logger.info({ paymentId: id, userId: payment.user_id, courseId: payment.course_id }, 'admin.payment.confirmed')
   sendEnrollmentEmail(payment.user_id, payment.course_id)
   return NextResponse.json({ success: true })
 }

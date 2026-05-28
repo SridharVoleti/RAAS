@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { parseBody, SendOtpSchema } from '@/lib/validation'
+import { logger } from '@/lib/logger'
 
 function generateOtp(): string {
   return String(Math.floor(100000 + Math.random() * 900000))
@@ -64,6 +65,7 @@ export async function POST(req: Request) {
     if (recent) {
       const secondsAgo = (Date.now() - new Date(recent.created_at).getTime()) / 1000
       if (secondsAgo < 60) {
+        logger.warn({ mobile }, 'otp.send.rate_limited')
         return NextResponse.json(
           { error: 'Please wait before requesting another OTP', retryAfter: Math.ceil(60 - secondsAgo) },
           { status: 429 }
@@ -77,9 +79,10 @@ export async function POST(req: Request) {
     await supabase.from('otp_tokens').insert({ mobile, token: otp, expires_at: expiresAt })
     await sendSmsFast2SMS(mobile, otp)
 
+    logger.info({ mobile }, 'otp.sent')
     return NextResponse.json({ sent: true })
   } catch (err) {
-    console.error('send-mobile-otp error:', err)
+    logger.error({ mobile, error: String(err) }, 'otp.send.failed')
     return NextResponse.json({ error: 'Failed to send OTP' }, { status: 500 })
   }
 }
