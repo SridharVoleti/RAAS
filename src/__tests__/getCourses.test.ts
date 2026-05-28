@@ -188,7 +188,7 @@ describe('getCourses', () => {
     await getCourses({ pathId: 1 })
 
     const eqCalls = mockQuery.eq.mock.calls
-    expect(eqCalls.some(call => call[0] === 'path_id' && call[1] === 1)).toBe(true)
+    expect(eqCalls.some((call: unknown[]) => call[0] === 'path_id' && call[1] === 1)).toBe(true)
   })
 })
 
@@ -303,11 +303,16 @@ describe('getCoursesCount', () => {
   })
 
   it('should return count of courses', async () => {
-    const mockQuery = {
-      select: vi.fn().mockResolvedValue({ count: 20, error: null }),
+    // getCoursesCount chains .select().eq(), so the builder must be thenable
+    const resolved = { count: 20, error: null }
+    const mockBuilder: Record<string, unknown> = {
+      select: vi.fn().mockReturnThis(),
+      eq:     vi.fn().mockReturnThis(),
+      then:   (onFulfilled: (v: unknown) => unknown) =>
+                Promise.resolve(resolved).then(onFulfilled),
     }
 
-    vi.mocked(mockSupabaseClient.from).mockReturnValue(mockQuery as any)
+    vi.mocked(mockSupabaseClient.from).mockReturnValue(mockBuilder as any)
 
     const result = await getCoursesCount()
     expect(result).toBe(20)
