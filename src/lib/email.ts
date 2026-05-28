@@ -1,7 +1,6 @@
 import { Resend } from 'resend'
 import { createAdminClient } from '@/lib/supabase/server'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = process.env.RESEND_FROM_EMAIL ?? 'Krishnamargam <noreply@krishnamargam.com>'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://krishnamargam.com'
 
@@ -76,6 +75,11 @@ function wrapInBrandedHtml(messageBody: string, subject: string): string {
 
 export async function sendEnrollmentEmail(userId: string, courseId: number): Promise<void> {
   try {
+    if (!process.env.RESEND_API_KEY) {
+      console.error('[email] RESEND_API_KEY not configured — skipping enrollment email')
+      return
+    }
+    const resend = new Resend(process.env.RESEND_API_KEY)
     const supabase = await createAdminClient()
 
     const [

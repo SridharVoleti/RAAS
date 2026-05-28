@@ -1,7 +1,7 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['pino', 'razorpay'],
+  serverExternalPackages: ['pino', 'razorpay', 'resend'],
   images: {
     remotePatterns: [
       {

@@ -4,11 +4,6 @@ import { createClient } from '@/lib/supabase/server'
 import { parseBody, PaymentInitiateSchema } from '@/lib/validation'
 import { logger } from '@/lib/logger'
 
-const razorpay = new Razorpay({
-  key_id:     process.env.RAZORPAY_KEY_ID     ?? '',
-  key_secret: process.env.RAZORPAY_KEY_SECRET ?? '',
-})
-
 export async function POST(req: Request) {
   const parsed = await parseBody(req, PaymentInitiateSchema)
   if (!parsed.success) return parsed.response
@@ -18,6 +13,11 @@ export async function POST(req: Request) {
     logger.error({}, 'payment.initiate.razorpay_keys_missing')
     return NextResponse.json({ error: 'Payment gateway not configured' }, { status: 503 })
   }
+
+  const razorpay = new Razorpay({
+    key_id:     process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+  })
 
   try {
     const supabase = await createClient()
