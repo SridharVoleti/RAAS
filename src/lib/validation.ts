@@ -104,3 +104,18 @@ export const EmailTemplateSchema = z.object({
   subject: z.string().min(1).max(200),
   body:    z.string().min(1).max(10000),
 })
+
+// ── Profile ───────────────────────────────────────────────────────────────────
+
+export const UpdateProfileSchema = z.object({
+  full_name: z.string().min(2).max(100).optional(),
+  city:      z.string().min(1).max(100).optional(),
+  country:   z.string().min(1).max(100).optional(),
+  mobile:    z.string().regex(/^\+?\d{7,15}$/, 'Invalid mobile number').optional(),
+  isd_code:  z.string().max(10).optional(),
+  preferred_lang: z.enum(['en', 'te']).optional(),
+})
+
+export const ChangePasswordSchema = z.object({
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+})

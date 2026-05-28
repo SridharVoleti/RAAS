@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Trophy } from 'lucide-react'
+import { Trophy, Award } from 'lucide-react'
 import { useLang } from '@/contexts/LanguageContext'
 import { createClient } from '@/lib/supabase/client'
 import type { CourseWithProgress, Profile } from '@/types'
@@ -66,15 +66,20 @@ export default function MyCoursesPage() {
         {/* Header */}
         <div className="bg-brand-card border border-brand-border rounded-2xl p-6 mb-8">
           <div className="flex items-center gap-4 mb-5">
-            <div className="w-14 h-14 rounded-full bg-brand-gold flex items-center justify-center text-brand-bg text-xl font-bold">
-              {profile?.avatar_initials}
-            </div>
-            <div>
+            <Link href="/profile">
+              <div className="w-14 h-14 rounded-full bg-brand-gold flex items-center justify-center text-brand-bg text-xl font-bold hover:ring-2 hover:ring-brand-gold/50 transition-all cursor-pointer">
+                {profile?.avatar_initials}
+              </div>
+            </Link>
+            <div className="flex-1">
               <h1 className="text-brand-gold font-bold text-xl">
                 {t.myCourses.welcome}, {profile?.full_name.split(' ')[0]}!
               </h1>
               <p className="text-brand-gold-muted text-sm">मीआध्यात्मिकमार्गं</p>
             </div>
+            <Link href="/profile" className="text-brand-gold-muted text-xs hover:text-brand-gold transition-colors border border-brand-border px-3 py-1.5 rounded-lg">
+              Edit Profile
+            </Link>
           </div>
 
           {/* Stats */}
@@ -157,14 +162,26 @@ export default function MyCoursesPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <span className="text-brand-gold-muted text-xs">{course.duration}</span>
-                      <button
-                        onClick={() => router.push(`/watch/${course.slug}`)}
-                        className="px-3 py-1 bg-brand-gold text-brand-bg text-xs font-semibold rounded-lg hover:bg-yellow-400 transition-colors"
-                      >
-                        {getActionLabel(course)}
-                      </button>
+                      <div className="flex gap-1.5">
+                        {status === 'completed' && (
+                          <button
+                            onClick={() => router.push(`/certificate/${course.id}`)}
+                            title="Download Certificate"
+                            className="px-2 py-1 border border-brand-gold text-brand-gold text-xs font-semibold rounded-lg hover:bg-brand-gold hover:text-brand-bg transition-colors flex items-center gap-1"
+                          >
+                            <Award className="w-3 h-3" />
+                            Cert
+                          </button>
+                        )}
+                        <button
+                          onClick={() => router.push(`/watch/${course.slug}`)}
+                          className="px-3 py-1 bg-brand-gold text-brand-bg text-xs font-semibold rounded-lg hover:bg-yellow-400 transition-colors"
+                        >
+                          {getActionLabel(course)}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
