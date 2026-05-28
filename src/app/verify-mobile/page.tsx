@@ -6,10 +6,10 @@ import { Smartphone, CheckCircle2, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 function OtpBoxes({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const refs = Array.from({ length: 6 }, () => useRef<HTMLInputElement>(null))
+  const refs = useRef<(HTMLInputElement | null)[]>([])
 
   function handleKey(i: number, e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Backspace' && !value[i] && i > 0) refs[i - 1].current?.focus()
+    if (e.key === 'Backspace' && !value[i] && i > 0) refs.current[i - 1]?.focus()
   }
 
   function handleChange(i: number, ch: string) {
@@ -17,12 +17,12 @@ function OtpBoxes({ value, onChange }: { value: string; onChange: (v: string) =>
     const arr = (value + '      ').slice(0, 6).split('')
     arr[i] = digit
     onChange(arr.join('').trimEnd())
-    if (digit && i < 5) refs[i + 1].current?.focus()
+    if (digit && i < 5) refs.current[i + 1]?.focus()
   }
 
   function handlePaste(e: React.ClipboardEvent) {
     const digits = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
-    if (digits) { onChange(digits); refs[Math.min(digits.length, 5)].current?.focus() }
+    if (digits) { onChange(digits); refs.current[Math.min(digits.length, 5)]?.focus() }
     e.preventDefault()
   }
 
@@ -31,7 +31,7 @@ function OtpBoxes({ value, onChange }: { value: string; onChange: (v: string) =>
       {Array.from({ length: 6 }, (_, i) => (
         <input
           key={i}
-          ref={refs[i]}
+          ref={el => { refs.current[i] = el }}
           type="text"
           inputMode="numeric"
           maxLength={1}
