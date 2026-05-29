@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/server'
 import { getAdminUser, forbidden } from '@/lib/admin'
 import { parseBody, CreateCourseSchema } from '@/lib/validation'
@@ -61,5 +62,7 @@ export async function POST(req: Request) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  revalidatePath('/explore')
+  revalidatePath('/')
   return NextResponse.json(data, { status: 201 })
 }

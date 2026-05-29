@@ -2,15 +2,17 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, BookOpen, CreditCard, Users, Mail, LogOut } from 'lucide-react'
+import { LayoutDashboard, BookOpen, CreditCard, Users, Mail, Shield, BarChart2, LogOut } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const NAV = [
-  { label: 'Dashboard', href: '/admin', icon: LayoutDashboard, exact: true },
-  { label: 'Courses',   href: '/admin/courses',  icon: BookOpen },
-  { label: 'Payments',  href: '/admin/payments', icon: CreditCard },
-  { label: 'Students',  href: '/admin/students', icon: Users },
-  { label: 'Email',     href: '/admin/email',    icon: Mail },
+  { label: 'Dashboard', href: '/admin',           icon: LayoutDashboard, exact: true },
+  { label: 'Courses',   href: '/admin/courses',   icon: BookOpen },
+  { label: 'Payments',  href: '/admin/payments',  icon: CreditCard },
+  { label: 'Students',  href: '/admin/students',  icon: Users },
+  { label: 'Analytics', href: '/admin/analytics', icon: BarChart2 },
+  { label: 'Email',     href: '/admin/email',     icon: Mail },
+  { label: 'Admins',    href: '/admin/admins',    icon: Shield },
 ]
 
 interface Props {
