@@ -4,6 +4,15 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
+function passwordRequirements(pwd: string) {
+  return {
+    length: pwd.length >= 8,
+    uppercase: /[A-Z]/.test(pwd),
+    number: /[0-9]/.test(pwd),
+    special: /[^A-Za-z0-9]/.test(pwd),
+  }
+}
+
 function ResetPasswordForm() {
   const router = useRouter()
   const supabase = createClient()
@@ -13,32 +22,62 @@ function ResetPasswordForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
+  const [sessionReady, setSessionReady] = useState(false)
 
-  // Supabase sends the token via URL hash; exchanged automatically on mount
+  // Wait for Supabase to exchange the hash token and fire PASSWORD_RECOVERY
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {})
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setSessionReady(true)
+      }
+    })
     return () => subscription.unsubscribe()
   }, [supabase])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    if (password.length < 8) {
+
+    if (!sessionReady) {
+      setError('Reset link is invalid or has expired. Please request a new one.')
+      return
+    }
+
+    const reqs = passwordRequirements(password)
+    if (!reqs.length) {
       setError('Password must be at least 8 characters.')
+      return
+    }
+    if (!reqs.uppercase) {
+      setError('Password must contain at least 1 uppercase letter.')
+      return
+    }
+    if (!reqs.number) {
+      setError('Password must contain at least 1 number.')
+      return
+    }
+    if (!reqs.special) {
+      setError('Password must contain at least 1 special character.')
       return
     }
     if (password !== confirm) {
       setError('Passwords do not match.')
       return
     }
+
     setLoading(true)
-    const { error: err } = await supabase.auth.updateUser({ password })
-    setLoading(false)
-    if (err) {
-      setError(err.message)
-    } else {
-      setDone(true)
-      setTimeout(() => router.push('/my-courses'), 2500)
+    try {
+      const { error: err } = await supabase.auth.updateUser({ password })
+      if (err) {
+        setError(err.message)
+      } else {
+        setDone(true)
+        setTimeout(() => router.push('/login'), 2500)
+      }
+    } catch {
+      setError('Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -48,7 +87,7 @@ function ResetPasswordForm() {
         <div className="bg-brand-card border border-brand-border rounded-2xl p-10 text-center max-w-sm w-full">
           <div className="text-5xl mb-4">✅</div>
           <h2 className="text-xl font-bold text-brand-gold mb-2">Password Updated</h2>
-          <p className="text-brand-body text-sm">Redirecting you to your courses…</p>
+          <p className="text-brand-body text-sm">Redirecting you to login…</p>
         </div>
       </div>
     )
@@ -77,10 +116,28 @@ function ResetPasswordForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={8}
               placeholder="Min. 8 characters"
               className="w-full bg-brand-bg border border-brand-border rounded-lg px-4 py-2.5 text-brand-body placeholder-brand-body/40 focus:outline-none focus:border-brand-gold"
             />
+            {password.length > 0 && (() => {
+              const reqs = passwordRequirements(password)
+              const rules = [
+                { key: 'length',    label: 'At least 8 characters',      met: reqs.length },
+                { key: 'uppercase', label: 'At least 1 uppercase letter', met: reqs.uppercase },
+                { key: 'number',    label: 'At least 1 number',           met: reqs.number },
+                { key: 'special',   label: 'At least 1 special character',met: reqs.special },
+              ]
+              return (
+                <ul className="mt-2 space-y-1">
+                  {rules.map(r => (
+                    <li key={r.key} className={`flex items-center gap-1.5 text-xs ${r.met ? 'text-green-500' : 'text-brand-body/60'}`}>
+                      <span>{r.met ? '✓' : '○'}</span>
+                      {r.label}
+                    </li>
+                  ))}
+                </ul>
+              )
+            })()}
           </div>
           <div>
             <label className="block text-brand-body text-sm mb-1">Confirm Password</label>

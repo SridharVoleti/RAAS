@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useLang } from '@/contexts/LanguageContext'
 import { createClient } from '@/lib/supabase/client'
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 export default function ForgotPasswordPage() {
   const { t } = useLang()
   const supabase = createClient()
@@ -16,13 +18,40 @@ export default function ForgotPasswordPage() {
   async function handleReset(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+
+    const trimmed = email.trim()
+
+    if (!EMAIL_RE.test(trimmed)) {
+      setError('Please enter a valid email address.')
+      return
+    }
+
     setLoading(true)
     try {
-      const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
+      const res = await fetch('/api/auth/check-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: trimmed }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error ?? 'Could not verify email. Please try again.')
+        return
+      }
+
+      if (!data.exists) {
+        setError('No account found with this email address.')
+        return
+      }
+
+      const { error: err } = await supabase.auth.resetPasswordForEmail(trimmed, {
         redirectTo: `${window.location.origin}/auth/reset-password`,
       })
       if (err) setError(err.message)
       else setSent(true)
+    } catch {
+      setError('Something went wrong. Please try again.')
     } finally {
       setLoading(false)
     }
