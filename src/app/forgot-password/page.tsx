@@ -1,60 +1,78 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useLang } from '@/contexts/LanguageContext'
-import { createClient } from '@/lib/supabase/client'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const COOLDOWN_SECONDS = 60
 
 export default function ForgotPasswordPage() {
   const { t } = useLang()
-  const supabase = createClient()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
+  const [cooldown, setCooldown] = useState(0)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  async function handleReset(e: React.FormEvent) {
-    e.preventDefault()
-    setError('')
+  useEffect(() => {
+    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+  }, [])
 
-    const trimmed = email.trim()
+  function startCooldown() {
+    setCooldown(COOLDOWN_SECONDS)
+    timerRef.current = setInterval(() => {
+      setCooldown(prev => {
+        if (prev <= 1) { clearInterval(timerRef.current!); return 0 }
+        return prev - 1
+      })
+    }, 1000)
+  }
 
-    if (!EMAIL_RE.test(trimmed)) {
-      setError('Please enter a valid email address.')
-      return
-    }
-
+  async function sendResetEmail(emailToSend: string) {
     setLoading(true)
     try {
-      const res = await fetch('/api/auth/check-email', {
+      const res = await fetch('/api/auth/send-reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: trimmed }),
+        body: JSON.stringify({ email: emailToSend }),
       })
       const data = await res.json()
 
-      if (!res.ok) {
-        setError(data.error ?? 'Could not verify email. Please try again.')
-        return
-      }
-
-      if (!data.exists) {
+      if (res.status === 404) {
         setError('No account found with this email address.')
         return
       }
+      if (!res.ok) {
+        setError(data.error ?? 'Something went wrong. Please try again.')
+        return
+      }
 
-      const { error: err } = await supabase.auth.resetPasswordForEmail(trimmed, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
-      })
-      if (err) setError(err.message)
-      else setSent(true)
+      setSent(true)
+      startCooldown()
     } catch {
       setError('Something went wrong. Please try again.')
     } finally {
       setLoading(false)
     }
+  }
+
+  async function handleReset(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+    const trimmed = email.trim()
+    if (!EMAIL_RE.test(trimmed)) {
+      setError('Please enter a valid email address.')
+      return
+    }
+    await sendResetEmail(trimmed)
+  }
+
+  async function handleResend() {
+    if (cooldown > 0 || loading) return
+    setError('')
+    await sendResetEmail(email.trim())
   }
 
   return (
@@ -74,10 +92,11 @@ export default function ForgotPasswordPage() {
               <p className="text-brand-gold font-semibold mb-4">{email}</p>
               <p className="text-brand-gold-muted text-xs mb-5">The link expires in 30 minutes.</p>
               <button
-                onClick={handleReset}
-                className="text-brand-gold-muted text-sm hover:text-brand-gold transition-colors underline block mx-auto mb-4"
+                onClick={handleResend}
+                disabled={cooldown > 0 || loading}
+                className="text-brand-gold-muted text-sm hover:text-brand-gold transition-colors underline block mx-auto mb-4 disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline"
               >
-                Resend link
+                {cooldown > 0 ? `Resend in ${cooldown}s` : loading ? '...' : 'Resend link'}
               </button>
               <Link href="/login" className="text-brand-gold text-sm hover:underline">
                 ← Back to Sign In
