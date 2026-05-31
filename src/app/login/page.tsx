@@ -75,7 +75,7 @@ function LoginForm() {
               <div className="flex items-start gap-2 mt-2">
                 <Mail className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
                 <p className="text-brand-body text-xs leading-relaxed">
-                  A confirmation link has been sent to your email. Please verify your email before signing in.
+                  You can sign in now. Note: your email address has not been formally verified yet.
                 </p>
               </div>
             </div>
