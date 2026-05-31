@@ -6,7 +6,11 @@
 -- ============================================================
 
 -- 1. Promote to admin
-SELECT promote_to_admin('sridhar.voleti@gmail.com');
+UPDATE public.profiles
+SET is_admin = true
+WHERE id = (
+  SELECT id FROM auth.users WHERE email = 'sridhar.voleti@gmail.com'
+);
 
 -- 2. Set password
 UPDATE auth.users
@@ -19,5 +23,5 @@ SELECT
   p.is_admin,
   u.email_confirmed_at IS NOT NULL AS email_confirmed
 FROM auth.users u
-JOIN profiles p ON p.id = u.id
+JOIN public.profiles p ON p.id = u.id
 WHERE u.email = 'sridhar.voleti@gmail.com';
