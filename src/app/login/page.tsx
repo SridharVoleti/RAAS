@@ -3,7 +3,7 @@
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, CheckCircle2, Mail } from 'lucide-react'
 import { useLang } from '@/contexts/LanguageContext'
 import { createClient } from '@/lib/supabase/client'
 
@@ -12,6 +12,7 @@ function LoginForm() {
   const router = useRouter()
   const params = useSearchParams()
   const returnTo = params.get('returnTo') || '/'
+  const justRegistered = params.get('registered') === '1'
   const supabase = createClient()
 
   const [email, setEmail] = useState('')
@@ -64,6 +65,21 @@ function LoginForm() {
         {/* Card */}
         <div className="bg-brand-card border border-brand-border rounded-2xl p-8">
           <h2 className="text-brand-gold font-bold text-xl mb-6 text-center">{t.auth.signIn}</h2>
+
+          {justRegistered && (
+            <div className="mb-4 p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+              <div className="flex items-center gap-2 mb-1">
+                <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
+                <p className="text-green-400 text-sm font-semibold">Account created successfully!</p>
+              </div>
+              <div className="flex items-start gap-2 mt-2">
+                <Mail className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+                <p className="text-brand-body text-xs leading-relaxed">
+                  A confirmation link has been sent to your email. Please verify your email before signing in.
+                </p>
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className="mb-4 p-3 bg-brand-error/10 border border-brand-error/30 rounded-lg text-brand-error text-sm">

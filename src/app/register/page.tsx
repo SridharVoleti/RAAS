@@ -306,8 +306,13 @@ export default function RegisterPage() {
     if (cleaned.length < 3) { setUsernameStatus(cleaned.length === 0 ? 'idle' : 'invalid'); return }
     setUsernameStatus('checking')
     debounceRef.current = setTimeout(async () => {
-      const { data } = await supabase.rpc('check_username_available', { uname: cleaned })
-      setUsernameStatus(data === true ? 'available' : 'taken')
+      const { data, error } = await supabase.rpc('check_username_available', { uname: cleaned })
+      if (error) {
+        // RPC unavailable — allow submission; DB unique index is the backstop
+        setUsernameStatus('idle')
+      } else {
+        setUsernameStatus(data === true ? 'available' : 'taken')
+      }
     }, 500)
   }, [supabase])
 
@@ -322,27 +327,27 @@ export default function RegisterPage() {
     setError('')
     setLoading(true)
     try {
-      const { error: err } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-            fathers_name: fathersName,
-            username,
-            address,
-            city,
-            mobile: fullMobile,
-            avatar_initials: getAvatarInitials(fullName),
-            referral_source: referralSource,
-          },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          password,
+          fullName,
+          fathersName,
+          username,
+          address,
+          city,
+          mobile: fullMobile,
+          avatarInitials: getAvatarInitials(fullName),
+          referralSource,
+        }),
       })
-      if (err) {
-        setError(err.message)
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error ?? 'Registration failed. Please try again.')
       } else {
-        setRegistered(true)
+        router.push('/login?registered=1')
       }
     } finally {
       setLoading(false)
