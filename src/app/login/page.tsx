@@ -3,7 +3,7 @@
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Eye, EyeOff, CheckCircle2, Mail } from 'lucide-react'
+import { Eye, EyeOff, CheckCircle2, Mail, Loader2 } from 'lucide-react'
 import { useLang } from '@/contexts/LanguageContext'
 import { createClient } from '@/lib/supabase/client'
 
@@ -25,28 +25,48 @@ function LoginForm() {
     e.preventDefault()
     setError('')
     setLoading(true)
+    console.log('[Login] attempting sign-in for', email)
     try {
       const { error: err } = await supabase.auth.signInWithPassword({ email, password })
       if (err) {
-        setError(t.auth.incorrectCredentials)
-      } else {
-        // Check if the student needs to complete their profile
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('profile_complete')
-            .eq('id', user.id)
-            .maybeSingle()
-
-          if (!profile?.profile_complete) {
-            router.push(`/onboarding?returnTo=${encodeURIComponent(returnTo)}`)
-            return
-          }
-        }
-        router.push(returnTo)
-        router.refresh()
+        console.error('[Login] sign-in failed:', err.message)
+        setError(err.message)
+        return
       }
+
+      console.log('[Login] sign-in successful, fetching profile...')
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setError('Authentication error. Please try again.')
+        return
+      }
+
+      const { data: profile, error: profileErr } = await supabase
+        .from('profiles')
+        .select('is_admin, profile_complete')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      console.log('[Login] profile:', JSON.stringify(profile), 'err:', profileErr?.message ?? 'none')
+
+      // Admin → go straight to admin panel
+      if (profile?.is_admin) {
+        console.log('[Login] admin detected → /admin')
+        router.push('/admin')
+        router.refresh()
+        return
+      }
+
+      // New user whose profile is incomplete
+      if (!profile?.profile_complete) {
+        console.log('[Login] profile incomplete → /onboarding')
+        router.push(`/onboarding?returnTo=${encodeURIComponent(returnTo)}`)
+        return
+      }
+
+      console.log('[Login] regular user → ', returnTo)
+      router.push(returnTo)
+      router.refresh()
     } finally {
       setLoading(false)
     }
@@ -129,9 +149,10 @@ function LoginForm() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 bg-brand-gold text-brand-bg font-semibold rounded-lg hover:bg-yellow-400 transition-colors disabled:opacity-70 mt-2"
+              className="w-full py-2.5 bg-brand-gold text-brand-bg font-semibold rounded-lg hover:bg-yellow-400 transition-colors disabled:opacity-70 mt-2 flex items-center justify-center gap-2"
             >
-              {loading ? '...' : t.auth.signIn}
+              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+              {loading ? 'Signing in…' : t.auth.signIn}
             </button>
           </form>
 

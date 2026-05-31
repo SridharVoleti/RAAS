@@ -18,18 +18,26 @@ export default function AdminLoginPage() {
     e.preventDefault()
     setError('')
     setLoading(true)
+    console.log('[AdminLogin] attempting sign-in for', email)
     try {
       const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
-      if (signInError) { setError('Invalid credentials.'); return }
+      if (signInError) {
+        console.error('[AdminLogin] sign-in failed:', signInError.message)
+        setError(signInError.message)
+        return
+      }
 
+      console.log('[AdminLogin] sign-in successful, checking admin status...')
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { setError('Authentication failed.'); return }
 
-      const { data: profile } = await supabase
+      const { data: profile, error: profileErr } = await supabase
         .from('profiles')
         .select('is_admin')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
+
+      console.log('[AdminLogin] profile:', JSON.stringify(profile), 'err:', profileErr?.message ?? 'none')
 
       if (!profile?.is_admin) {
         await supabase.auth.signOut()
@@ -37,6 +45,7 @@ export default function AdminLoginPage() {
         return
       }
 
+      console.log('[AdminLogin] admin confirmed → /admin')
       router.push('/admin')
       router.refresh()
     } finally {
