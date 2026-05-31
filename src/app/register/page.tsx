@@ -274,6 +274,7 @@ function VerifyScreen({ email, fullMobile }: { email: string; fullMobile: string
 
 export default function RegisterPage() {
   const { t } = useLang()
+  const router = useRouter()
   const supabase = createClient()
 
   const [fullName, setFullName] = useState('')
