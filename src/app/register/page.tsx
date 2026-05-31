@@ -292,6 +292,7 @@ export default function RegisterPage() {
   const [referralSource, setReferralSource] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [emailExists, setEmailExists] = useState(false)
   const [registered, setRegistered] = useState(false)
 
   const strength = getPasswordStrength(password)
@@ -326,8 +327,21 @@ export default function RegisterPage() {
     if (!referralSource) { setError('Please tell us how you heard about us'); return }
 
     setError('')
+    setEmailExists(false)
     setLoading(true)
     try {
+      // Pre-check: is this email already registered?
+      const emailRes = await fetch('/api/auth/check-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      const emailData = await emailRes.json()
+      if (emailData.exists) {
+        setEmailExists(true)
+        return
+      }
+
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -379,6 +393,13 @@ export default function RegisterPage() {
             </div>
           </div>
 
+          {emailExists && (
+            <div className="mb-4 p-3 bg-brand-error/10 border border-brand-error/30 rounded-lg text-brand-error text-sm">
+              An account with this email already exists.{' '}
+              <Link href="/login" className="underline font-semibold hover:text-red-300">Sign in instead?</Link>
+            </div>
+          )}
+
           {error && (
             <div className="mb-4 p-3 bg-brand-error/10 border border-brand-error/30 rounded-lg text-brand-error text-sm">
               {error}
@@ -393,7 +414,7 @@ export default function RegisterPage() {
               <input
                 type="email"
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={e => { setEmail(e.target.value); setEmailExists(false) }}
                 required
                 placeholder="you@example.com"
                 className="w-full px-4 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-brand-body placeholder:text-brand-gold-muted focus:outline-none focus:border-brand-gold transition-colors"
@@ -573,8 +594,9 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading || usernameStatus === 'taken' || usernameStatus === 'checking'}
-              className="w-full py-2.5 bg-brand-gold text-brand-bg font-semibold rounded-lg hover:bg-yellow-400 transition-colors disabled:opacity-70 mt-2"
+              className="w-full py-2.5 bg-brand-gold text-brand-bg font-semibold rounded-lg hover:bg-yellow-400 transition-colors disabled:opacity-70 mt-2 flex items-center justify-center gap-2"
             >
+              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
               {loading ? 'Creating account…' : 'Create Account'}
             </button>
           </form>
