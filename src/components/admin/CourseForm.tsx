@@ -29,8 +29,8 @@ export default function CourseForm({ course }: Props) {
     slug:           course?.slug ?? '',
     description_en: course?.description_en ?? '',
     description_te: course?.description_te ?? '',
-    instructor_en:  course?.instructor_en ?? '',
-    instructor_te:  course?.instructor_te ?? '',
+    instructor_en:  course?.instructor_en ?? 'Rama Krishnamaa Charyulu Voleti',
+    instructor_te:  course?.instructor_te ?? 'రామ కృష్ణమామా చార్యులుఓలేటి',
     category:       course?.category ?? 'Scripture',
     level:          course?.level ?? 'Beginner',
     badge:          course?.badge ?? '',
@@ -55,8 +55,14 @@ export default function CourseForm({ course }: Props) {
   }
 
   async function handleSave(publish: boolean) {
+    console.log('[CourseForm] handleSave called', { publish, isEdit, slug: form.slug })
     setError('')
     if (!form.title_en.trim() || !form.slug.trim() || !form.description_en.trim()) {
+      console.warn('[CourseForm] Validation failed — missing required fields', {
+        title_en: !!form.title_en.trim(),
+        slug: !!form.slug.trim(),
+        description_en: !!form.description_en.trim(),
+      })
       setError('English title, slug, and description are required.')
       return
     }
@@ -65,6 +71,7 @@ export default function CourseForm({ course }: Props) {
       const payload = { ...form, is_published: publish }
       const url = isEdit ? `/api/admin/courses/${course!.id}` : '/api/admin/courses'
       const method = isEdit ? 'PUT' : 'POST'
+      console.log('[CourseForm] Sending request', { method, url, payload })
 
       const res = await fetch(url, {
         method,
@@ -72,10 +79,21 @@ export default function CourseForm({ course }: Props) {
         body: JSON.stringify(payload),
       })
       const data = await res.json()
-      if (!res.ok) { setError(data.error || 'Save failed'); return }
+      console.log('[CourseForm] Response received', { status: res.status, ok: res.ok, data })
 
-      router.push(isEdit ? `/admin/courses/${data.id}` : `/admin/courses/${data.id}`)
+      if (!res.ok) {
+        console.error('[CourseForm] Save failed', { status: res.status, error: data.error })
+        setError(data.error || 'Save failed')
+        return
+      }
+
+      const redirect = isEdit ? `/admin/courses/${data.id}` : '/admin/courses'
+      console.log('[CourseForm] Save successful, redirecting to', redirect)
+      router.push(redirect)
       router.refresh()
+    } catch (err) {
+      console.error('[CourseForm] Unexpected error during save', err)
+      setError('An unexpected error occurred.')
     } finally {
       setSaving(false)
     }
@@ -121,7 +139,7 @@ export default function CourseForm({ course }: Props) {
           </div>
           <div>
             <label className={labelCls}>Order Index</label>
-            <input type="number" value={form.order_index} onChange={e => set('order_index', e.target.value)}
+            <input type="number" value={form.order_index} onChange={e => set('order_index', e.target.valueAsNumber || 0)}
               className={inputCls} min={0} />
           </div>
         </div>
@@ -224,7 +242,7 @@ export default function CourseForm({ course }: Props) {
         {!form.is_free && (
           <div className="max-w-xs">
             <label className={labelCls}>Price (₹)</label>
-            <input type="number" value={form.price} onChange={e => set('price', e.target.value)}
+            <input type="number" value={form.price} onChange={e => set('price', e.target.valueAsNumber || 0)}
               min={0} step={1} className={inputCls} placeholder="799" />
           </div>
         )}

@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/server'
 import { getAdminUser, forbidden } from '@/lib/admin'
 import { parseBody, CreateCourseSchema } from '@/lib/validation'
+import { logger } from '@/lib/logger'
 
 export async function GET() {
   const admin = await getAdminUser()
@@ -26,12 +27,21 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  logger.info('POST /api/admin/courses — request received')
   const admin = await getAdminUser()
-  if (!admin) return forbidden()
+  if (!admin) {
+    logger.warn('POST /api/admin/courses — forbidden: not an admin')
+    return forbidden()
+  }
+  logger.debug({ adminId: admin.id }, 'POST /api/admin/courses — admin verified')
 
   const parsed = await parseBody(req, CreateCourseSchema)
-  if (!parsed.success) return parsed.response
+  if (!parsed.success) {
+    logger.warn('POST /api/admin/courses — validation failed')
+    return parsed.response
+  }
   const body = parsed.data
+  logger.info({ slug: body.slug, title_en: body.title_en, is_published: body.is_published }, 'POST /api/admin/courses — inserting course')
 
   const supabase = await createAdminClient()
 
@@ -61,7 +71,11 @@ export async function POST(req: Request) {
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    logger.error({ err: error }, 'POST /api/admin/courses — Supabase insert failed')
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+  logger.info({ courseId: data.id, slug: data.slug }, 'POST /api/admin/courses — course created successfully')
   revalidatePath('/explore')
   revalidatePath('/')
   return NextResponse.json(data, { status: 201 })
