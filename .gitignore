@@ -50,3 +50,7 @@ pnpm-debug.log*
 .env
 .env.*
 !.env.example
+
+# Local / outdated
+Old/
+google_clientid.txt

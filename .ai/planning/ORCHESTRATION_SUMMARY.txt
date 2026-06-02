@@ -1,0 +1,204 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                 KRISHNAMARGAM — SDLC ORCHESTRATION COMPLETE               ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+ANALYSIS PERFORMED: 2026-05-27
+TEAM: Sridhar (User) + Claude AI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PROJECT STATE SUMMARY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Current Version: v0.4.0 (Admin dashboard + Lesson player + Onboarding)
+Codebase Size: 65 TypeScript files, ~2,000 LOC
+Database: 11 core tables + RLS policies + 6 migrations
+Test Coverage: 0% (no test suite yet)
+Architecture: Next.js 15 (App Router) + Supabase (PostgreSQL)
+
+Completed Modules: 9 of 12 (75%)
+  ✅ Auth & sessions
+  ✅ Student pages (home, explore, my-courses, watch, onboarding)
+  ✅ Admin panel (CRUD courses, students, payments, email templates)
+  ✅ Database schema & RLS
+  ✅ Video playback & progress tracking
+  ✅ OTP generation & Fast2SMS integration
+  ✅ Email system (templates + Resend client)
+  ✅ Admin bootstrap endpoint
+  ✅ Payment UI (UPI flow)
+
+❌ Incomplete:
+  - Razorpay webhook (auto-payment confirmation)
+  - Razorpay signature verification
+  - Request validation middleware
+  - Hard-coded course data (should be DB-driven)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+OPEN ITEMS BACKLOG
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Total Items: 19
+  P0 (Critical): 5 items ─→ MUST complete for v0.5.0 launch
+  P1 (High):    4 items ─→ v0.5.0 completion
+  P2 (Medium):  6 items ─→ Post-launch features
+  P3 (Low):     4 items ─→ v1.0 & beyond backlog
+
+CRITICAL PATH (P0):
+  1. OI-001: Razorpay Webhook Handler (Claude, 4h)
+  2. OI-002: Request Validation (Claude, 4h)
+  3. OI-003: DB-Driven Courses (Claude, 4h)
+  4. OI-004: Wire Razorpay Keys (Qwen, 1h)
+  5. OI-005: Wire Resend Keys (Qwen, 1h)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+IMPLEMENTATION ROADMAP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PHASE 1 (Day 1): Foundation & Infrastructure
+  🕐 0–1h:  Wire Razorpay & Resend keys in Vercel (Qwen)
+  🕐 1–5h:  Add request validation middleware (Claude)
+  🕐 5–9h:  Set up structured logging (Qwen)
+  OUTPUT: Core infrastructure ready for payment flow
+
+PHASE 2 (Days 2–3): Payment Automation
+  🕐 0–4h:  Implement Razorpay webhook + signature verification (Claude)
+  🕐 4–6h:  Fix payment IDOR vulnerability (Claude)
+  🕐 6–9h:  Complete mobile verification flow (Claude)
+  OUTPUT: Automated end-to-end payment processing
+
+PHASE 3 (Days 3–4): Architecture & Scalability
+  🕐 0–4h:  Migrate courses to database (Claude)
+  🕐 4–8h:  Add API pagination (Claude)
+  OUTPUT: Data-driven architecture, ready for 10k+ students
+
+PHASE 4 (Days 4–5): Testing & Documentation
+  🕐 0–10h: Partial test suite (unit + integration) (Qwen)
+  🕐 10+h:  Admin playbook + API docs (both)
+  OUTPUT: 70%+ test coverage, launch-ready docs
+
+TOTAL EFFORT: 5–7 days (with 2 developers, 8h/day)
+             10–12 days (single developer)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ROUTING RECOMMENDATIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLAUDE OWNER (18 hours total):
+  Backend logic, security, state machines, database design
+  OI-001, OI-002, OI-003, OI-006, OI-007, OI-009, OI-011, OI-012, OI-014
+
+QWEN OWNER (12 hours total):
+  Configuration, library setup, test infrastructure, documentation
+  OI-004, OI-005, OI-008, OI-010, OI-013, OI-016
+
+ESCALATION ROUTES:
+  Razorpay signature issues → Razorpay support (+ Claude support)
+  Resend quota issues → Resend support (+ Qwen)
+  Complex test mocking → Claude assists Qwen
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+DEPENDENCY MAPPING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+HARD DEPENDENCIES:
+  OI-004 (Razorpay keys) ────┐
+  OI-005 (Resend keys)   ────┼──→ OI-001 (Webhook) ──→ LAUNCH
+  OI-002 (Validation)    ────┤
+  OI-003 (DB courses)    ────┘
+
+PARALLEL FLOWS:
+  OI-006 (Mobile verify) → Registration enhancement
+  OI-008 (Logging) → Observability infrastructure
+  OI-009 (IDOR fix) → Payment security hardening
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+LAUNCH READINESS CHECKLIST (Target: 2026-05-31)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PRE-LAUNCH (Days 5–6):
+  ☐ Razorpay webhook tested with sandbox orders
+  ☐ Request validation covers all POST endpoints
+  ☐ All courses migrated to database
+  ☐ Razorpay keys deployed to Vercel
+  ☐ Resend keys deployed to Vercel
+  ☐ Mobile verification flow complete
+  ☐ IDOR vulnerability patched
+  ☐ Logging captures all payment operations
+
+LAUNCH DAY (2026-05-31):
+  ☐ All migrations applied in Supabase
+  ☐ Admin account bootstrapped in production
+  ☐ Email templates seeded in production
+  ☐ Razorpay webhook URL configured in dashboard
+  ☐ 5+ manual end-to-end test cases passed
+  ☐ Security review completed (OWASP top 10)
+  ☐ Admin playbook documented and tested
+  ☐ Monitoring/alerting set up for payment failures
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SUCCESS METRICS (Target Performance)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Payment Automation:
+  ✓ Completion rate: 95%+ (vs 100% manual today)
+  ✓ Processing time: <5 seconds (webhook to activation)
+  ✓ Double-charge prevention: 100% (idempotency)
+
+Email Delivery:
+  ✓ Delivery success rate: 99%+
+  ✓ Bounce rate: <2%
+  ✓ Enrollment email sent within 10 seconds of payment
+
+API Performance:
+  ✓ Response time (p95): <500ms
+  ✓ Error rate: <0.1%
+  ✓ Pagination works smoothly with 1,000+ records
+
+Testing & Quality:
+  ✓ Test coverage: 70%+
+  ✓ Critical security issues: 0
+  ✓ Critical bugs: 0
+
+Operations:
+  ✓ Admin onboarding time: <5 minutes
+  ✓ Admin payment confirmation: fully automated
+  ✓ Admin can edit email templates: in <2 minutes
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+GENERATED DOCUMENTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📄 .ai/planning/open_items.md
+   → Complete SDLC orchestration plan (19 items, detailed specs, dependencies)
+
+📄 .ai/planning/QUICK_REFERENCE.md
+   → 1-page summary for daily standup reference
+
+📄 .ai/planning/ORCHESTRATION_SUMMARY.txt
+   → This document (high-level dashboard)
+
+💾 .claude/projects/RAAS/memory/sdlc_orchestration.md
+   → Persistent memory for future sessions
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+NEXT STEPS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Review open_items.md with team (30 min)
+2. Assign owners: OI-004 & OI-005 to Qwen; OI-002, OI-008 to Claude
+3. Start Phase 1 implementation (concurrent)
+4. Daily standup using QUICK_REFERENCE.md
+5. Track completion via open_items.md dependency graph
+
+BLOCKING DEPENDENCIES: None (ready to start immediately)
+ESCALATION CONTACTS: Razorpay (payment issues), Resend (email), Supabase (DB)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
