@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Eye, EyeOff, CheckCircle2, XCircle, Loader2, Mail, Smartphone } from 'lucide-react'
+import { Eye, EyeOff, CheckCircle2, Loader2, Mail, Smartphone } from 'lucide-react'
 import { useLang } from '@/contexts/LanguageContext'
 import { createClient } from '@/lib/supabase/client'
 import { getAvatarInitials } from '@/lib/utils'
@@ -35,8 +35,6 @@ function getPasswordStrength(pw: string): 0 | 1 | 2 | 3 | 4 {
 const STRENGTH_LABELS = ['', 'Weak', 'Fair', 'Good', 'Strong']
 const STRENGTH_COLORS = ['', 'bg-red-500', 'bg-yellow-500', 'bg-blue-500', 'bg-green-500']
 const STRENGTH_TEXT_COLORS = ['', 'text-red-400', 'text-yellow-400', 'text-blue-400', 'text-green-400']
-
-type UsernameStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid'
 
 // ─── OTP Input ─────────────────────────────────────────────────────────────
 
@@ -280,8 +278,6 @@ export default function RegisterPage() {
   const [fullName, setFullName] = useState('')
   const [fathersName, setFathersName] = useState('')
   const [email, setEmail] = useState('')
-  const [username, setUsername] = useState('')
-  const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>('idle')
   const [address, setAddress] = useState('')
   const [city, setCity] = useState('')
   const [isd, setIsd] = useState('+91')
@@ -299,31 +295,10 @@ export default function RegisterPage() {
   const pwMatch = confirmPw.length > 0 && password === confirmPw
   const fullMobile = `${isd}${mobile}`
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
-
-  const checkUsername = useCallback((value: string) => {
-    clearTimeout(debounceRef.current)
-    const cleaned = value.toLowerCase().replace(/[^a-z0-9_.]/g, '')
-    setUsername(cleaned)
-    if (cleaned.length < 3) { setUsernameStatus(cleaned.length === 0 ? 'idle' : 'invalid'); return }
-    setUsernameStatus('checking')
-    debounceRef.current = setTimeout(async () => {
-      const { data, error } = await supabase.rpc('check_username_available', { uname: cleaned })
-      if (error) {
-        // RPC unavailable — allow submission; DB unique index is the backstop
-        setUsernameStatus('idle')
-      } else {
-        setUsernameStatus(data === true ? 'available' : 'taken')
-      }
-    }, 500)
-  }, [supabase])
-
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
     if (password !== confirmPw) { setError('Passwords do not match'); return }
     if (strength < 2) { setError('Please use a stronger password'); return }
-    if (username.length < 3) { setError('Username must be at least 3 characters'); return }
-    if (usernameStatus === 'taken') { setError('That username is already taken'); return }
     if (!referralSource) { setError('Please tell us how you heard about us'); return }
 
     setError('')
@@ -350,7 +325,6 @@ export default function RegisterPage() {
           password,
           fullName,
           fathersName,
-          username,
           address,
           city,
           mobile: fullMobile,
@@ -419,36 +393,6 @@ export default function RegisterPage() {
                 placeholder="you@example.com"
                 className="w-full px-4 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-brand-body placeholder:text-brand-gold-muted focus:outline-none focus:border-brand-gold transition-colors"
               />
-            </div>
-
-            {/* Username */}
-            <div>
-              <label className="block text-brand-body text-sm font-medium mb-1.5">
-                Username <span className="text-brand-gold-muted font-normal text-xs">(letters, numbers, _ and . only)</span>
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={username}
-                  onChange={e => checkUsername(e.target.value)}
-                  required
-                  minLength={3}
-                  placeholder="your_username"
-                  className={`w-full px-4 py-2.5 pr-10 bg-brand-bg border rounded-lg text-brand-body placeholder:text-brand-gold-muted focus:outline-none transition-colors ${
-                    usernameStatus === 'available' ? 'border-green-500' :
-                    usernameStatus === 'taken' || usernameStatus === 'invalid' ? 'border-brand-error' :
-                    'border-brand-border focus:border-brand-gold'
-                  }`}
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2">
-                  {usernameStatus === 'checking' && <Loader2 className="w-4 h-4 text-brand-gold-muted animate-spin" />}
-                  {usernameStatus === 'available' && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-                  {usernameStatus === 'taken' && <XCircle className="w-4 h-4 text-brand-error" />}
-                </span>
-              </div>
-              {usernameStatus === 'available' && <p className="text-xs mt-1 text-green-400">Username is available</p>}
-              {usernameStatus === 'taken' && <p className="text-xs mt-1 text-brand-error">Username is already taken</p>}
-              {usernameStatus === 'invalid' && <p className="text-xs mt-1 text-brand-error">At least 3 characters required</p>}
             </div>
 
             {/* Full Name + Father's Name */}
@@ -593,7 +537,7 @@ export default function RegisterPage() {
 
             <button
               type="submit"
-              disabled={loading || usernameStatus === 'taken' || usernameStatus === 'checking'}
+              disabled={loading}
               className="w-full py-2.5 bg-brand-gold text-brand-bg font-semibold rounded-lg hover:bg-yellow-400 transition-colors disabled:opacity-70 mt-2 flex items-center justify-center gap-2"
             >
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}

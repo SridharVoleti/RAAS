@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
 
-  const { email, password, fullName, fathersName, username, address, city, mobile, avatarInitials, referralSource } = body
+  const { email, password, fullName, fathersName, address, city, mobile, avatarInitials, referralSource } = body
 
   if (!email || !password) {
     return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
@@ -26,7 +26,6 @@ export async function POST(req: Request) {
       user_metadata: {
         full_name: fullName ?? '',
         fathers_name: fathersName ?? '',
-        username: username ?? '',
         address: address ?? '',
         city: city ?? '',
         mobile: mobile ?? '',
