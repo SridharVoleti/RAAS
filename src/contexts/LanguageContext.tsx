@@ -13,7 +13,7 @@ interface LanguageContextValue {
 const LanguageContext = createContext<LanguageContextValue>({
   lang: 'te',
   setLang: () => {},
-  t: translations.te as typeof translations.en,
+  t: translations.te as unknown as typeof translations.en,
 })
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
