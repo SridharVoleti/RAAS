@@ -43,6 +43,11 @@ export default function CourseForm({ course }: Props) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
+  function showError(msg: string) {
+    setError(msg)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   // Auto-generate slug from English title when creating
   useEffect(() => {
     if (!isEdit && form.title_en) {
@@ -63,12 +68,12 @@ export default function CourseForm({ course }: Props) {
         slug: !!form.slug.trim(),
         description_en: !!form.description_en.trim(),
       })
-      setError('English title, slug, and description are required.')
+      showError('English title, slug, and description are required.')
       return
     }
     setSaving(true)
     try {
-      const payload = { ...form, is_published: publish }
+      const payload = { ...form, badge: form.badge || null, is_published: publish }
       const url = isEdit ? `/api/admin/courses/${course!.id}` : '/api/admin/courses'
       const method = isEdit ? 'PUT' : 'POST'
       console.log('[CourseForm] Sending request', { method, url, payload })
@@ -83,7 +88,7 @@ export default function CourseForm({ course }: Props) {
 
       if (!res.ok) {
         console.error('[CourseForm] Save failed', { status: res.status, error: data.error })
-        setError(data.error || 'Save failed')
+        showError(data.error || 'Save failed')
         return
       }
 
@@ -93,7 +98,7 @@ export default function CourseForm({ course }: Props) {
       router.refresh()
     } catch (err) {
       console.error('[CourseForm] Unexpected error during save', err)
-      setError('An unexpected error occurred.')
+      showError('An unexpected error occurred.')
     } finally {
       setSaving(false)
     }
