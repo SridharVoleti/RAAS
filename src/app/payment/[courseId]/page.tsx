@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import Link from 'next/link'
 import { useLang } from '@/contexts/LanguageContext'
 import { createClient } from '@/lib/supabase/client'
 import { getCourseById, getCourseBySlug } from '@/lib/getCourses'
@@ -46,7 +45,7 @@ export default function PaymentPage() {
   const supabase = createClient()
 
   const [course, setCourse] = useState<Course | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState<'pay' | 'scholarship' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [istHour] = useState(() => getISTHour())
 
@@ -54,47 +53,40 @@ export default function PaymentPage() {
     async function loadCourse() {
       const courseId = params.courseId
       if (!courseId) { router.push('/explore'); return }
-
       const isNumeric = /^\d+$/.test(String(courseId))
       const found = isNumeric
         ? await getCourseById(Number(courseId))
         : await getCourseBySlug(String(courseId))
-
       if (found) setCourse(found)
       else router.push('/explore')
     }
     loadCourse()
   }, [params.courseId, router])
 
-  async function handleCompletePayment() {
+  async function handlePay() {
     if (!course) return
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/login'); return }
 
-    setLoading(true)
+    setLoading('pay')
     setError(null)
     try {
-      // Create Razorpay order on the backend
       const res = await fetch('/api/payment/initiate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ courseId: course.id, amount: course.price }),
       })
-
       if (!res.ok) {
         const body = await res.json() as { error?: string }
         setError(body.error ?? 'Payment initiation failed')
+        setLoading(null)
         return
       }
-
       const { razorpayOrderId, razorpayKeyId, amount } = await res.json() as {
-        razorpayOrderId: string
-        razorpayKeyId: string
-        amount: number
+        razorpayOrderId: string; razorpayKeyId: string; amount: number
       }
-
       const loaded = await loadRazorpayScript()
-      if (!loaded) { setError('Failed to load payment gateway. Please try again.'); return }
+      if (!loaded) { setError('Failed to load payment gateway. Please try again.'); setLoading(null); return }
 
       const rzp = new window.Razorpay({
         key:         razorpayKeyId,
@@ -104,17 +96,42 @@ export default function PaymentPage() {
         description: course.title_en,
         order_id:    razorpayOrderId,
         handler: () => {
-          // Webhook will activate enrollment; redirect student to confirmation
           router.push(`/payment/confirm?courseId=${course.id}&istHour=${istHour}`)
         },
         prefill: { email: user.email ?? undefined },
         theme:   { color: '#f0b429' },
-        modal:   { ondismiss: () => setLoading(false) },
+        modal:   { ondismiss: () => setLoading(null) },
       })
       rzp.open()
     } catch {
       setError('Something went wrong. Please try again.')
-      setLoading(false)
+      setLoading(null)
+    }
+  }
+
+  async function handleScholarship() {
+    if (!course) return
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { router.push('/login'); return }
+
+    setLoading('scholarship')
+    setError(null)
+    try {
+      const res = await fetch('/api/enroll/scholarship', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ courseId: course.id }),
+      })
+      if (!res.ok) {
+        const body = await res.json() as { error?: string }
+        setError(body.error ?? 'Enrollment failed')
+        setLoading(null)
+        return
+      }
+      router.push(`/watch/${course.slug}`)
+    } catch {
+      setError('Something went wrong. Please try again.')
+      setLoading(null)
     }
   }
 
@@ -128,9 +145,11 @@ export default function PaymentPage() {
     <div className="min-h-screen bg-brand-bg flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="bg-brand-card border border-brand-border rounded-2xl overflow-hidden">
+
           {/* Course summary */}
           <div className="p-5 border-b border-brand-border flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl flex items-center justify-center text-3xl flex-shrink-0" style={{ backgroundColor: course.bg_color }}>
+            <div className="w-14 h-14 rounded-xl flex items-center justify-center text-3xl flex-shrink-0"
+              style={{ backgroundColor: course.bg_color }}>
               {course.emoji}
             </div>
             <div className="flex-1 min-w-0">
@@ -140,33 +159,46 @@ export default function PaymentPage() {
             <div className="text-brand-gold font-bold text-lg flex-shrink-0">₹{course.price}</div>
           </div>
 
-          <div className="p-6">
-            <h2 className="text-brand-gold font-bold text-xl mb-6 text-center">{t.payment.title}</h2>
-
-            {/* Razorpay branding */}
-            <div className="bg-white/5 border border-brand-border rounded-xl p-5 mb-5 text-center">
-              <div className="text-brand-gold-muted text-sm mb-1">Secure payment via</div>
-              <div className="text-brand-body font-semibold">Razorpay · UPI · Cards · NetBanking</div>
-              <div className="text-brand-gold-muted text-xs mt-2">You will be redirected to Razorpay checkout</div>
-            </div>
+          <div className="p-6 space-y-3">
+            <h2 className="text-brand-gold font-bold text-lg text-center mb-5">{t.payment.title}</h2>
 
             {error && (
-              <div className="p-3 rounded-lg mb-4 bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
                 {error}
               </div>
             )}
 
+            {/* Option 1: Pay via Razorpay */}
             <button
-              onClick={handleCompletePayment}
-              disabled={loading}
-              className="w-full py-3 bg-brand-gold text-brand-bg font-bold rounded-xl hover:bg-yellow-400 transition-colors disabled:opacity-70"
+              onClick={handlePay}
+              disabled={loading !== null}
+              className="w-full p-4 bg-brand-gold text-brand-bg rounded-xl text-left hover:bg-yellow-400 transition-colors disabled:opacity-60 group"
             >
-              {loading ? '...' : `Pay ₹${course.price}`}
+              <div className="font-bold text-sm">₹{course.price} · {t.payment.optionPay}</div>
+              <div className="text-brand-bg/70 text-xs mt-0.5">{t.payment.optionPaySub}</div>
+              {loading === 'pay' && <div className="text-brand-bg/70 text-xs mt-1">Loading…</div>}
             </button>
 
-            <Link href={`/course/${course.slug}`} className="block text-center text-brand-gold-muted text-sm mt-4 hover:text-brand-gold transition-colors">
-              {t.payment.backToCourse}
-            </Link>
+            {/* Option 2: I cannot pay */}
+            <button
+              onClick={handleScholarship}
+              disabled={loading !== null}
+              className="w-full p-4 bg-brand-bg border border-brand-border rounded-xl text-left hover:border-brand-gold transition-colors disabled:opacity-60"
+            >
+              <div className="text-brand-body font-semibold text-sm">{t.payment.optionCannotPay}</div>
+              <div className="text-brand-gold-muted text-xs mt-0.5">{t.payment.optionCannotPaySub}</div>
+              {loading === 'scholarship' && <div className="text-brand-gold-muted text-xs mt-1">Loading…</div>}
+            </button>
+
+            {/* Option 3: I don't want to pay */}
+            <button
+              onClick={() => router.push(`/course/${course.slug}`)}
+              disabled={loading !== null}
+              className="w-full p-4 bg-brand-bg border border-brand-border rounded-xl text-left hover:border-brand-border/60 transition-colors disabled:opacity-60 opacity-70 hover:opacity-100"
+            >
+              <div className="text-brand-gold-muted font-medium text-sm">{t.payment.optionDoNotWantPay}</div>
+              <div className="text-brand-gold-muted/60 text-xs mt-0.5">{t.payment.optionDoNotWantPaySub}</div>
+            </button>
           </div>
         </div>
       </div>

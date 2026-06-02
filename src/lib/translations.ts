@@ -93,7 +93,7 @@ export const translations = {
       notStarted: 'Not Started',
     },
     payment: {
-      title: 'Complete Payment',
+      title: 'Choose an Option',
       upiId: 'UPI ID',
       copy: 'Copy',
       copied: 'Copied!',
@@ -101,6 +101,12 @@ export const translations = {
       backToCourse: 'Back to Course',
       beforeElevenPm: 'Pay before 11 PM IST for instant enrollment confirmation.',
       afterElevenPm: 'Payments after 11 PM IST are confirmed by 8 AM IST the next morning.',
+      optionPay: 'Pay via Razorpay',
+      optionPaySub: 'UPI · Cards · NetBanking · Wallets',
+      optionCannotPay: 'I cannot pay',
+      optionCannotPaySub: 'Enroll for free — access this course at no cost',
+      optionDoNotWantPay: 'I don\'t want to pay',
+      optionDoNotWantPaySub: 'Go back to the course page',
     },
     confirmation: {
       instant: {
@@ -267,7 +273,7 @@ export const translations = {
       notStarted: 'ప్రారంభించలేదు',
     },
     payment: {
-      title: 'చెల్లింపు పూర్తి చేయండి',
+      title: 'ఒక ఎంపిక చేసుకోండి',
       upiId: 'UPI ID',
       copy: 'కాపీ',
       copied: 'కాపీ అయింది!',
@@ -275,6 +281,12 @@ export const translations = {
       backToCourse: 'కోర్సుకు తిరిగి వెళ్ళు',
       beforeElevenPm: 'తక్షణ నమోదు నిర్ధారణ కోసం రాత్రి 11 గంటల లోపు చెల్లించండి.',
       afterElevenPm: 'రాత్రి 11 తర్వాత చెల్లింపులు తెల్లవారు జామున 8 గంటలకు నిర్ధారించబడతాయి.',
+      optionPay: 'Razorpay ద్వారా చెల్లించండి',
+      optionPaySub: 'UPI · కార్డులు · నెట్‌బ్యాంకింగ్ · వ్యాలెట్లు',
+      optionCannotPay: 'నాకు చెల్లించే స్తోమత లేదు',
+      optionCannotPaySub: 'ఉచితంగా నమోదు అవ్వండి — ఏ ఖర్చు లేకుండా ఈ కోర్సు చేయండి',
+      optionDoNotWantPay: 'నేను చెల్లించాలని అనుకోవడం లేదు',
+      optionDoNotWantPaySub: 'కోర్సు పేజీకి తిరిగి వెళ్ళు',
     },
     confirmation: {
       instant: {
