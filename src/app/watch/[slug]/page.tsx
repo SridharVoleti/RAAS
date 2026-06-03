@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import WatchClient from '@/components/WatchClient'
-import type { Course, Lesson } from '@/types'
+import type { Course, Lesson, QuizQuestion_Public, QuizSubmission } from '@/types'
 
 export default async function WatchPage({
   params,
@@ -48,8 +48,31 @@ export default async function WatchPage({
     return <NotEnrolledScreen course={course as Course} status="pending" />
   }
 
-  // Fetch lessons (with video IDs — server-side only) and user progress in parallel
-  const [{ data: lessons }, { data: progressRows }] = await Promise.all([
+  // Fetch lessons, progress, and (if course has quiz) quiz data in parallel
+  const quizFetches = (course as Course).has_quiz
+    ? [
+        adminSupabase
+          .from('quiz_questions')
+          .select('id, course_id, question_en, question_te, option_a_en, option_a_te, option_b_en, option_b_te, option_c_en, option_c_te, option_d_en, option_d_te, order_index')
+          .eq('course_id', course.id)
+          .order('order_index'),
+        supabase
+          .from('quiz_submissions')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('course_id', course.id)
+          .order('submitted_at', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]
+    : [Promise.resolve({ data: [] }), Promise.resolve({ data: null })]
+
+  const [
+    { data: lessons },
+    { data: progressRows },
+    { data: quizQuestions },
+    { data: latestSubmission },
+  ] = await Promise.all([
     adminSupabase
       .from('lessons')
       .select('*')
@@ -60,6 +83,7 @@ export default async function WatchPage({
       .select('lesson_id')
       .eq('user_id', user.id)
       .eq('course_id', course.id),
+    ...quizFetches,
   ])
 
   const completedLessonIds = (progressRows || []).map(p => p.lesson_id as number)
@@ -75,6 +99,8 @@ export default async function WatchPage({
       lessons={allLessons}
       completedLessonIds={completedLessonIds}
       initialLessonIndex={initialIdx}
+      quizQuestions={(quizQuestions ?? []) as QuizQuestion_Public[]}
+      quizSubmission={(latestSubmission ?? null) as QuizSubmission | null}
     />
   )
 }

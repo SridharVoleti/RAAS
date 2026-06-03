@@ -47,7 +47,12 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     url.searchParams.set('returnTo', pathname)
-    return NextResponse.redirect(url)
+    const redirectResponse = NextResponse.redirect(url)
+    // Forward any cookie updates (e.g. stale-token clears) from Supabase to the redirect response
+    supabaseResponse.cookies.getAll().forEach(cookie => {
+      redirectResponse.cookies.set(cookie.name, cookie.value, cookie as Parameters<typeof redirectResponse.cookies.set>[2])
+    })
+    return redirectResponse
   }
 
   // Admin routes
@@ -55,7 +60,11 @@ export async function middleware(request: NextRequest) {
     if (!user) {
       const url = request.nextUrl.clone()
       url.pathname = '/admin/login'
-      return NextResponse.redirect(url)
+      const redirectResponse = NextResponse.redirect(url)
+      supabaseResponse.cookies.getAll().forEach(cookie => {
+        redirectResponse.cookies.set(cookie.name, cookie.value, cookie as Parameters<typeof redirectResponse.cookies.set>[2])
+      })
+      return redirectResponse
     }
   }
 

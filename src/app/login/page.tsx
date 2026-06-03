@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Eye, EyeOff, CheckCircle2, Mail, Loader2 } from 'lucide-react'
 import { useLang } from '@/contexts/LanguageContext'
@@ -9,7 +9,6 @@ import { createClient } from '@/lib/supabase/client'
 
 function LoginForm() {
   const { t } = useLang()
-  const router = useRouter()
   const params = useSearchParams()
   const returnTo = params.get('returnTo') || '/'
   const justRegistered = params.get('registered') === '1'
@@ -52,21 +51,19 @@ function LoginForm() {
       // Admin → go straight to admin panel
       if (profile?.is_admin) {
         console.log('[Login] admin detected → /admin')
-        router.push('/admin')
-        router.refresh()
+        window.location.href = '/admin'
         return
       }
 
       // New user whose profile is incomplete
       if (!profile?.profile_complete) {
         console.log('[Login] profile incomplete → /onboarding')
-        router.push(`/onboarding?returnTo=${encodeURIComponent(returnTo)}`)
+        window.location.href = `/onboarding?returnTo=${encodeURIComponent(returnTo)}`
         return
       }
 
       console.log('[Login] regular user → ', returnTo)
-      router.push(returnTo)
-      router.refresh()
+      window.location.href = returnTo
     } finally {
       setLoading(false)
     }

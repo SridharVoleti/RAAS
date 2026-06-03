@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/server'
 import CourseForm from '@/components/admin/CourseForm'
 import LessonManager from '@/components/admin/LessonManager'
+import QuizManager from '@/components/admin/QuizManager'
 import type { Course } from '@/types'
 
 export default async function EditCoursePage({ params }: { params: Promise<{ id: string }> }) {
@@ -30,6 +31,8 @@ export default async function EditCoursePage({ params }: { params: Promise<{ id:
       <CourseForm course={course} />
 
       <LessonManager courseId={course.id} />
+
+      {course.has_quiz && <QuizManager courseId={course.id} />}
     </div>
   )
 }

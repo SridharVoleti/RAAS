@@ -98,6 +98,32 @@ export const UpdateLessonSchema = LessonBaseSchema.extend({
   order_index: z.number().int().positive(),
 })
 
+// ── Quiz ─────────────────────────────────────────────────────────────────────
+
+const QuizQuestionBaseSchema = z.object({
+  question_en:    z.string().min(2).max(1000),
+  question_te:    z.string().max(1000).optional(),
+  option_a_en:    z.string().min(1).max(500),
+  option_a_te:    z.string().max(500).optional(),
+  option_b_en:    z.string().min(1).max(500),
+  option_b_te:    z.string().max(500).optional(),
+  option_c_en:    z.string().min(1).max(500),
+  option_c_te:    z.string().max(500).optional(),
+  option_d_en:    z.string().min(1).max(500),
+  option_d_te:    z.string().max(500).optional(),
+  correct_option: z.enum(['a', 'b', 'c', 'd']),
+  order_index:    z.number().int().nonnegative().optional(),
+})
+
+export const CreateQuizQuestionSchema = QuizQuestionBaseSchema
+export const UpdateQuizQuestionSchema = QuizQuestionBaseSchema.partial().extend({
+  correct_option: z.enum(['a', 'b', 'c', 'd']),
+})
+
+export const QuizSubmitSchema = z.object({
+  answers: z.record(z.string(), z.enum(['a', 'b', 'c', 'd'])),
+})
+
 // ── Email templates ───────────────────────────────────────────────────────────
 
 export const EmailTemplateSchema = z.object({

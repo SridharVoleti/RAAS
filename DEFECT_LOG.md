@@ -20,6 +20,62 @@ Format: newest defects at the top within each section.
 
 ---
 
+### AUTH-008 · Post-login `router.push()` served stale router-cached page, looping back to /login
+| | |
+|---|---|
+| **Date** | 2026-06-03 |
+| **Severity** | P1 |
+| **Status** | Fixed |
+| **Commit** | — |
+
+**Issue**
+After a session expired and the user re-authenticated on `/login`, they were silently looped back to `/login` instead of reaching the intended destination. No error was shown; the form appeared to succeed but navigation went nowhere.
+
+**Root Cause**
+After `signInWithPassword()` succeeded, the code called `router.push(returnTo)` immediately followed by `router.refresh()`. Next.js App Router has an in-memory router cache. If `returnTo` (e.g. `/my-courses`) had been visited before while unauthenticated, the router cache held a stale fetch result for that route. `router.push()` fired first and hit the cache, serving the unauthenticated page load — which the middleware then redirected back to `/login`. `router.refresh()` ran too late to prevent this.
+
+**Solution**
+Replaced all three post-login navigation calls (`router.push() + router.refresh()`) with `window.location.href = destination`. A full browser navigation bypasses the Next.js router cache entirely, sends a fresh HTTP request with the newly set session cookies, and lets the middleware validate the session correctly.
+
+**Prevention for Future Projects**
+- Never use `router.push()` + `router.refresh()` for post-authentication redirects in Next.js App Router. The cache hit can race the refresh.
+- Always use `window.location.href = destination` (or `window.location.replace()` to avoid a back-button loop) after any action that changes auth state.
+- This applies to login, logout, and any step-up auth (e.g. MFA prompts).
+
+---
+
+### AUTH-007 · Middleware discarded Supabase cookie-clears on redirect, leaving stale expired tokens in browser
+| | |
+|---|---|
+| **Date** | 2026-06-03 |
+| **Severity** | P1 |
+| **Status** | Fixed |
+| **Commit** | — |
+
+**Issue**
+When a user's session expired and they navigated to a protected route, the middleware correctly redirected them to `/login`. However, the browser retained the expired Supabase session cookies. On the login page, `signInWithPassword()` appeared to succeed but subsequent requests were still sent with the stale tokens, causing auth failures that only cleared after the user manually cleared browser storage.
+
+**Root Cause**
+In `middleware.ts`, when `supabase.auth.getUser()` detects a non-refreshable expired token, the Supabase SDK internally calls the `setAll` cookie handler to write empty/deleted `Set-Cookie` headers onto `supabaseResponse`. The middleware then returned `NextResponse.redirect(url)` — a brand-new response object that had none of those `Set-Cookie` headers. The cookie-clearing instructions were silently dropped. The browser never received the instruction to delete the stale tokens.
+
+**Solution**
+Before returning any redirect response, copy all cookies from `supabaseResponse` onto the redirect response:
+```typescript
+const redirectResponse = NextResponse.redirect(url)
+supabaseResponse.cookies.getAll().forEach(cookie => {
+  redirectResponse.cookies.set(cookie.name, cookie.value, cookie as ...)
+})
+return redirectResponse
+```
+Applied to both the protected-route redirect (`/login`) and the admin redirect (`/admin/login`).
+
+**Prevention for Future Projects**
+- In any Next.js + Supabase SSR setup, a redirect response is a new `NextResponse` object and does **not** inherit cookies from `supabaseResponse` automatically.
+- Whenever the middleware returns `NextResponse.redirect()` instead of `supabaseResponse`, always copy `supabaseResponse.cookies` to the redirect before returning.
+- Write a middleware integration test that checks `Set-Cookie` headers on the redirect response after a forced token expiry.
+
+---
+
 ### AUTH-006 · Sending domain not verified in Resend
 | | |
 |---|---|
