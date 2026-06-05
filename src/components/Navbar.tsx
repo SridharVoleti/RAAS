@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useLang } from '@/contexts/LanguageContext'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
@@ -9,38 +8,42 @@ import type { Profile } from '@/types'
 
 export default function Navbar() {
   const { lang, setLang, t } = useLang()
-  const router = useRouter()
-  const supabase = createClient()
   const [profile, setProfile] = useState<Profile | null>(null)
 
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (user) {
-        const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-        setProfile(data)
-      } else {
-        setProfile(null)
-      }
+    const supabase = createClient()
+
+    async function loadProfile(userId: string) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle()
+      setProfile(data)
+    }
+
+    // Fast optimistic read from cookie storage (no network round-trip)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) loadProfile(session.user.id)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    // Authoritative listener — handles INITIAL_SESSION, SIGNED_IN, SIGNED_OUT,
+    // TOKEN_REFRESHED, and any concurrent sign-in from another tab
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).single()
-        setProfile(data)
+        loadProfile(session.user.id)
       } else {
         setProfile(null)
       }
     })
 
     return () => subscription.unsubscribe()
-  // supabase client is module-level stable; adding it would cause infinite re-renders
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function handleSignOut() {
+    const supabase = createClient()
     await supabase.auth.signOut()
-    router.push('/')
-    router.refresh()
+    window.location.href = '/'
   }
 
   return (
