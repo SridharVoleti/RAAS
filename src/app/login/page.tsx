@@ -12,7 +12,6 @@ function LoginForm() {
   const params = useSearchParams()
   const returnTo = params.get('returnTo') || '/'
   const justRegistered = params.get('registered') === '1'
-  const supabase = createClient()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -26,6 +25,12 @@ function LoginForm() {
     setLoading(true)
     console.log('[Login] attempting sign-in for', email)
     try {
+      const supabase = createClient()
+
+      // Force-clear any stale in-memory or cookie session before signing in.
+      // scope:'local' only wipes client-side state — no server round-trip.
+      await supabase.auth.signOut({ scope: 'local' })
+
       const { error: err } = await supabase.auth.signInWithPassword({ email, password })
       if (err) {
         console.error('[Login] sign-in failed:', err.message)

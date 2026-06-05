@@ -1,13 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 export default function AdminLoginPage() {
-  const router = useRouter()
-  const supabase = createClient()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
@@ -20,6 +17,11 @@ export default function AdminLoginPage() {
     setLoading(true)
     console.log('[AdminLogin] attempting sign-in for', email)
     try {
+      const supabase = createClient()
+
+      // Wipe any stale in-memory/cookie session before signing in
+      await supabase.auth.signOut({ scope: 'local' })
+
       const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
       if (signInError) {
         console.error('[AdminLogin] sign-in failed:', signInError.message)
@@ -46,8 +48,7 @@ export default function AdminLoginPage() {
       }
 
       console.log('[AdminLogin] admin confirmed → /admin')
-      router.push('/admin')
-      router.refresh()
+      window.location.href = '/admin'
     } finally {
       setLoading(false)
     }
