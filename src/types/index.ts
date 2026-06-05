@@ -104,7 +104,7 @@ export interface PaymentLog {
 
 export interface QuizQuestion {
   id: number
-  course_id: number
+  lesson_id: number
   question_en: string
   question_te?: string
   option_a_en: string
@@ -124,7 +124,7 @@ export type QuizQuestion_Public = Omit<QuizQuestion, 'correct_option'>
 export interface QuizSubmission {
   id: number
   user_id: string
-  course_id: number
+  lesson_id: number
   score: number
   total_questions: number
   submitted_at: string

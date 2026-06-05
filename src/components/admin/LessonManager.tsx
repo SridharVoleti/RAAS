@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ChevronUp, ChevronDown, Pencil, Trash2, Plus, X, Check, Eye } from 'lucide-react'
+import { ChevronUp, ChevronDown, Pencil, Trash2, Plus, X, Check, Eye, HelpCircle } from 'lucide-react'
 import ConfirmModal from './ConfirmModal'
+import QuizManager from './QuizManager'
 import type { Lesson } from '@/types'
 
 function extractYouTubeId(input: string): string {
@@ -27,6 +28,7 @@ export default function LessonManager({ courseId }: Props) {
   const [deleteTarget, setDeleteTarget] = useState<Lesson | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [quizOpenId, setQuizOpenId] = useState<number | null>(null)
 
   useEffect(() => {
     fetchLessons()
@@ -127,7 +129,7 @@ export default function LessonManager({ courseId }: Props) {
       ) : (
         <div>
           {/* Column headers */}
-          <div className="grid grid-cols-[28px_1fr_120px_80px_60px_80px] gap-2 px-4 py-2 text-brand-gold-muted text-[10px] uppercase font-medium border-b border-brand-border bg-brand-bg">
+          <div className="grid grid-cols-[28px_1fr_120px_80px_60px_100px] gap-2 px-4 py-2 text-brand-gold-muted text-[10px] uppercase font-medium border-b border-brand-border bg-brand-bg">
             <span>#</span><span>Title (EN) / Section</span><span>YouTube ID</span>
             <span>Duration</span><span>Preview</span><span className="text-right">Actions</span>
           </div>
@@ -178,7 +180,7 @@ export default function LessonManager({ courseId }: Props) {
                 </div>
               ) : (
                 /* ── Read-only row ── */
-                <div className="grid grid-cols-[28px_1fr_120px_80px_60px_80px] gap-2 px-4 py-3 items-center hover:bg-brand-bg/40 transition-colors">
+                <div className="grid grid-cols-[28px_1fr_120px_80px_60px_100px] gap-2 px-4 py-3 items-center hover:bg-brand-bg/40 transition-colors">
                   <span className="text-brand-gold-muted text-xs font-mono">{idx + 1}</span>
                   <div>
                     <div className="text-brand-body text-xs font-medium">{lesson.title_en}</div>
@@ -200,11 +202,31 @@ export default function LessonManager({ courseId }: Props) {
                       className="p-1 text-brand-gold-muted hover:text-brand-gold transition-colors">
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
+                    <button
+                      onClick={() => setQuizOpenId(prev => prev === lesson.id ? null : lesson.id)}
+                      title="Manage quiz questions for this lesson"
+                      className={`p-1 transition-colors ${quizOpenId === lesson.id ? 'text-brand-gold' : 'text-brand-gold-muted hover:text-brand-gold'}`}>
+                      <HelpCircle className="w-3.5 h-3.5" />
+                    </button>
                     <button onClick={() => setDeleteTarget(lesson)}
                       className="p-1 text-brand-gold-muted hover:text-brand-error transition-colors">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
+                </div>
+              )}
+
+              {/* ── Per-lesson quiz panel ── */}
+              {quizOpenId === lesson.id && (
+                <div className="border-t border-brand-gold/20 bg-brand-bg/40 px-4 py-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <HelpCircle className="w-3.5 h-3.5 text-brand-gold" />
+                    <span className="text-brand-gold text-xs font-semibold">Quiz for: {lesson.title_en}</span>
+                    <button onClick={() => setQuizOpenId(null)} className="ml-auto text-brand-gold-muted hover:text-brand-gold transition-colors">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <QuizManager lessonId={lesson.id} />
                 </div>
               )}
             </div>

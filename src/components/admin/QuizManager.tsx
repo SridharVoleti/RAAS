@@ -37,9 +37,9 @@ function toQForm(q: QuizQuestion): QForm {
   }
 }
 
-interface Props { courseId: number }
+interface Props { lessonId: number }
 
-export default function QuizManager({ courseId }: Props) {
+export default function QuizManager({ lessonId }: Props) {
   const [questions, setQuestions] = useState<QuizQuestion[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -55,11 +55,11 @@ export default function QuizManager({ courseId }: Props) {
   useEffect(() => {
     fetchQuestions()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId])
+  }, [lessonId])
 
   async function fetchQuestions() {
     setLoading(true)
-    const res = await fetch(`/api/admin/courses/${courseId}/quiz`)
+    const res = await fetch(`/api/admin/lessons/${lessonId}/quiz`)
     const data = await res.json()
     setQuestions(data)
     setLoading(false)
@@ -77,7 +77,7 @@ export default function QuizManager({ courseId }: Props) {
     if (err) { setError(err); return }
     setError('')
     setSaving(true)
-    const res = await fetch(`/api/admin/courses/${courseId}/quiz`, {
+    const res = await fetch(`/api/admin/lessons/${lessonId}/quiz`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...addForm, order_index: questions.length + 1 }),
     })

@@ -48,31 +48,8 @@ export default async function WatchPage({
     return <NotEnrolledScreen course={course as Course} status="pending" />
   }
 
-  // Fetch lessons, progress, and (if course has quiz) quiz data in parallel
-  const quizFetches = (course as Course).has_quiz
-    ? [
-        adminSupabase
-          .from('quiz_questions')
-          .select('id, course_id, question_en, question_te, option_a_en, option_a_te, option_b_en, option_b_te, option_c_en, option_c_te, option_d_en, option_d_te, order_index')
-          .eq('course_id', course.id)
-          .order('order_index'),
-        supabase
-          .from('quiz_submissions')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('course_id', course.id)
-          .order('submitted_at', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-      ]
-    : [Promise.resolve({ data: [] }), Promise.resolve({ data: null })]
-
-  const [
-    { data: lessons },
-    { data: progressRows },
-    { data: quizQuestions },
-    { data: latestSubmission },
-  ] = await Promise.all([
+  // Fetch lessons + progress in parallel
+  const [{ data: lessons }, { data: progressRows }] = await Promise.all([
     adminSupabase
       .from('lessons')
       .select('*')
@@ -83,11 +60,28 @@ export default async function WatchPage({
       .select('lesson_id')
       .eq('user_id', user.id)
       .eq('course_id', course.id),
-    ...quizFetches,
   ])
 
-  const completedLessonIds = (progressRows || []).map(p => p.lesson_id as number)
   const allLessons = (lessons || []) as Lesson[]
+  const lessonIds = allLessons.map(l => l.id)
+
+  // Fetch all quiz questions and user's submissions for this course's lessons
+  const [{ data: quizQuestions }, { data: quizSubmissions }] = lessonIds.length > 0
+    ? await Promise.all([
+        adminSupabase
+          .from('quiz_questions')
+          .select('id, lesson_id, question_en, question_te, option_a_en, option_a_te, option_b_en, option_b_te, option_c_en, option_c_te, option_d_en, option_d_te, order_index')
+          .in('lesson_id', lessonIds)
+          .order('order_index'),
+        supabase
+          .from('quiz_submissions')
+          .select('*')
+          .eq('user_id', user.id)
+          .in('lesson_id', lessonIds),
+      ])
+    : [{ data: [] }, { data: [] }]
+
+  const completedLessonIds = (progressRows || []).map(p => p.lesson_id as number)
   const initialIdx = Math.max(
     0,
     Math.min(parseInt(lessonParam || '0', 10), allLessons.length - 1)
@@ -100,7 +94,7 @@ export default async function WatchPage({
       completedLessonIds={completedLessonIds}
       initialLessonIndex={initialIdx}
       quizQuestions={(quizQuestions ?? []) as QuizQuestion_Public[]}
-      quizSubmission={(latestSubmission ?? null) as QuizSubmission | null}
+      quizSubmissions={(quizSubmissions ?? []) as QuizSubmission[]}
     />
   )
 }

@@ -1,12 +1,12 @@
 -- ============================================================
--- Quiz feature tables
+-- Quiz feature tables (per-lesson quizzes)
 -- Run in Supabase SQL Editor (as postgres / service role)
 -- ============================================================
 
 -- ─── QUIZ QUESTIONS ─────────────────────────────────────────
 create table if not exists quiz_questions (
   id             serial primary key,
-  course_id      int not null references courses(id) on delete cascade,
+  lesson_id      int not null references lessons(id) on delete cascade,
   question_en    text not null,
   question_te    text,
   option_a_en    text not null,
@@ -22,7 +22,7 @@ create table if not exists quiz_questions (
   created_at     timestamptz not null default now()
 );
 
-create index if not exists idx_quiz_questions_course_id on quiz_questions(course_id);
+create index if not exists idx_quiz_questions_lesson_id on quiz_questions(lesson_id);
 
 alter table quiz_questions enable row level security;
 
@@ -34,13 +34,13 @@ create policy "quiz_questions_authenticated_read" on quiz_questions
 create table if not exists quiz_submissions (
   id              serial primary key,
   user_id         uuid not null references auth.users(id) on delete cascade,
-  course_id       int not null references courses(id) on delete cascade,
+  lesson_id       int not null references lessons(id) on delete cascade,
   score           int not null,
   total_questions int not null,
   submitted_at    timestamptz not null default now()
 );
 
-create index if not exists idx_quiz_submissions_user_course on quiz_submissions(user_id, course_id);
+create index if not exists idx_quiz_submissions_user_lesson on quiz_submissions(user_id, lesson_id);
 
 alter table quiz_submissions enable row level security;
 
