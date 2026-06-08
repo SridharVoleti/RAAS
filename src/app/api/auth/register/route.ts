@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
+import { sendWelcomeEmail } from '@/lib/email'
 
 export async function POST(req: Request) {
   let body: Record<string, string>
@@ -40,6 +41,7 @@ export async function POST(req: Request) {
     }
 
     logger.info({ email, userId: data.user.id }, 'register.success')
+    sendWelcomeEmail(data.user.id)
     return NextResponse.json({ success: true })
   } catch (err) {
     logger.error({ error: String(err) }, 'register.failed')
