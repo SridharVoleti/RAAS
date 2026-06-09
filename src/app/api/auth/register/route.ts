@@ -57,7 +57,7 @@ export async function POST(req: Request) {
     logger.info({ authEmail, isMobileUser, userId: data.user.id }, 'register.success')
 
     // Welcome email only for real email accounts (synthetic addresses have no inbox)
-    if (hasEmail) sendWelcomeEmail(data.user.id)
+    if (hasEmail) await sendWelcomeEmail(data.user.id)
 
     return NextResponse.json({ success: true })
   } catch (err) {

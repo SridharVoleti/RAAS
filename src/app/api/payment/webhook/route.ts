@@ -118,7 +118,7 @@ export async function POST(req: Request) {
   )
 
   // Fire-and-forget — email failure must never break webhook ack
-  sendEnrollmentEmail(payment.user_id, payment.course_id)
+  await sendEnrollmentEmail(payment.user_id, payment.course_id)
 
   return NextResponse.json({ received: true })
 }

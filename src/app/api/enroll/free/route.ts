@@ -35,7 +35,7 @@ export async function POST(req: Request) {
 
     if (error) throw error
 
-    sendEnrollmentEmail(user.id, courseId)
+    await sendEnrollmentEmail(user.id, courseId)
     return NextResponse.json({ success: true })
   } catch {
     return NextResponse.json({ error: 'Enrollment failed' }, { status: 500 })
