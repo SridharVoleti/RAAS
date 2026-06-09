@@ -288,8 +288,9 @@ export default function RegisterPage() {
   const [referralSource, setReferralSource] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [emailExists, setEmailExists] = useState(false)
-  const [registered, setRegistered] = useState(false)
+  const [emailExists, setEmailExists]   = useState(false)
+  const [mobileExists, setMobileExists] = useState(false)
+  const [registered, setRegistered]     = useState(false)
 
   const strength = getPasswordStrength(password)
   const pwMatch = confirmPw.length > 0 && password === confirmPw
@@ -303,19 +304,30 @@ export default function RegisterPage() {
 
     setError('')
     setEmailExists(false)
+    setMobileExists(false)
     setLoading(true)
     try {
-      // Pre-check: is this email already registered?
-      const emailRes = await fetch('/api/auth/check-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      })
-      const emailData = await emailRes.json()
-      if (emailData.exists) {
-        setEmailExists(true)
-        return
+      // Pre-check email only when provided
+      if (email.trim()) {
+        const emailRes  = await fetch('/api/auth/check-email', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ email: email.trim() }),
+        })
+        const emailData = await emailRes.json()
+        if (emailData.exists) { setEmailExists(true); return }
       }
+
+      // Always check if the mobile is already registered (via its synthetic email)
+      const mobileDigits  = `${isd}${mobile}`.replace(/\D/g, '')
+      const syntheticEmail = `${mobileDigits}@mobile.krishnamargam.in`
+      const mobileRes  = await fetch('/api/auth/check-email', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ email: syntheticEmail }),
+      })
+      const mobileData = await mobileRes.json()
+      if (mobileData.exists) { setMobileExists(true); return }
 
       const res = await fetch('/api/auth/register', {
         method: 'POST',
@@ -374,6 +386,13 @@ export default function RegisterPage() {
             </div>
           )}
 
+          {mobileExists && (
+            <div className="mb-4 p-3 bg-brand-error/10 border border-brand-error/30 rounded-lg text-brand-error text-sm">
+              An account with this mobile number already exists.{' '}
+              <Link href="/login" className="underline font-semibold hover:text-red-300">Sign in instead?</Link>
+            </div>
+          )}
+
           {error && (
             <div className="mb-4 p-3 bg-brand-error/10 border border-brand-error/30 rounded-lg text-brand-error text-sm">
               {error}
@@ -382,17 +401,22 @@ export default function RegisterPage() {
 
           <form onSubmit={handleRegister} className="space-y-4">
 
-            {/* Email */}
+            {/* Email — optional; mobile alone is sufficient */}
             <div>
-              <label className="block text-brand-body text-sm font-medium mb-1.5">{t.auth.email}</label>
+              <label className="block text-brand-body text-sm font-medium mb-1.5">
+                {t.auth.email}{' '}
+                <span className="text-brand-gold-muted font-normal">(optional)</span>
+              </label>
               <input
                 type="email"
                 value={email}
                 onChange={e => { setEmail(e.target.value); setEmailExists(false) }}
-                required
                 placeholder="you@example.com"
                 className="w-full px-4 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-brand-body placeholder:text-brand-gold-muted focus:outline-none focus:border-brand-gold transition-colors"
               />
+              <p className="text-brand-gold-muted text-xs mt-1">
+                Add your email if you want to log in via email or receive course updates.
+              </p>
             </div>
 
             {/* Full Name + Father's Name */}
@@ -460,7 +484,7 @@ export default function RegisterPage() {
                   <input
                     type="tel"
                     value={mobile}
-                    onChange={e => setMobile(e.target.value)}
+                    onChange={e => { setMobile(e.target.value); setMobileExists(false) }}
                     required
                     placeholder="9876543210"
                     className="flex-1 min-w-0 px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-brand-body placeholder:text-brand-gold-muted focus:outline-none focus:border-brand-gold transition-colors"

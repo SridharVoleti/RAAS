@@ -227,6 +227,12 @@ export async function sendWelcomeEmail(userId: string): Promise<void> {
       return
     }
 
+    // Mobile-only accounts use a synthetic address — no real inbox to deliver to
+    if (user.email.endsWith('@mobile.krishnamargam.in')) {
+      logger.info({ userId }, 'email.welcome.skipped_synthetic')
+      return
+    }
+
     const vars = { name: profile?.full_name || 'Student' }
     const subject = applyVariables(DEFAULTS.welcome.subject, vars)
     const body    = applyVariables(DEFAULTS.welcome.body,    vars)

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Eye, EyeOff, CheckCircle2, Mail, Loader2 } from 'lucide-react'
 import { useLang } from '@/contexts/LanguageContext'
 import { createClient } from '@/lib/supabase/client'
+import { looksLikeMobile } from '@/lib/validation'
 
 function LoginForm() {
   const { t } = useLang()
@@ -13,17 +14,16 @@ function LoginForm() {
   const returnTo = params.get('returnTo') || '/'
   const justRegistered = params.get('registered') === '1'
 
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPw, setShowPw] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [username, setUsername] = useState('')
+  const [password, setPassword]  = useState('')
+  const [showPw, setShowPw]       = useState(false)
+  const [loading, setLoading]     = useState(false)
+  const [error, setError]         = useState('')
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     setLoading(true)
-    console.log('[Login] attempting sign-in for', email)
     try {
       const supabase = createClient()
 
@@ -31,14 +31,30 @@ function LoginForm() {
       // scope:'local' only wipes client-side state — no server round-trip.
       await supabase.auth.signOut({ scope: 'local' })
 
-      const { error: err } = await supabase.auth.signInWithPassword({ email, password })
+      // Resolve the Supabase auth email.
+      // For email input: use directly.
+      // For mobile input: ask the server to look up the correct auth email.
+      let authEmail = username.trim()
+      if (looksLikeMobile(authEmail)) {
+        const res  = await fetch('/api/auth/resolve-login', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ username: authEmail }),
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          setError(data.error ?? 'No account found with this mobile number')
+          return
+        }
+        authEmail = data.authEmail
+      }
+
+      const { error: err } = await supabase.auth.signInWithPassword({ email: authEmail, password })
       if (err) {
-        console.error('[Login] sign-in failed:', err.message)
         setError(err.message)
         return
       }
 
-      console.log('[Login] sign-in successful, fetching profile...')
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         setError('Authentication error. Please try again.')
@@ -53,21 +69,16 @@ function LoginForm() {
 
       console.log('[Login] profile:', JSON.stringify(profile), 'err:', profileErr?.message ?? 'none')
 
-      // Admin → go straight to admin panel
       if (profile?.is_admin) {
-        console.log('[Login] admin detected → /admin')
         window.location.href = '/admin'
         return
       }
 
-      // New user whose profile is incomplete
       if (!profile?.profile_complete) {
-        console.log('[Login] profile incomplete → /onboarding')
         window.location.href = `/onboarding?returnTo=${encodeURIComponent(returnTo)}`
         return
       }
 
-      console.log('[Login] regular user → ', returnTo)
       window.location.href = returnTo
     } finally {
       setLoading(false)
@@ -97,7 +108,7 @@ function LoginForm() {
               <div className="flex items-start gap-2 mt-2">
                 <Mail className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
                 <p className="text-brand-body text-xs leading-relaxed">
-                  You can sign in now. Note: your email address has not been formally verified yet.
+                  You can sign in with your email or mobile number.
                 </p>
               </div>
             </div>
@@ -111,13 +122,15 @@ function LoginForm() {
 
           <form onSubmit={handleSignIn} className="space-y-4">
             <div>
-              <label className="block text-brand-body text-sm font-medium mb-1.5">{t.auth.email}</label>
+              <label className="block text-brand-body text-sm font-medium mb-1.5">
+                Email or Mobile Number
+              </label>
               <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
+                type="text"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
                 required
-                placeholder="you@example.com"
+                placeholder="you@example.com or 9876543210"
                 className="w-full px-4 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-brand-body placeholder:text-brand-gold-muted focus:outline-none focus:border-brand-gold transition-colors"
               />
             </div>
