@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { getCachedCourses, getCachedStats, getCachedTestimonials } from '@/lib/homeData'
 import HomeContent from '@/components/HomeContent'
 
@@ -8,5 +9,9 @@ export default async function HomePage() {
     getCachedTestimonials(),
   ])
 
-  return <HomeContent courses={courses} stats={stats} testimonials={testimonials} />
+  return (
+    <Suspense>
+      <HomeContent courses={courses} stats={stats} testimonials={testimonials} />
+    </Suspense>
+  )
 }
