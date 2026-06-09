@@ -42,6 +42,6 @@ export async function POST(
     }, { onConflict: 'user_id,course_id' })
 
   logger.info({ paymentId: id, userId: payment.user_id, courseId: payment.course_id }, 'admin.payment.confirmed')
-  sendEnrollmentEmail(payment.user_id, payment.course_id)
+  await sendEnrollmentEmail(payment.user_id, payment.course_id)
   return NextResponse.json({ success: true })
 }
