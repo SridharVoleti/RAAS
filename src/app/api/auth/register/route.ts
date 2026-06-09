@@ -26,7 +26,7 @@ export async function POST(req: Request) {
   }
 
   // For mobile-only accounts: synthesise a stable auth email.
-  // The domain mobile.krishnamargam.in is never used as a real mailbox.
+  // The domain mobile.srikrishnamargam.in is never used as a real mailbox.
   const authEmail     = hasEmail ? email.trim() : mobileToSyntheticEmail('', mobile.trim())
   const isMobileUser  = !hasEmail
 

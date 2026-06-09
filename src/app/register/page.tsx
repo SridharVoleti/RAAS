@@ -320,7 +320,7 @@ export default function RegisterPage() {
 
       // Always check if the mobile is already registered (via its synthetic email)
       const mobileDigits  = `${isd}${mobile}`.replace(/\D/g, '')
-      const syntheticEmail = `${mobileDigits}@mobile.krishnamargam.in`
+      const syntheticEmail = `${mobileDigits}@mobile.srikrishnamargam.in`
       const mobileRes  = await fetch('/api/auth/check-email', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },

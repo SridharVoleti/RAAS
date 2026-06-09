@@ -51,27 +51,27 @@ describe('POST /api/auth/resolve-login', () => {
   // ── Mobile-only users (synthetic email in auth) ───────────────────────────────
 
   it('resolves 10-digit Indian mobile to synthetic email', async () => {
-    mockUsers([{ id: 'u1', email: '919876543210@mobile.krishnamargam.in' }])
+    mockUsers([{ id: 'u1', email: '919876543210@mobile.srikrishnamargam.in' }])
     const res  = await POST(makeRequest({ username: '9876543210' }))
     expect(res.status).toBe(200)
     const data = await res.json()
-    expect(data.authEmail).toBe('919876543210@mobile.krishnamargam.in')
+    expect(data.authEmail).toBe('919876543210@mobile.srikrishnamargam.in')
   })
 
   it('resolves mobile with + prefix to synthetic email', async () => {
-    mockUsers([{ id: 'u1', email: '919876543210@mobile.krishnamargam.in' }])
+    mockUsers([{ id: 'u1', email: '919876543210@mobile.srikrishnamargam.in' }])
     const res  = await POST(makeRequest({ username: '+919876543210' }))
     expect(res.status).toBe(200)
     const data = await res.json()
-    expect(data.authEmail).toBe('919876543210@mobile.krishnamargam.in')
+    expect(data.authEmail).toBe('919876543210@mobile.srikrishnamargam.in')
   })
 
   it('resolves mobile with spaces/dashes to synthetic email', async () => {
-    mockUsers([{ id: 'u1', email: '919876543210@mobile.krishnamargam.in' }])
+    mockUsers([{ id: 'u1', email: '919876543210@mobile.srikrishnamargam.in' }])
     const res  = await POST(makeRequest({ username: '98765 43210' }))
     expect(res.status).toBe(200)
     const data = await res.json()
-    expect(data.authEmail).toBe('919876543210@mobile.krishnamargam.in')
+    expect(data.authEmail).toBe('919876543210@mobile.srikrishnamargam.in')
   })
 
   // ── Email+mobile users (real email, mobile in metadata) ──────────────────────
@@ -106,7 +106,7 @@ describe('POST /api/auth/resolve-login', () => {
     mockUsers([
       {
         id: 'u1',
-        email: '919876543210@mobile.krishnamargam.in',
+        email: '919876543210@mobile.srikrishnamargam.in',
       },
       {
         id: 'u2',
@@ -116,7 +116,7 @@ describe('POST /api/auth/resolve-login', () => {
     ])
     const res  = await POST(makeRequest({ username: '9876543210' }))
     const data = await res.json()
-    expect(data.authEmail).toBe('919876543210@mobile.krishnamargam.in')
+    expect(data.authEmail).toBe('919876543210@mobile.srikrishnamargam.in')
   })
 
   // ── Error handling ────────────────────────────────────────────────────────────

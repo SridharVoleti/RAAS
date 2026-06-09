@@ -97,7 +97,7 @@ describe('POST /api/auth/register', () => {
     const res  = await POST(makeRequest({ mobile: '+919876543210', password: 'pass123' }))
     expect(res.status).toBe(200)
     const authEmail = createUser.mock.calls[0][0].email as string
-    expect(authEmail).toMatch(/^919876543210@mobile\.krishnamargam\.in$/)
+    expect(authEmail).toMatch(/^919876543210@mobile\.srikrishnamargam\.in$/)
   })
 
   it('does NOT fire sendWelcomeEmail for mobile-only registration', async () => {
@@ -116,6 +116,6 @@ describe('POST /api/auth/register', () => {
     const createUser = mockSupabase({ data: { user: { id: 'u1' } }, error: null })
     await POST(makeRequest({ mobile: '+91 98765-43210', password: 'pass' }))
     const authEmail = createUser.mock.calls[0][0].email as string
-    expect(authEmail).toBe('919876543210@mobile.krishnamargam.in')
+    expect(authEmail).toBe('919876543210@mobile.srikrishnamargam.in')
   })
 })

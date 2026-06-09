@@ -149,7 +149,7 @@ export const ChangePasswordSchema = z.object({
 // ── Mobile / login helpers ────────────────────────────────────────────────────
 // These are pure functions with no framework imports — safe to use anywhere.
 
-export const MOBILE_AUTH_DOMAIN = 'mobile.krishnamargam.in'
+export const MOBILE_AUTH_DOMAIN = 'mobile.srikrishnamargam.in'
 
 /** Strip every character that isn't a digit. */
 export function normalizeMobileDigits(input: string): string {
