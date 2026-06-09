@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Star, Search } from 'lucide-react'
 import { useLang } from '@/contexts/LanguageContext'
 import CourseCard from '@/components/CourseCard'
@@ -18,6 +18,19 @@ interface Props {
 export default function HomeContent({ courses, stats, testimonials }: Props) {
   const { lang, t } = useLang()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const [verifiedToast, setVerifiedToast] = useState<'success' | 'invalid' | null>(null)
+
+  useEffect(() => {
+    const v = searchParams.get('verified')
+    if (v === 'true') setVerifiedToast('success')
+    else if (v === 'invalid') setVerifiedToast('invalid')
+    if (v) {
+      const url = new URL(window.location.href)
+      url.searchParams.delete('verified')
+      router.replace(url.pathname)
+    }
+  }, [searchParams, router])
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
   const [activePath, setActivePath] = useState<'all' | 'raas'>('all')
 
@@ -27,6 +40,16 @@ export default function HomeContent({ courses, stats, testimonials }: Props) {
 
   return (
     <div className="min-h-screen bg-brand-bg">
+      {verifiedToast === 'success' && (
+        <div className="w-full bg-green-800 border-b border-green-600 text-green-100 text-sm text-center py-2 px-4">
+          Your email has been verified successfully. Welcome to Krishnamargam!
+        </div>
+      )}
+      {verifiedToast === 'invalid' && (
+        <div className="w-full bg-red-900 border-b border-red-700 text-red-200 text-sm text-center py-2 px-4">
+          Verification link is invalid or expired. Please request a new one.
+        </div>
+      )}
       {/* Hero */}
       <section className="relative overflow-hidden bg-hero-gradient py-20 px-4">
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">

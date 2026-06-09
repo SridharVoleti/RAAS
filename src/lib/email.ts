@@ -252,6 +252,51 @@ export async function sendWelcomeEmail(userId: string): Promise<void> {
   }
 }
 
+export async function sendVerificationEmail(userId: string, token: string): Promise<void> {
+  try {
+    const resend = getResendClient()
+    if (!resend) return
+
+    const supabase = await createAdminClient()
+    const { data: { user } } = await supabase.auth.admin.getUserById(userId)
+
+    if (!user?.email) {
+      logger.warn({ userId }, 'email.verification.missing_user')
+      return
+    }
+
+    const appUrl  = process.env.NEXT_PUBLIC_APP_URL ?? 'https://srikrishnamargam.in'
+    const link    = `${appUrl}/api/auth/verify-email?userId=${userId}&token=${token}`
+    const vars    = { name: user.user_metadata?.full_name || 'Student', link }
+    const subject = 'Verify your Krishnamargam account'
+    const body    = applyVariables(
+      `Namaskar {{name}},
+
+Thank you for joining Krishnamargam. Please verify your email address by clicking the link below:
+
+{{link}}
+
+This link is valid for 24 hours. If you did not create this account, you can ignore this email.
+
+ॐ శాంతి శాంతి శాంతిః`,
+      vars,
+    )
+
+    const cfg: BrandConfig = { ...BRAND, ctaLabel: 'Verify Email →', ctaPath: `/api/auth/verify-email?userId=${userId}&token=${token}` }
+
+    await resend.emails.send({
+      from:    BRAND.fromEmail,
+      to:      [user.email],
+      subject,
+      html:    renderHtml(body, subject, cfg),
+    })
+
+    logger.info({ userId, to: user.email }, 'email.verification.sent')
+  } catch (err) {
+    logger.error({ err, userId }, 'email.verification.failed')
+  }
+}
+
 /** Send a payment receipt email. amount is in the smallest currency unit (paise). */
 export async function sendPaymentReceivedEmail(
   userId: string,

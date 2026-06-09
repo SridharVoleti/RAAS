@@ -5,10 +5,13 @@ import { useLang } from '@/contexts/LanguageContext'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
 import type { Profile } from '@/types'
+import EmailVerificationBanner from '@/components/EmailVerificationBanner'
+import { isSyntheticEmail } from '@/lib/validation'
 
 export default function Navbar() {
   const { lang, setLang, t } = useLang()
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [showVerifyBanner, setShowVerifyBanner] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -22,9 +25,16 @@ export default function Navbar() {
       setProfile(data)
     }
 
+    function checkVerification(user: { email?: string; user_metadata?: Record<string, unknown> } | null) {
+      if (!user) { setShowVerifyBanner(false); return }
+      const isSynthetic = isSyntheticEmail(user.email ?? '')
+      const isVerified  = user.user_metadata?.email_verified !== false
+      setShowVerifyBanner(!isSynthetic && !isVerified)
+    }
+
     // Fast optimistic read from cookie storage (no network round-trip)
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) loadProfile(session.user.id)
+      if (session?.user) { loadProfile(session.user.id); checkVerification(session.user) }
     })
 
     // Authoritative listener — handles INITIAL_SESSION, SIGNED_IN, SIGNED_OUT,
@@ -32,8 +42,10 @@ export default function Navbar() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         loadProfile(session.user.id)
+        checkVerification(session.user)
       } else {
         setProfile(null)
+        setShowVerifyBanner(false)
       }
     })
 
@@ -47,7 +59,9 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="sticky top-0 z-50 bg-brand-bg border-b border-brand-border">
+    <div className="sticky top-0 z-50">
+      {showVerifyBanner && <EmailVerificationBanner />}
+    <nav className="bg-brand-bg border-b border-brand-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Left: Logo */}
@@ -112,5 +126,6 @@ export default function Navbar() {
         </div>
       </div>
     </nav>
+    </div>
   )
 }

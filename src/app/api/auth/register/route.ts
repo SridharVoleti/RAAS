@@ -46,6 +46,7 @@ export async function POST(req: Request) {
         avatar_initials: avatarInitials ?? '',
         referral_source: referralSource ?? '',
         is_mobile_user:  isMobileUser,
+        email_verified:  isMobileUser ? true : false,
       },
     })
 
