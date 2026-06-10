@@ -189,41 +189,36 @@ export async function POST(req: Request) {
     return NextResponse.json({ sent: 0, batchIndex, totalBatches, totalRecipients, hasMore: false })
   }
 
-  const html = renderNewsletterHtml(htmlBody, subject, BRAND)
+  const html           = renderNewsletterHtml(htmlBody, subject, BRAND)
+  const adminEmail     = admin.email!.toLowerCase()
+  const unsubscribeHdr = `<mailto:${adminEmail}?subject=unsubscribe>`
 
-  // Send admin a direct copy (not BCC) so it lands reliably in inbox.
-  // Exclude admin from BCC batch to avoid duplicate.
-  const adminEmail    = admin.email!.toLowerCase()
-  const bccRecipients = batch.filter(e => e !== adminEmail)
+  // Individual email per recipient — better deliverability than BCC bulk sending.
+  const emailPayloads = batch.map(recipientEmail => ({
+    from:    FROM_EMAIL,
+    to:      [recipientEmail],
+    subject,
+    html,
+    headers: { 'List-Unsubscribe': unsubscribeHdr },
+  }))
 
   logger.info(
-    { admin: adminEmail, subject, batchIndex, batchSize: batch.length, bccCount: bccRecipients.length, totalBatches },
+    { admin: adminEmail, subject, batchIndex, count: emailPayloads.length, totalBatches },
     'newsletter.batch.sending',
   )
 
-  const { error } = await resend.emails.send({
-    from:     FROM_EMAIL,
-    to:       adminEmail,
-    replyTo:  adminEmail,
-    bcc:      bccRecipients,
-    subject,
-    html,
-    headers: {
-      'List-Unsubscribe': `<mailto:${adminEmail}?subject=unsubscribe>`,
-      'Precedence':       'bulk',
-    },
-  })
+  const { error } = await resend.batch.send(emailPayloads)
 
   if (error) {
     logger.error({ error, batchIndex }, 'newsletter.batch.failed')
     return NextResponse.json(
-      { error: `Batch ${batchIndex + 1}/${totalBatches} failed: ${error.message}` },
+      { error: `Batch ${batchIndex + 1}/${totalBatches} failed: ${(error as { message?: string }).message ?? String(error)}` },
       { status: 500 },
     )
   }
 
   const hasMore = batchIndex + 1 < totalBatches
-  logger.info({ admin: admin.email, batchIndex, sent: batch.length, hasMore }, 'newsletter.batch.sent')
+  logger.info({ admin: adminEmail, batchIndex, sent: batch.length, hasMore }, 'newsletter.batch.sent')
 
   return NextResponse.json({ sent: batch.length, batchIndex, totalBatches, totalRecipients, hasMore })
 }
