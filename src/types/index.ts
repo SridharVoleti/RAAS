@@ -136,6 +136,15 @@ export interface QuizResult {
   results: Record<number, { correct: boolean; correct_option: 'a' | 'b' | 'c' | 'd' }>
 }
 
+export interface TextWidget {
+  id: number
+  title: string
+  content: string
+  position: 'announcement' | 'home-section'
+  is_active: boolean
+  created_at: string
+}
+
 export interface CourseWithProgress extends Course {
   progress_pct: number
   completed_lessons: number

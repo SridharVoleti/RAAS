@@ -2,20 +2,21 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Star, Search } from 'lucide-react'
+import { Star } from 'lucide-react'
 import { useLang } from '@/contexts/LanguageContext'
 import CourseCard from '@/components/CourseCard'
 import CourseDetailOverlay from '@/components/CourseDetailOverlay'
-import type { Course, Testimonial } from '@/types'
+import type { Course, Testimonial, TextWidget } from '@/types'
 import type { HomeStats } from '@/lib/homeData'
 
 interface Props {
   courses: Course[]
   stats: HomeStats
   testimonials: Testimonial[]
+  widgets: TextWidget[]
 }
 
-export default function HomeContent({ courses, stats, testimonials }: Props) {
+export default function HomeContent({ courses, stats, testimonials, widgets }: Props) {
   const { lang, t } = useLang()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -32,14 +33,22 @@ export default function HomeContent({ courses, stats, testimonials }: Props) {
     }
   }, [searchParams, router])
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
-  const [activePath, setActivePath] = useState<'all' | 'raas'>('all')
 
   const topCourses = [...courses].sort((a, b) => b.student_count - a.student_count).slice(0, 6)
-  const displayCourses = activePath === 'raas' ? topCourses.filter(c => c.path_id === 1) : topCourses
   const raasCount = courses.filter(c => c.path_id === 1).length
+
+  const announcementWidgets = widgets.filter(w => w.position === 'announcement')
+  const homeSectionWidgets  = widgets.filter(w => w.position === 'home-section')
 
   return (
     <div className="min-h-screen bg-brand-bg">
+      {/* Admin announcement widgets */}
+      {announcementWidgets.map(w => (
+        <div key={w.id} className="w-full bg-brand-gold/10 border-b border-brand-gold/20 px-4 py-2.5 text-center">
+          <p className="text-brand-gold text-sm font-medium">{w.content}</p>
+        </div>
+      ))}
+
       {verifiedToast === 'success' && (
         <div className="w-full bg-green-800 border-b border-green-600 text-green-100 text-sm text-center py-2 px-4">
           Your email has been verified successfully. Welcome to Krishnamargam!
@@ -59,16 +68,7 @@ export default function HomeContent({ courses, stats, testimonials }: Props) {
           <div className="text-5xl mb-4">ॐ</div>
           <h1 className="text-4xl sm:text-5xl font-bold text-brand-gold mb-3">{t.hero.title}</h1>
           <p className="text-xl text-brand-gold-secondary mb-1">{t.hero.tagline}</p>
-          <p className="text-lg text-brand-gold-muted mb-8">{t.hero.tagline2}</p>
-          <div className="relative max-w-xl mx-auto">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-brand-gold-muted" />
-            <input
-              type="text"
-              placeholder={t.hero.searchPlaceholder}
-              className="w-full pl-12 pr-4 py-3 bg-brand-card border border-brand-border rounded-xl text-brand-body placeholder:text-brand-gold-muted focus:outline-none focus:border-brand-gold transition-colors"
-              readOnly
-            />
-          </div>
+          <p className="text-lg text-brand-gold-muted mb-4">{t.hero.tagline2}</p>
         </div>
       </section>
 
@@ -76,22 +76,33 @@ export default function HomeContent({ courses, stats, testimonials }: Props) {
       <section className="max-w-7xl mx-auto px-4 py-10">
         <h2 className="text-brand-gold font-bold text-xl text-center mb-6">{t.paths.heading}</h2>
         <div className="grid grid-cols-2 gap-4 max-w-xl mx-auto">
-          <div
-            onClick={() => setActivePath(activePath === 'raas' ? 'all' : 'raas')}
-            className={`p-5 rounded-xl border-2 cursor-pointer transition-all ${
-              activePath === 'raas'
-                ? 'border-brand-gold bg-brand-gold/5 shadow-lg shadow-brand-gold/10'
-                : 'border-brand-border bg-brand-card hover:border-brand-gold/50'
-            }`}
+          {/* RAAS — clickable, navigates to filtered explore */}
+          <button
+            onClick={() => router.push('/explore?path=raas')}
+            className="p-5 rounded-xl border-2 border-brand-border bg-brand-card hover:border-brand-gold hover:bg-brand-gold/5 hover:shadow-lg hover:shadow-brand-gold/10 cursor-pointer transition-all text-left group"
           >
             <div className="text-3xl mb-2">ॐ</div>
-            <h3 className="text-brand-gold font-bold text-lg">{t.paths.raas.name}</h3>
+            <h3 className="text-brand-gold font-bold text-lg group-hover:text-yellow-300 transition-colors">
+              {t.paths.raas.name}
+            </h3>
             <p className="text-brand-gold-muted text-xs mb-2">{t.paths.raas.description}</p>
-            <span className="inline-block px-2 py-0.5 bg-brand-gold/20 text-brand-gold text-xs rounded-full font-medium">
-              {raasCount} {lang === 'te' ? 'కోర్సులు' : 'courses'}
-            </span>
-          </div>
-          <div className="p-5 rounded-xl border-2 border-brand-border bg-brand-card opacity-60 cursor-not-allowed">
+            <div className="flex items-center justify-between">
+              <span className="inline-block px-2 py-0.5 bg-brand-gold/20 text-brand-gold text-xs rounded-full font-medium">
+                {raasCount} {lang === 'te' ? 'కోర్సులు' : 'courses'}
+              </span>
+              <span className="text-brand-gold-muted text-xs group-hover:text-brand-gold transition-colors">
+                {lang === 'te' ? 'వీక్షించు →' : 'View →'}
+              </span>
+            </div>
+          </button>
+
+          {/* DAAS — coming soon */}
+          <div className="p-5 rounded-xl border-2 border-brand-border bg-brand-card opacity-60 cursor-not-allowed relative overflow-hidden">
+            <div className="absolute top-2 right-2">
+              <span className="px-2 py-0.5 bg-brand-border text-brand-gold-muted text-[10px] rounded-full font-medium">
+                {lang === 'te' ? 'త్వరలో' : 'Coming Soon'}
+              </span>
+            </div>
             <div className="text-3xl mb-2">🕊</div>
             <h3 className="text-brand-gold-muted font-bold text-lg">{t.paths.daas.name}</h3>
             <p className="text-brand-gold-muted text-xs mb-2">{t.paths.daas.description}</p>
@@ -101,6 +112,19 @@ export default function HomeContent({ courses, stats, testimonials }: Props) {
           </div>
         </div>
       </section>
+
+      {/* Home-section widgets */}
+      {homeSectionWidgets.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 pb-6">
+          <div className="space-y-3">
+            {homeSectionWidgets.map(w => (
+              <div key={w.id} className="bg-brand-card border border-brand-gold/20 rounded-xl px-5 py-4">
+                <p className="text-brand-body text-sm leading-relaxed">{w.content}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Stats bar — live data cached 24h */}
       <section className="border-y border-brand-border bg-brand-card py-6 px-4">
@@ -130,7 +154,7 @@ export default function HomeContent({ courses, stats, testimonials }: Props) {
           <div className="lg:w-[65%]">
             <h2 className="text-brand-gold font-bold text-xl mb-6">{t.home.featuredCourses}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {displayCourses.map(course => (
+              {topCourses.map(course => (
                 <CourseCard key={course.id} course={course} onClick={setSelectedCourse} />
               ))}
             </div>

@@ -1,6 +1,8 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { Search } from 'lucide-react'
 import { useLang } from '@/contexts/LanguageContext'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
@@ -10,8 +12,10 @@ import { isSyntheticEmail } from '@/lib/validation'
 
 export default function Navbar() {
   const { lang, setLang, t } = useLang()
+  const router = useRouter()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [showVerifyBanner, setShowVerifyBanner] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     const supabase = createClient()
@@ -58,6 +62,13 @@ export default function Navbar() {
     window.location.href = '/'
   }
 
+  function handleSearch(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter' && searchQuery.trim()) {
+      router.push(`/explore?q=${encodeURIComponent(searchQuery.trim())}`)
+      setSearchQuery('')
+    }
+  }
+
   return (
     <div className="sticky top-0 z-50">
       {showVerifyBanner && <EmailVerificationBanner />}
@@ -77,6 +88,19 @@ export default function Navbar() {
 
           {/* Right: Nav links */}
           <div className="flex items-center gap-4">
+            {/* Search */}
+            <div className="relative hidden sm:flex items-center">
+              <Search className="absolute left-3 w-4 h-4 text-brand-gold-muted pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onKeyDown={handleSearch}
+                placeholder={t.hero.searchPlaceholder}
+                className="pl-9 pr-3 py-1.5 bg-brand-card border border-brand-border rounded-lg text-brand-body text-sm placeholder:text-brand-gold-muted focus:outline-none focus:border-brand-gold transition-all w-36 focus:w-48"
+              />
+            </div>
+
             {/* Language toggle */}
             <button
               onClick={() => setLang(lang === 'en' ? 'te' : 'en')}
