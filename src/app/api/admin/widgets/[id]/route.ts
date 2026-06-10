@@ -25,7 +25,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
-  const supabase = await createAdminClient()
+  const supabase = createAdminClient()
   const { data, error } = await supabase
     .from('text_widgets')
     .update(parsed.data)
@@ -50,7 +50,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const widgetId = parseInt(id, 10)
   if (isNaN(widgetId)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
 
-  const supabase = await createAdminClient()
+  const supabase = createAdminClient()
   const { error } = await supabase
     .from('text_widgets')
     .delete()

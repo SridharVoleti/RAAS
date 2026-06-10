@@ -3,10 +3,9 @@ import { Resend } from 'resend'
 import { getAdminUser, forbidden } from '@/lib/admin'
 import { createAdminClient } from '@/lib/supabase/server'
 import { renderNewsletterHtml } from '@/lib/email'
+import { isSyntheticEmail } from '@/lib/validation'
 import { logger } from '@/lib/logger'
 import { z } from 'zod'
-
-const SYNTHETIC_SUFFIX = '@mobile.srikrishnamargam.in'
 const BCC_BATCH_SIZE   = 50
 const FROM_EMAIL       = process.env.RESEND_FROM_EMAIL ?? 'Krishnamargam <noreply@srikrishnamargam.in>'
 const APP_URL          = process.env.NEXT_PUBLIC_APP_URL ?? 'https://srikrishnamargam.in'
@@ -32,8 +31,8 @@ const BRAND = {
 
 type AdminClient = ReturnType<typeof createAdminClient>
 
-function isReal(email: string | undefined): email is string {
-  return !!email && !email.endsWith(SYNTHETIC_SUFFIX)
+function isDeliverable(email: string | undefined): email is string {
+  return !!email && !isSyntheticEmail(email)
 }
 
 /**
@@ -68,7 +67,7 @@ async function getAllUserEmails(supabase: AdminClient): Promise<string[]> {
       if (!data?.users?.length) break   // no more pages
 
       for (const user of data.users) {
-        if (isReal(user.email)) emails.push(user.email)
+        if (isDeliverable(user.email)) emails.push(user.email.toLowerCase())
       }
 
       primaryOk = true
@@ -82,7 +81,7 @@ async function getAllUserEmails(supabase: AdminClient): Promise<string[]> {
 
   if (primaryOk && emails.length > 0) {
     logger.info({ count: emails.length }, 'newsletter.listUsers.ok')
-    return emails
+    return [...new Set(emails)]
   }
 
   // ── Fallback: profiles → getUserById ──────────────────────────────────────
@@ -110,12 +109,12 @@ async function getAllUserEmails(supabase: AdminClient): Promise<string[]> {
     )
     for (const { data: { user }, error: ue } of results) {
       if (ue) { logger.warn({ error: ue.message }, 'newsletter.fallback.getUserById.error'); continue }
-      if (isReal(user?.email)) fallbackEmails.push(user!.email!)
+      if (isDeliverable(user?.email)) fallbackEmails.push(user!.email!.toLowerCase())
     }
   }
 
   logger.info({ count: fallbackEmails.length }, 'newsletter.fallback.ok')
-  return fallbackEmails
+  return [...new Set(fallbackEmails)]
 }
 
 // ── GET — live recipient count for the composer UI ────────────────────────────
@@ -192,15 +191,20 @@ export async function POST(req: Request) {
 
   const html = renderNewsletterHtml(htmlBody, subject, BRAND)
 
+  // Send admin a direct copy (not BCC) so it lands reliably in inbox.
+  // Exclude admin from BCC batch to avoid duplicate.
+  const adminEmail    = admin.email!.toLowerCase()
+  const bccRecipients = batch.filter(e => e !== adminEmail)
+
   logger.info(
-    { admin: admin.email, subject, batchIndex, batchSize: batch.length, totalBatches },
+    { admin: adminEmail, subject, batchIndex, batchSize: batch.length, bccCount: bccRecipients.length, totalBatches },
     'newsletter.batch.sending',
   )
 
   const { error } = await resend.emails.send({
     from:    FROM_EMAIL,
-    to:      FROM_EMAIL,
-    bcc:     batch,
+    to:      adminEmail,
+    bcc:     bccRecipients,
     subject,
     html,
   })
