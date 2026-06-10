@@ -30,58 +30,120 @@ const BRAND = {
   ctaPath:        '/my-courses',
 }
 
-async function getAllUserEmails(
-  supabase: Awaited<ReturnType<typeof createAdminClient>>,
-): Promise<string[]> {
-  const emails: string[] = []
-  let page = 1
-  while (true) {
-    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 })
-    if (error || !data?.users?.length) break
-    for (const user of data.users) {
-      if (user.email && !user.email.endsWith(SYNTHETIC_SUFFIX)) {
-        emails.push(user.email)
-      }
-    }
-    if (data.users.length < 1000) break
-    page++
-  }
-  return emails
+type AdminClient = ReturnType<typeof createAdminClient>
+
+function isReal(email: string | undefined): email is string {
+  return !!email && !email.endsWith(SYNTHETIC_SUFFIX)
 }
 
-/** GET — live recipient count shown in the composer. */
+/**
+ * Fetch all real user emails.
+ *
+ * Primary:  auth.admin.listUsers — one paginated call.
+ * Fallback: profiles table → auth.admin.getUserById — used when listUsers
+ *           returns an error (e.g. API version quirk, permission edge case).
+ *           We know profiles works because the Students page relies on it.
+ *
+ * Throws on complete failure so callers can surface a diagnostic to the admin.
+ */
+async function getAllUserEmails(supabase: AdminClient): Promise<string[]> {
+
+  // ── Primary: auth.admin.listUsers ─────────────────────────────────────────
+  const emails: string[] = []
+  let primaryOk = false
+
+  try {
+    let page = 1
+    while (true) {
+      const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 })
+
+      if (error) {
+        logger.warn(
+          { error: error.message, status: (error as { status?: number }).status },
+          'newsletter.listUsers.error — will try profiles fallback',
+        )
+        break
+      }
+
+      if (!data?.users?.length) break   // no more pages
+
+      for (const user of data.users) {
+        if (isReal(user.email)) emails.push(user.email)
+      }
+
+      primaryOk = true
+
+      if (data.users.length < 1000) break
+      page++
+    }
+  } catch (err) {
+    logger.warn({ err }, 'newsletter.listUsers.exception — will try profiles fallback')
+  }
+
+  if (primaryOk && emails.length > 0) {
+    logger.info({ count: emails.length }, 'newsletter.listUsers.ok')
+    return emails
+  }
+
+  // ── Fallback: profiles → getUserById ──────────────────────────────────────
+  logger.info({}, 'newsletter.fallback.start')
+
+  const { data: profiles, error: profilesErr } = await supabase
+    .from('profiles')
+    .select('id')
+
+  if (profilesErr) {
+    throw new Error(
+      `listUsers failed AND profiles query failed: ${profilesErr.message}`,
+    )
+  }
+
+  if (!profiles?.length) return []
+
+  // Fetch in parallel chunks of 10 to stay well within rate limits
+  const fallbackEmails: string[] = []
+  const CHUNK = 10
+  for (let i = 0; i < profiles.length; i += CHUNK) {
+    const chunk = profiles.slice(i, i + CHUNK)
+    const results = await Promise.all(
+      chunk.map(p => supabase.auth.admin.getUserById(p.id)),
+    )
+    for (const { data: { user }, error: ue } of results) {
+      if (ue) { logger.warn({ error: ue.message }, 'newsletter.fallback.getUserById.error'); continue }
+      if (isReal(user?.email)) fallbackEmails.push(user!.email!)
+    }
+  }
+
+  logger.info({ count: fallbackEmails.length }, 'newsletter.fallback.ok')
+  return fallbackEmails
+}
+
+// ── GET — live recipient count for the composer UI ────────────────────────────
+
 export async function GET() {
   const admin = await getAdminUser()
   if (!admin) return forbidden()
 
-  const supabase = await createAdminClient()
-  const emails   = await getAllUserEmails(supabase)
-  return NextResponse.json({ recipientCount: emails.length })
+  const supabase = createAdminClient()
+  try {
+    const emails = await getAllUserEmails(supabase)
+    return NextResponse.json({ recipientCount: emails.length })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    logger.error({ err }, 'newsletter.get.failed')
+    // Return count=0 with the diagnostic so the UI can display it
+    return NextResponse.json({ recipientCount: 0, fetchError: message }, { status: 500 })
+  }
 }
+
+// ── POST — send one batch ─────────────────────────────────────────────────────
 
 const sendSchema = z.object({
   subject:    z.string().min(1).max(300),
   htmlBody:   z.string().min(1),
-  /**
-   * Zero-based index of the batch to send on this request.
-   * The client starts at 0, reads `hasMore` from the response, then
-   * increments and calls again until `hasMore` is false.
-   */
   batchIndex: z.number().int().min(0).default(0),
 })
 
-/**
- * POST — send ONE batch (batchIndex) and return progress metadata so the
- * client can decide whether to trigger the next batch.
- *
- * Response shape:
- *   { sent, batchIndex, totalBatches, totalRecipients, hasMore }
- *
- * Why one-batch-per-request instead of a server-side loop:
- *   • Serverless functions have short timeouts — a large list could exceed them.
- *   • The client can show real-time progress and offer a Cancel button between batches.
- *   • Each request is fast and independently retryable.
- */
 export async function POST(req: Request) {
   const admin = await getAdminUser()
   if (!admin) return forbidden()
@@ -104,9 +166,17 @@ export async function POST(req: Request) {
   }
 
   const resend   = new Resend(apiKey)
-  const supabase = await createAdminClient()
+  const supabase = createAdminClient()
 
-  const emails = await getAllUserEmails(supabase)
+  let emails: string[]
+  try {
+    emails = await getAllUserEmails(supabase)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    logger.error({ err }, 'newsletter.post.getEmails.failed')
+    return NextResponse.json({ error: `Could not load recipients: ${message}` }, { status: 500 })
+  }
+
   if (emails.length === 0) {
     return NextResponse.json({ error: 'No registered users found.' }, { status: 400 })
   }
@@ -116,11 +186,8 @@ export async function POST(req: Request) {
   const start           = batchIndex * BCC_BATCH_SIZE
   const batch           = emails.slice(start, start + BCC_BATCH_SIZE)
 
-  // Guard against an out-of-range batchIndex (e.g. stale client retry)
   if (batch.length === 0) {
-    return NextResponse.json({
-      sent: 0, batchIndex, totalBatches, totalRecipients, hasMore: false,
-    })
+    return NextResponse.json({ sent: 0, batchIndex, totalBatches, totalRecipients, hasMore: false })
   }
 
   const html = renderNewsletterHtml(htmlBody, subject, BRAND)
@@ -132,7 +199,7 @@ export async function POST(req: Request) {
 
   const { error } = await resend.emails.send({
     from:    FROM_EMAIL,
-    to:      FROM_EMAIL,  // self; all real recipients are in BCC
+    to:      FROM_EMAIL,
     bcc:     batch,
     subject,
     html,
@@ -147,17 +214,7 @@ export async function POST(req: Request) {
   }
 
   const hasMore = batchIndex + 1 < totalBatches
+  logger.info({ admin: admin.email, batchIndex, sent: batch.length, hasMore }, 'newsletter.batch.sent')
 
-  logger.info(
-    { admin: admin.email, subject, batchIndex, sent: batch.length, hasMore },
-    'newsletter.batch.sent',
-  )
-
-  return NextResponse.json({
-    sent:             batch.length,
-    batchIndex,
-    totalBatches,
-    totalRecipients,
-    hasMore,
-  })
+  return NextResponse.json({ sent: batch.length, batchIndex, totalBatches, totalRecipients, hasMore })
 }

@@ -47,23 +47,27 @@ export default function NewsletterPage() {
   const editorRef      = useRef<HTMLDivElement>(null)
   const cancelRef      = useRef(false)          // stops the loop between batches
 
-  const [subject,       setSubject]       = useState('')
-  const [isEmpty,       setIsEmpty]       = useState(true)
-  const [showPreview,   setShowPreview]   = useState(false)
-  const [previewHtml,   setPreviewHtml]   = useState('')
+  const [subject,        setSubject]        = useState('')
+  const [isEmpty,        setIsEmpty]        = useState(true)
+  const [showPreview,    setShowPreview]    = useState(false)
+  const [previewHtml,    setPreviewHtml]    = useState('')
   const [recipientCount, setRecipientCount] = useState<number | null>(null)
-  const [showConfirm,   setShowConfirm]   = useState(false)
-  const [sending,       setSending]       = useState(false)
-  const [progress,      setProgress]      = useState<Progress | null>(null)
-  const [done,          setDone]          = useState<{ sent: number; batches: number } | null>(null)
-  const [error,         setError]         = useState<string | null>(null)
+  const [recipientError, setRecipientError] = useState<string | null>(null)
+  const [showConfirm,    setShowConfirm]    = useState(false)
+  const [sending,        setSending]        = useState(false)
+  const [progress,       setProgress]       = useState<Progress | null>(null)
+  const [done,           setDone]           = useState<{ sent: number; batches: number } | null>(null)
+  const [error,          setError]          = useState<string | null>(null)
 
   // Load recipient count on mount
   useEffect(() => {
     fetch('/api/admin/newsletter')
       .then(r => r.json())
-      .then(d => setRecipientCount(d.recipientCount ?? 0))
-      .catch(() => setRecipientCount(null))
+      .then(d => {
+        setRecipientCount(d.recipientCount ?? 0)
+        if (d.fetchError) setRecipientError(d.fetchError)
+      })
+      .catch(() => setRecipientError('Could not reach the server. Check your connection.'))
   }, [])
 
   // ── Editor helpers ───────────────────────────────────────────────────────────
@@ -166,15 +170,25 @@ export default function NewsletterPage() {
         </p>
       </div>
 
-      {/* Recipient count */}
-      <div className="flex items-center gap-2">
-        <Users className="w-4 h-4 text-brand-gold-muted flex-shrink-0" />
-        <span className="text-brand-gold-muted text-sm">
-          {recipientCount === null
-            ? 'Loading recipients…'
-            : `${recipientCount} registered member${recipientCount !== 1 ? 's' : ''} will receive this`}
-        </span>
-      </div>
+      {/* Recipient count / error */}
+      {recipientError ? (
+        <div className="flex items-start gap-2 p-3 bg-brand-error/10 border border-brand-error/30 rounded-xl">
+          <AlertCircle className="w-4 h-4 text-brand-error flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-brand-error text-sm font-medium">Could not load recipient list</p>
+            <p className="text-brand-error/70 text-xs mt-0.5 font-mono">{recipientError}</p>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <Users className="w-4 h-4 text-brand-gold-muted flex-shrink-0" />
+          <span className="text-brand-gold-muted text-sm">
+            {recipientCount === null
+              ? 'Loading recipients…'
+              : `${recipientCount} registered member${recipientCount !== 1 ? 's' : ''} will receive this`}
+          </span>
+        </div>
+      )}
 
       {/* ── Live progress ── */}
       {sending && progress && (
