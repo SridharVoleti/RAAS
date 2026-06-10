@@ -202,11 +202,16 @@ export async function POST(req: Request) {
   )
 
   const { error } = await resend.emails.send({
-    from:    FROM_EMAIL,
-    to:      adminEmail,
-    bcc:     bccRecipients,
+    from:     FROM_EMAIL,
+    to:       adminEmail,
+    replyTo:  adminEmail,
+    bcc:      bccRecipients,
     subject,
     html,
+    headers: {
+      'List-Unsubscribe': `<mailto:${adminEmail}?subject=unsubscribe>`,
+      'Precedence':       'bulk',
+    },
   })
 
   if (error) {
