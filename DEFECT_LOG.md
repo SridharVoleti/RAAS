@@ -16,6 +16,36 @@ Format: newest defects at the top within each section.
 
 ---
 
+## QUIZ — Lesson Quizzes
+
+---
+
+### QUIZ-001 · Previously added quiz question invisible — live DB still on course-level schema, per-lesson queries failed silently
+| | |
+|---|---|
+| **Date** | 2026-06-11 |
+| **Severity** | P2 |
+| **Status** | Fixed |
+| **Commit** | — |
+
+**Issue**
+A quiz question added earlier by the admin did not appear in the student watch page (no "Test your knowledge" entry in the Lessons panel) even though the row existed in `quiz_questions`.
+
+**Root Cause**
+Two parallel quiz implementations wrote to the same tables with different keys. The live Supabase `quiz_questions` and `quiz_submissions` tables were created by the older course-level feature and only have a `course_id` column. The newer per-lesson code (watch page, `/api/admin/lessons/[id]/quiz`, submit route) queries `lesson_id`, which does not exist in the live DB — Postgres returns error 42703, Supabase returns `data: null`, and the code coalesced it to `[]`, hiding the failure. The repo migration `supabase/migrations/quiz_tables.sql` was never applied: its `create table if not exists` silently no-op'd because the old tables already existed, so the `lesson_id` columns were never created. The existing question (id 1) was stored with `course_id = 3` and `lesson_id` missing.
+
+**Solution**
+- New idempotent migration `supabase/migrations/20260611_quiz_lesson_id.sql`: adds `lesson_id` to both tables, backfills existing course-level rows to the first lesson of their course, drops `NOT NULL` on legacy `course_id`, adds indexes. Must be run manually in the Supabase SQL Editor.
+- Deleted the dead course-level routes (`/api/quiz/[courseId]`, `/api/quiz/[courseId]/submit`, `/api/admin/courses/[id]/quiz`) so nothing can write course-keyed quiz rows again.
+- Admins can now move a question to a different lesson via a Lesson dropdown in the admin quiz panel (`lesson_id` added to `UpdateQuizQuestionSchema` and the PUT `/api/admin/quiz/[id]` route), so the backfilled placement can be corrected per requirement.
+
+**Prevention for Future Projects**
+- `create table if not exists` is not a schema sync — it silently skips when a table with the same name exists in any shape. Verify applied schema against the live DB (e.g. probe expected columns) after running migrations.
+- Don't keep two API surfaces writing the same table with different foreign keys; delete the old surface when re-keying a feature.
+- Don't blindly coalesce Supabase `data: null` to `[]` for required data — check `error` and log/surface it, otherwise schema drift hides as "no rows".
+
+---
+
 ## AUTH — Authentication & Password Reset
 
 ---

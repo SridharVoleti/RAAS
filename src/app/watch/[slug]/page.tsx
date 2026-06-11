@@ -66,7 +66,10 @@ export default async function WatchPage({
   const lessonIds = allLessons.map(l => l.id)
 
   // Fetch all quiz questions and user's submissions for this course's lessons
-  const [{ data: quizQuestions }, { data: quizSubmissions }] = lessonIds.length > 0
+  const [
+    { data: quizQuestions, error: quizQuestionsError },
+    { data: quizSubmissions, error: quizSubmissionsError },
+  ] = lessonIds.length > 0
     ? await Promise.all([
         adminSupabase
           .from('quiz_questions')
@@ -79,7 +82,11 @@ export default async function WatchPage({
           .eq('user_id', user.id)
           .in('lesson_id', lessonIds),
       ])
-    : [{ data: [] }, { data: [] }]
+    : [{ data: [], error: null }, { data: [], error: null }]
+
+  // Surface failures instead of silently rendering without quizzes (see QUIZ-001)
+  if (quizQuestionsError) console.error('[watch] quiz_questions query failed:', quizQuestionsError.message)
+  if (quizSubmissionsError) console.error('[watch] quiz_submissions query failed:', quizSubmissionsError.message)
 
   const completedLessonIds = (progressRows || []).map(p => p.lesson_id as number)
   const initialIdx = Math.max(

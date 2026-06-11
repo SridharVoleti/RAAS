@@ -17,22 +17,26 @@ export async function PUT(
   const { id } = await params
   const supabase = await createAdminClient()
 
+  const update: Record<string, unknown> = {
+    question_en:    body.question_en,
+    question_te:    body.question_te ?? null,
+    option_a_en:    body.option_a_en,
+    option_a_te:    body.option_a_te ?? null,
+    option_b_en:    body.option_b_en,
+    option_b_te:    body.option_b_te ?? null,
+    option_c_en:    body.option_c_en,
+    option_c_te:    body.option_c_te ?? null,
+    option_d_en:    body.option_d_en,
+    option_d_te:    body.option_d_te ?? null,
+    correct_option: body.correct_option,
+    order_index:    body.order_index,
+  }
+  // Move the question to a different lesson when requested
+  if (body.lesson_id !== undefined) update.lesson_id = body.lesson_id
+
   const { data, error } = await supabase
     .from('quiz_questions')
-    .update({
-      question_en:    body.question_en,
-      question_te:    body.question_te ?? null,
-      option_a_en:    body.option_a_en,
-      option_a_te:    body.option_a_te ?? null,
-      option_b_en:    body.option_b_en,
-      option_b_te:    body.option_b_te ?? null,
-      option_c_en:    body.option_c_en,
-      option_c_te:    body.option_c_te ?? null,
-      option_d_en:    body.option_d_en,
-      option_d_te:    body.option_d_te ?? null,
-      correct_option: body.correct_option,
-      order_index:    body.order_index,
-    })
+    .update(update)
     .eq('id', Number(id))
     .select()
     .single()

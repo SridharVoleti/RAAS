@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { ChevronUp, ChevronDown, Pencil, Trash2, Plus, X, Check } from 'lucide-react'
 import ConfirmModal from './ConfirmModal'
-import type { QuizQuestion } from '@/types'
+import type { Lesson, QuizQuestion } from '@/types'
 
 type CorrectOption = 'a' | 'b' | 'c' | 'd'
 const OPTIONS: CorrectOption[] = ['a', 'b', 'c', 'd']
@@ -37,9 +37,13 @@ function toQForm(q: QuizQuestion): QForm {
   }
 }
 
-interface Props { lessonId: number }
+interface Props {
+  lessonId: number
+  /** All lessons of the course, used to move a question to another lesson */
+  lessons?: Lesson[]
+}
 
-export default function QuizManager({ lessonId }: Props) {
+export default function QuizManager({ lessonId, lessons = [] }: Props) {
   const [questions, setQuestions] = useState<QuizQuestion[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -107,6 +111,19 @@ export default function QuizManager({ lessonId }: Props) {
     setSaving(false)
     setDeleteTarget(null)
     fetchQuestions()
+  }
+
+  async function handleMove(q: QuizQuestion, targetLessonId: number) {
+    if (targetLessonId === lessonId) return
+    setError('')
+    setSaving(true)
+    const res = await fetch(`/api/admin/quiz/${q.id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...toQForm(q), order_index: q.order_index, lesson_id: targetLessonId }),
+    })
+    setSaving(false)
+    if (res.ok) fetchQuestions()
+    else { const d = await res.json(); setError(d.error || 'Failed to move question') }
   }
 
   async function handleReorder(q: QuizQuestion, dir: 'up' | 'down') {
@@ -187,6 +204,7 @@ export default function QuizManager({ lessonId }: Props) {
   }
 
   const sorted = [...questions].sort((a, b) => a.order_index - b.order_index)
+  const sortedLessons = [...lessons].sort((a, b) => a.order_index - b.order_index)
 
   return (
     <div className="bg-brand-card border border-brand-border rounded-xl overflow-hidden">
@@ -208,12 +226,12 @@ export default function QuizManager({ lessonId }: Props) {
         <div className="px-5 py-8 text-center text-brand-gold-muted text-sm">Loading questions…</div>
       ) : sorted.length === 0 && !showAdd ? (
         <div className="px-5 py-8 text-center text-brand-gold-muted text-sm">
-          No questions yet. Enable <span className="text-brand-gold">Has Quiz</span> on the course and click <span className="text-brand-gold">Add Question</span>.
+          No questions yet. Click <span className="text-brand-gold">Add Question</span> to create the first one — it will appear as &ldquo;Test your knowledge&rdquo; under this lesson.
         </div>
       ) : (
         <div>
-          <div className="grid grid-cols-[28px_1fr_60px_80px] gap-2 px-4 py-2 text-brand-gold-muted text-[10px] uppercase font-medium border-b border-brand-border bg-brand-bg">
-            <span>#</span><span>Question (EN)</span><span>Answer</span><span className="text-right">Actions</span>
+          <div className="grid grid-cols-[28px_1fr_60px_140px_80px] gap-2 px-4 py-2 text-brand-gold-muted text-[10px] uppercase font-medium border-b border-brand-border bg-brand-bg">
+            <span>#</span><span>Question (EN)</span><span>Answer</span><span>Lesson</span><span className="text-right">Actions</span>
           </div>
 
           {sorted.map((q, idx) => (
@@ -228,10 +246,27 @@ export default function QuizManager({ lessonId }: Props) {
                   formKey={String(q.id)}
                 />
               ) : (
-                <div className="grid grid-cols-[28px_1fr_60px_80px] gap-2 px-4 py-3 items-center hover:bg-brand-bg/40 transition-colors">
+                <div className="grid grid-cols-[28px_1fr_60px_140px_80px] gap-2 px-4 py-3 items-center hover:bg-brand-bg/40 transition-colors">
                   <span className="text-brand-gold-muted text-xs font-mono">{idx + 1}</span>
                   <p className="text-brand-body text-xs truncate">{q.question_en}</p>
                   <span className="text-brand-gold text-xs font-semibold uppercase text-center">{q.correct_option}</span>
+                  {sortedLessons.length > 1 ? (
+                    <select
+                      value={lessonId}
+                      disabled={saving}
+                      onChange={e => handleMove(q, Number(e.target.value))}
+                      title="Move this question to another lesson"
+                      className="w-full px-1.5 py-1 bg-brand-bg border border-brand-border rounded-lg text-brand-body text-[11px] focus:outline-none focus:border-brand-gold transition-colors disabled:opacity-50"
+                    >
+                      {sortedLessons.map(l => (
+                        <option key={l.id} value={l.id}>
+                          {l.order_index}. {l.title_en.length > 18 ? l.title_en.slice(0, 18) + '…' : l.title_en}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="text-brand-gold-muted text-[11px]">—</span>
+                  )}
                   <div className="flex items-center gap-1 justify-end">
                     <button onClick={() => handleReorder(q, 'up')} disabled={idx === 0}
                       className="p-1 text-brand-gold-muted hover:text-brand-gold disabled:opacity-30 transition-colors">

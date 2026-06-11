@@ -226,7 +226,7 @@ export default function LessonManager({ courseId }: Props) {
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  <QuizManager lessonId={lesson.id} />
+                  <QuizManager lessonId={lesson.id} lessons={lessons} />
                 </div>
               )}
             </div>

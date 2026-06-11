@@ -118,6 +118,7 @@ const QuizQuestionBaseSchema = z.object({
 export const CreateQuizQuestionSchema = QuizQuestionBaseSchema
 export const UpdateQuizQuestionSchema = QuizQuestionBaseSchema.partial().extend({
   correct_option: z.enum(['a', 'b', 'c', 'd']),
+  lesson_id:      z.number().int().positive().optional(),
 })
 
 export const QuizSubmitSchema = z.object({

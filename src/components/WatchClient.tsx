@@ -27,8 +27,12 @@ type YTPlayerOptions = {
 }
 type YTPlayer = {
   loadVideoById: (videoId: string) => void
+  cueVideoById: (videoId: string) => void
+  pauseVideo: () => void
   destroy: () => void
 }
+
+const QUIZ_PASS_PCT = 80
 
 interface Props {
   course: Course
@@ -62,6 +66,12 @@ export default function WatchClient({
   const pathname = usePathname()
   const [currentIdx, setCurrentIdx] = useState(initialLessonIndex)
   const [completedIds, setCompletedIds] = useState<Set<number>>(new Set(completedLessonIds))
+  const [viewingQuiz, setViewingQuiz] = useState(false)
+  const [passedQuizIds, setPassedQuizIds] = useState<Set<number>>(() => new Set(
+    quizSubmissions
+      .filter(s => s.total_questions > 0 && (s.score / s.total_questions) * 100 >= QUIZ_PASS_PCT)
+      .map(s => s.lesson_id)
+  ))
   const [activeTab, setActiveTab] = useState<TabType>('lessons')
   const [notes, setNotes] = useState('')
   const [notesStatus, setNotesStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
@@ -76,9 +86,13 @@ export default function WatchClient({
   const currentIdxRef = useRef(currentIdx)
   const completedIdsRef = useRef(completedIds)
   const markingRef = useRef(marking)
+  const viewingQuizRef = useRef(viewingQuiz)
+  const passedQuizIdsRef = useRef(passedQuizIds)
   useEffect(() => { currentIdxRef.current = currentIdx }, [currentIdx])
   useEffect(() => { completedIdsRef.current = completedIds }, [completedIds])
   useEffect(() => { markingRef.current = marking }, [marking])
+  useEffect(() => { viewingQuizRef.current = viewingQuiz }, [viewingQuiz])
+  useEffect(() => { passedQuizIdsRef.current = passedQuizIds }, [passedQuizIds])
 
   const currentLesson = lessons[currentIdx]
   const completedCount = completedIds.size
@@ -87,8 +101,34 @@ export default function WatchClient({
   const isCurrentComplete = currentLesson ? completedIds.has(currentLesson.id) : false
 
   // Quiz data for the current lesson
+  const quizCounts = quizQuestions.reduce<Record<number, number>>((acc, q) => {
+    acc[q.lesson_id] = (acc[q.lesson_id] || 0) + 1
+    return acc
+  }, {})
   const currentQuizQuestions = quizQuestions.filter(q => q.lesson_id === currentLesson?.id)
-  const currentSubmission = quizSubmissions.find(s => s.lesson_id === currentLesson?.id) ?? null
+  const bestSubmission = quizSubmissions
+    .filter(s => s.lesson_id === currentLesson?.id)
+    .reduce<QuizSubmission | null>((best, s) => {
+      if (!best) return s
+      const bestPct = best.total_questions > 0 ? best.score / best.total_questions : 0
+      const sPct = s.total_questions > 0 ? s.score / s.total_questions : 0
+      return sPct > bestPct ? s : best
+    }, null)
+
+  function selectLesson(idx: number) {
+    setCurrentIdx(idx)
+    setViewingQuiz(false)
+  }
+
+  function selectQuiz(idx: number) {
+    setCurrentIdx(idx)
+    setViewingQuiz(true)
+    if (playerReadyRef.current) playerRef.current?.pauseVideo()
+  }
+
+  function handleQuizPassed(lessonId: number) {
+    setPassedQuizIds(prev => new Set([...prev, lessonId]))
+  }
 
   useEffect(() => {
     fetch(`/api/notes/${course.id}`)
@@ -130,7 +170,9 @@ export default function WatchClient({
   useEffect(() => {
     if (!currentLesson) return
     if (playerReadyRef.current && playerRef.current) {
-      playerRef.current.loadVideoById(currentLesson.youtube_video_id)
+      // Cue (don't autoplay) when the quiz panel is open over the player
+      if (viewingQuizRef.current) playerRef.current.cueVideoById(currentLesson.youtube_video_id)
+      else playerRef.current.loadVideoById(currentLesson.youtube_video_id)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentLesson?.youtube_video_id])
@@ -146,7 +188,10 @@ export default function WatchClient({
         setCompletedIds(prev => new Set([...prev, lesson.id]))
         setJustCompleted(true)
         setTimeout(() => setJustCompleted(false), 3000)
-        if (currentIdxRef.current < lessons.length - 1) {
+        const hasUnpassedQuiz = (quizCounts[lesson.id] || 0) > 0 && !passedQuizIdsRef.current.has(lesson.id)
+        if (hasUnpassedQuiz) {
+          setViewingQuiz(true)
+        } else if (currentIdxRef.current < lessons.length - 1) {
           setCurrentIdx(prev => prev + 1)
         }
       }
@@ -216,21 +261,37 @@ export default function WatchClient({
         {/* Left: video + controls + quiz + notes */}
         <div className="flex-1 flex flex-col overflow-y-auto">
 
-          {/* Video */}
-          <div className="relative w-full bg-black" style={{ paddingBottom: '56.25%' }}>
+          {justCompleted && (
+            <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-brand-success text-brand-bg text-sm font-semibold rounded-full shadow-lg flex items-center gap-2 animate-fade-in">
+              <CheckCircle2 className="w-4 h-4" />
+              {t.watch.lessonCompleted}
+            </div>
+          )}
+
+          {/* Video (kept mounted but hidden while the quiz is open) */}
+          <div className={`relative w-full bg-black ${viewingQuiz ? 'hidden' : ''}`} style={{ paddingBottom: viewingQuiz ? 0 : '56.25%' }}>
             <div id="yt-player" className="absolute inset-0 w-full h-full" />
             <div className="absolute top-0 left-0 right-0 h-10 z-10" style={{ pointerEvents: 'all' }} />
             <div className="absolute bottom-0 right-0 w-24 h-10 z-10" style={{ pointerEvents: 'all' }} />
-            {justCompleted && (
-              <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 px-4 py-2 bg-brand-success text-brand-bg text-sm font-semibold rounded-full shadow-lg flex items-center gap-2 animate-fade-in">
-                <CheckCircle2 className="w-4 h-4" />
-                {t.watch.lessonCompleted}
-              </div>
-            )}
           </div>
 
+          {/* Quiz player — one MCQ at a time */}
+          {viewingQuiz && currentQuizQuestions.length > 0 && (
+            <QuizPlayer
+              key={currentLesson.id}
+              lessonId={currentLesson.id}
+              questions={currentQuizQuestions}
+              bestSubmission={bestSubmission}
+              alreadyPassed={passedQuizIds.has(currentLesson.id)}
+              lang={lang}
+              tQuiz={t.quiz}
+              onPassed={handleQuizPassed}
+              onNextLesson={currentIdx < lessons.length - 1 ? () => selectLesson(currentIdx + 1) : null}
+            />
+          )}
+
           {/* Lesson title + prev/next controls */}
-          <div className="p-4 border-b border-brand-border">
+          <div className={`p-4 border-b border-brand-border ${viewingQuiz ? 'hidden' : ''}`}>
             <h2 className="text-brand-gold font-semibold text-base mb-1">{title}</h2>
             {currentLesson.duration && (
               <p className="text-brand-gold-muted text-xs mb-3">{currentLesson.duration}</p>
@@ -267,18 +328,6 @@ export default function WatchClient({
             </div>
           </div>
 
-          {/* ── Lesson quiz — inline, immediately below controls ── */}
-          {currentQuizQuestions.length > 0 && (
-            <LessonQuizSection
-              key={currentLesson?.id}
-              lessonId={currentLesson.id}
-              questions={currentQuizQuestions}
-              existingSubmission={currentSubmission}
-              lang={lang}
-              tQuiz={t.quiz}
-            />
-          )}
-
           {/* Mobile tabs */}
           <div className="lg:hidden flex border-b border-brand-border">
             <button
@@ -304,7 +353,19 @@ export default function WatchClient({
           {/* Mobile panel */}
           <div className="lg:hidden flex-1">
             {activeTab === 'lessons' && (
-              <LessonList lessons={lessons} currentIdx={currentIdx} completedIds={completedIds} lang={lang} onSelect={setCurrentIdx} sidebarRef={undefined} />
+              <LessonList
+                lessons={lessons}
+                currentIdx={currentIdx}
+                completedIds={completedIds}
+                lang={lang}
+                onSelect={selectLesson}
+                sidebarRef={undefined}
+                quizCounts={quizCounts}
+                passedQuizIds={passedQuizIds}
+                viewingQuiz={viewingQuiz}
+                onSelectQuiz={selectQuiz}
+                tQuiz={t.quiz}
+              />
             )}
             {activeTab === 'notes' && (
               <NotesPanel notes={notes} status={notesStatus} placeholder={t.watch.notesPlaceholder} savingLabel={t.watch.notesSaving} savedLabel={t.watch.notesSaved} label={t.watch.notes} onChange={handleNotesChange} />
@@ -333,9 +394,13 @@ export default function WatchClient({
             currentIdx={currentIdx}
             completedIds={completedIds}
             lang={lang}
-            onSelect={setCurrentIdx}
+            onSelect={selectLesson}
             sidebarRef={sidebarRef}
-            quizLessonIds={new Set(quizQuestions.map(q => q.lesson_id))}
+            quizCounts={quizCounts}
+            passedQuizIds={passedQuizIds}
+            viewingQuiz={viewingQuiz}
+            onSelectQuiz={selectQuiz}
+            tQuiz={t.quiz}
           />
         </aside>
       </div>
@@ -343,23 +408,29 @@ export default function WatchClient({
   )
 }
 
-// ── Inline quiz section shown immediately below the lesson controls ───────────
-function LessonQuizSection({ lessonId, questions, existingSubmission, lang, tQuiz }: {
+// ── Quiz player: one MCQ at a time, scorecard at the end ─────────────────────
+function QuizPlayer({ lessonId, questions, bestSubmission, alreadyPassed, lang, tQuiz, onPassed, onNextLesson }: {
   lessonId: number
   questions: QuizQuestion_Public[]
-  existingSubmission: QuizSubmission | null
+  bestSubmission: QuizSubmission | null
+  alreadyPassed: boolean
   lang: string
   tQuiz: typeof import('@/lib/translations').translations.en.quiz
+  onPassed: (lessonId: number) => void
+  onNextLesson: (() => void) | null
 }) {
-  type Phase = 'quiz' | 'result'
-  const [phase, setPhase] = useState<Phase>(existingSubmission ? 'result' : 'quiz')
+  type Phase = 'question' | 'result'
+  const [phase, setPhase] = useState<Phase>(alreadyPassed ? 'result' : 'question')
+  const [qIdx, setQIdx] = useState(0)
   const [answers, setAnswers] = useState<Record<number, 'a' | 'b' | 'c' | 'd'>>({})
   const [result, setResult] = useState<QuizResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
   const OPTIONS: Array<'a' | 'b' | 'c' | 'd'> = ['a', 'b', 'c', 'd']
-  const allAnswered = questions.every(q => answers[q.id] !== undefined)
+  const question = questions[qIdx]
+  const selected = question ? answers[question.id] : undefined
+  const isLast = qIdx === questions.length - 1
 
   function getOptionText(q: QuizQuestion_Public, opt: 'a' | 'b' | 'c' | 'd') {
     const te = q[`option_${opt}_te` as keyof QuizQuestion_Public] as string | undefined
@@ -371,8 +442,9 @@ function LessonQuizSection({ lessonId, questions, existingSubmission, lang, tQui
     return lang === 'te' && q.question_te ? q.question_te : q.question_en
   }
 
-  async function handleSubmit() {
-    if (!allAnswered) { setError(tQuiz.answerAll); return }
+  async function handleNext() {
+    if (!selected) return
+    if (!isLast) { setQIdx(i => i + 1); return }
     setError('')
     setSubmitting(true)
     try {
@@ -381,130 +453,139 @@ function LessonQuizSection({ lessonId, questions, existingSubmission, lang, tQui
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ answers }),
       })
-      if (!res.ok) { const d = await res.json(); setError(d.error || 'Submission failed'); return }
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({} as { error?: string }))
+        setError(d.error || 'Submission failed')
+        return
+      }
       const data: QuizResult = await res.json()
       setResult(data)
       setPhase('result')
+      if (data.total > 0 && (data.score / data.total) * 100 >= QUIZ_PASS_PCT) onPassed(lessonId)
     } finally {
       setSubmitting(false)
     }
   }
 
-  const score = result?.score ?? existingSubmission?.score ?? 0
-  const total = result?.total ?? existingSubmission?.total_questions ?? questions.length
+  function handleRetry() {
+    setAnswers({})
+    setQIdx(0)
+    setResult(null)
+    setError('')
+    setPhase('question')
+  }
+
+  const score = result?.score ?? bestSubmission?.score ?? 0
+  const total = result?.total ?? bestSubmission?.total_questions ?? questions.length
   const pct = total > 0 ? Math.round((score / total) * 100) : 0
-  const passed = pct >= 60
+  const passed = pct >= QUIZ_PASS_PCT
 
   return (
-    <div className="border-t border-b border-brand-border bg-brand-card/50">
+    <div className="border-b border-brand-border bg-brand-card/50">
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-brand-border/50">
         <HelpCircle className="w-4 h-4 text-brand-gold" />
-        <span className="text-brand-gold font-semibold text-sm">{tQuiz.title}</span>
-        <span className="text-brand-gold-muted text-xs ml-1">· {questions.length} {tQuiz.questionsCount}</span>
-        {phase === 'result' && (
-          <span className={`ml-auto text-xs font-semibold ${passed ? 'text-brand-success' : 'text-brand-error'}`}>
-            {score}/{total} ({pct}%)
+        <span className="text-brand-gold font-semibold text-sm">{tQuiz.testYourKnowledge}</span>
+        {phase === 'question' && (
+          <span className="text-brand-gold-muted text-xs ml-auto">
+            {tQuiz.question} {qIdx + 1} {tQuiz.questionOf} {questions.length}
           </span>
         )}
       </div>
 
-      <div className="px-4 py-4 space-y-4">
+      <div className="px-4 py-6 max-w-2xl mx-auto w-full">
         {phase === 'result' ? (
+          /* ── Scorecard ── */
+          <div className={`rounded-xl border p-6 text-center ${
+            passed ? 'border-brand-success/40 bg-brand-success/10' : 'border-brand-error/40 bg-brand-error/10'
+          }`}>
+            <p className="text-brand-gold-muted text-[11px] font-semibold uppercase tracking-wider mb-2">{tQuiz.scorecard}</p>
+            <div className={`text-4xl font-bold ${passed ? 'text-brand-success' : 'text-brand-error'}`}>
+              {score}/{total}
+            </div>
+            <p className="text-brand-gold-muted text-xs mt-1">{tQuiz.yourScore} · {pct}%</p>
+
+            {passed ? (
+              <>
+                <p className="flex items-center justify-center gap-1.5 text-brand-success text-sm font-semibold mt-4">
+                  <CheckCircle2 className="w-4 h-4" />
+                  {tQuiz.quizPassed}
+                </p>
+                <div className="flex items-center justify-center gap-3 mt-4 flex-wrap">
+                  {onNextLesson && (
+                    <button
+                      onClick={onNextLesson}
+                      className="flex items-center gap-1 px-4 py-2 bg-brand-gold text-brand-bg text-sm font-semibold rounded-lg hover:bg-yellow-400 transition-colors"
+                    >
+                      {tQuiz.nextLesson}
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  )}
+                  <button
+                    onClick={handleRetry}
+                    className="px-4 py-2 border border-brand-gold text-brand-gold text-sm rounded-lg hover:bg-brand-gold hover:text-brand-bg transition-colors"
+                  >
+                    {tQuiz.retakeQuiz}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-brand-error text-sm font-semibold mt-4">{tQuiz.quizFailed}</p>
+                <p className="text-brand-gold-muted text-xs mt-1">{tQuiz.needToPass}</p>
+                <button
+                  onClick={handleRetry}
+                  className="mt-4 px-5 py-2 bg-brand-gold text-brand-bg text-sm font-semibold rounded-lg hover:bg-yellow-400 transition-colors"
+                >
+                  {tQuiz.retry}
+                </button>
+              </>
+            )}
+          </div>
+        ) : (
+          /* ── One question at a time ── */
           <>
-            {/* Score banner */}
-            <div className={`rounded-xl p-4 text-center ${passed ? 'bg-brand-success/10 border border-brand-success/30' : 'bg-brand-error/10 border border-brand-error/30'}`}>
-              <div className={`text-3xl font-bold ${passed ? 'text-brand-success' : 'text-brand-error'}`}>
-                {score}/{total}
-              </div>
-              <p className="text-brand-gold-muted text-xs mt-1">{tQuiz.yourScore} · {pct}%</p>
-              <button
-                onClick={() => { setAnswers({}); setResult(null); setPhase('quiz'); setError('') }}
-                className="mt-3 px-4 py-1.5 border border-brand-gold text-brand-gold text-xs rounded-lg hover:bg-brand-gold hover:text-brand-bg transition-colors"
-              >
-                {tQuiz.retakeQuiz}
-              </button>
+            <div className="h-1 bg-brand-border rounded-full overflow-hidden mb-5">
+              <div
+                className="h-full bg-brand-gold rounded-full transition-all duration-300"
+                style={{ width: `${(qIdx / questions.length) * 100}%` }}
+              />
             </div>
 
-            {/* Per-question results (only after fresh submission, not for existing) */}
-            {result && questions.map((q, idx) => {
-              const qResult = result.results[q.id]
-              const userAns = answers[q.id]
-              return (
-                <div key={q.id} className={`rounded-xl p-3 border ${qResult?.correct ? 'border-brand-success/40 bg-brand-success/5' : 'border-brand-error/40 bg-brand-error/5'}`}>
-                  <p className="text-brand-body text-xs font-medium mb-2">
-                    <span className="text-brand-gold-muted mr-1">{idx + 1}.</span>
-                    {getQuestion(q)}
-                  </p>
-                  <div className="space-y-1">
-                    {OPTIONS.map(opt => {
-                      const isCorrect = qResult?.correct_option === opt
-                      const isUserChoice = userAns === opt
-                      return (
-                        <div key={opt} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs ${
-                          isCorrect
-                            ? 'bg-brand-success/20 text-brand-success border border-brand-success/40'
-                            : isUserChoice && !isCorrect
-                            ? 'bg-brand-error/20 text-brand-error border border-brand-error/40'
-                            : 'text-brand-gold-muted'
-                        }`}>
-                          <span className="font-semibold uppercase w-4 flex-shrink-0">{opt}</span>
-                          <span>{getOptionText(q, opt)}</span>
-                          {isCorrect && <CheckCircle2 className="w-3 h-3 ml-auto flex-shrink-0" />}
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            })}
+            {error && <p className="text-brand-error text-xs mb-3">{error}</p>}
 
-            {!result && existingSubmission && (
-              <p className="text-brand-gold-muted text-xs text-center">
-                {tQuiz.previousScore}: {existingSubmission.score}/{existingSubmission.total_questions}
-              </p>
-            )}
-          </>
-        ) : (
-          <>
-            {error && <p className="text-brand-error text-xs">{error}</p>}
+            <p className="text-brand-body text-sm font-medium mb-4">
+              <span className="text-brand-gold-muted mr-1">{qIdx + 1}.</span>
+              {getQuestion(question)}
+            </p>
 
-            {questions.map((q, idx) => (
-              <div key={q.id} className="border border-brand-border rounded-xl p-3">
-                <p className="text-brand-body text-xs font-medium mb-2.5">
-                  <span className="text-brand-gold-muted mr-1">{idx + 1}.</span>
-                  {getQuestion(q)}
-                </p>
-                <div className="space-y-1.5">
-                  {OPTIONS.map(opt => (
-                    <label key={opt} className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer text-xs transition-colors ${
-                      answers[q.id] === opt
-                        ? 'bg-brand-gold/10 border border-brand-gold text-brand-gold'
-                        : 'border border-brand-border text-brand-body hover:border-brand-gold/50'
-                    }`}>
-                      <input type="radio" name={`q-${lessonId}-${q.id}`} value={opt}
-                        checked={answers[q.id] === opt}
-                        onChange={() => setAnswers(prev => ({ ...prev, [q.id]: opt }))}
-                        className="sr-only" />
-                      <span className="font-semibold uppercase w-4 flex-shrink-0">{opt}</span>
-                      <span>{getOptionText(q, opt)}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            ))}
+            <div className="space-y-2">
+              {OPTIONS.map(opt => (
+                <label key={opt} className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg cursor-pointer text-sm transition-colors ${
+                  selected === opt
+                    ? 'bg-brand-gold/10 border border-brand-gold text-brand-gold'
+                    : 'border border-brand-border text-brand-body hover:border-brand-gold/50'
+                }`}>
+                  <input type="radio" name={`q-${lessonId}-${question.id}`} value={opt}
+                    checked={selected === opt}
+                    onChange={() => setAnswers(prev => ({ ...prev, [question.id]: opt }))}
+                    className="sr-only" />
+                  <span className="font-semibold uppercase w-4 flex-shrink-0">{opt}</span>
+                  <span>{getOptionText(question, opt)}</span>
+                </label>
+              ))}
+            </div>
 
-            <button
-              onClick={handleSubmit}
-              disabled={submitting || !allAnswered}
-              className="w-full py-2.5 bg-brand-gold text-brand-bg text-sm font-semibold rounded-lg hover:bg-yellow-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {submitting ? tQuiz.submitting : tQuiz.submitQuiz}
-            </button>
-            {!allAnswered && (
-              <p className="text-brand-gold-muted text-xs text-center">
-                {questions.length - Object.keys(answers).length} question{questions.length - Object.keys(answers).length !== 1 ? 's' : ''} remaining
-              </p>
+            {/* Next appears only after an answer is chosen */}
+            {selected && (
+              <button
+                onClick={handleNext}
+                disabled={submitting}
+                className="mt-5 w-full flex items-center justify-center gap-1 py-2.5 bg-brand-gold text-brand-bg text-sm font-semibold rounded-lg hover:bg-yellow-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submitting ? tQuiz.submitting : isLast ? tQuiz.viewScore : tQuiz.next}
+                {!submitting && !isLast && <ChevronRight className="w-4 h-4" />}
+              </button>
             )}
           </>
         )}
@@ -514,7 +595,7 @@ function LessonQuizSection({ lessonId, questions, existingSubmission, lang, tQui
 }
 
 function LessonList({
-  lessons, currentIdx, completedIds, lang, onSelect, sidebarRef, quizLessonIds,
+  lessons, currentIdx, completedIds, lang, onSelect, sidebarRef, quizCounts, passedQuizIds, viewingQuiz, onSelectQuiz, tQuiz,
 }: {
   lessons: Lesson[]
   currentIdx: number
@@ -522,15 +603,21 @@ function LessonList({
   lang: string
   onSelect: (i: number) => void
   sidebarRef: React.RefObject<HTMLDivElement> | undefined
-  quizLessonIds?: Set<number>
+  quizCounts: Record<number, number>
+  passedQuizIds: Set<number>
+  viewingQuiz: boolean
+  onSelectQuiz: (i: number) => void
+  tQuiz: typeof import('@/lib/translations').translations.en.quiz
 }) {
   return (
     <div ref={sidebarRef} className="flex flex-col py-2">
       {lessons.map((lesson, idx) => {
         const showSection = lesson.section_title && lesson.section_title !== lessons[idx - 1]?.section_title
-        const isActive = idx === currentIdx
+        const isActive = idx === currentIdx && !viewingQuiz
+        const isQuizActive = idx === currentIdx && viewingQuiz
         const isDone = completedIds.has(lesson.id)
-        const hasQuiz = quizLessonIds?.has(lesson.id)
+        const quizCount = quizCounts[lesson.id] || 0
+        const quizPassed = passedQuizIds.has(lesson.id)
         const lessonTitle = lang === 'te' && lesson.title_te ? lesson.title_te : lesson.title_en
         return (
           <Fragment key={lesson.id}>
@@ -562,12 +649,38 @@ function LessonList({
                   <span className="text-brand-gold-muted text-xs mr-1">{idx + 1}.</span>
                   {lessonTitle}
                 </p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  {lesson.duration && <p className="text-brand-gold-muted text-xs">{lesson.duration}</p>}
-                  {hasQuiz && <HelpCircle className="w-3 h-3 text-brand-gold-muted opacity-70" />}
-                </div>
+                {lesson.duration && <p className="text-brand-gold-muted text-xs mt-0.5">{lesson.duration}</p>}
               </div>
             </button>
+
+            {/* Quiz entry, nested under its lesson */}
+            {quizCount > 0 && (
+              <button
+                data-active={isQuizActive}
+                onClick={() => onSelectQuiz(idx)}
+                className={`flex items-start gap-3 pl-9 pr-4 py-2.5 text-left transition-colors ${
+                  isQuizActive ? 'bg-brand-gold/10 border-r-2 border-brand-gold' : 'hover:bg-brand-gold/5'
+                }`}
+              >
+                <div className="flex-shrink-0 mt-0.5">
+                  {quizPassed ? (
+                    <CheckCircle2 className="w-4 h-4 text-brand-success" />
+                  ) : isQuizActive ? (
+                    <div className="w-4 h-4 rounded-full border-2 border-brand-gold bg-brand-gold/20" />
+                  ) : (
+                    <HelpCircle className="w-4 h-4 text-brand-gold-muted opacity-70" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm leading-snug ${
+                    isQuizActive ? 'text-brand-gold font-medium' : quizPassed ? 'text-brand-gold-muted' : 'text-brand-body'
+                  }`}>
+                    {tQuiz.testYourKnowledge}
+                  </p>
+                  <p className="text-brand-gold-muted text-xs mt-0.5">{quizCount} {tQuiz.questionsCount}</p>
+                </div>
+              </button>
+            )}
           </Fragment>
         )
       })}
