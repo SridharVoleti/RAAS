@@ -45,7 +45,10 @@ export default function HomeContent({ courses, stats, testimonials, widgets }: P
       {/* Admin announcement widgets */}
       {announcementWidgets.map(w => (
         <div key={w.id} className="w-full bg-brand-gold/10 border-b border-brand-gold/20 px-4 py-2.5 text-center">
-          <p className="text-brand-gold text-sm font-medium">{w.content}</p>
+          <div
+            className="text-brand-gold text-sm font-medium [&_a]:underline [&_a]:hover:text-yellow-300 [&_strong]:font-bold [&_em]:italic [&_u]:underline"
+            dangerouslySetInnerHTML={{ __html: w.content }}
+          />
         </div>
       ))}
 
@@ -119,7 +122,22 @@ export default function HomeContent({ courses, stats, testimonials, widgets }: P
           <div className="space-y-3">
             {homeSectionWidgets.map(w => (
               <div key={w.id} className="bg-brand-card border border-brand-gold/20 rounded-xl px-5 py-4">
-                <p className="text-brand-body text-sm leading-relaxed">{w.content}</p>
+                <div
+                  className={[
+                    'text-brand-body text-sm leading-relaxed',
+                    '[&_h1]:text-brand-gold [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-3 [&_h1]:mt-1',
+                    '[&_h2]:text-brand-gold [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-2 [&_h2]:mt-1',
+                    '[&_h3]:text-brand-gold [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-1.5',
+                    '[&_p]:mb-2 [&_p:last-child]:mb-0',
+                    '[&_a]:text-brand-gold [&_a]:underline [&_a]:hover:text-yellow-300 [&_a]:transition-colors',
+                    '[&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2',
+                    '[&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-2',
+                    '[&_li]:mb-1',
+                    '[&_strong]:font-bold [&_em]:italic [&_u]:underline',
+                    '[&_blockquote]:border-l-2 [&_blockquote]:border-brand-gold [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-brand-gold-muted',
+                  ].join(' ')}
+                  dangerouslySetInnerHTML={{ __html: w.content }}
+                />
               </div>
             ))}
           </div>

@@ -6,7 +6,7 @@ import { z } from 'zod'
 
 const widgetSchema = z.object({
   title:     z.string().min(1).max(200),
-  content:   z.string().min(1).max(2000),
+  content:   z.string().min(1).max(50000),
   position:  z.enum(['announcement', 'home-section']),
   is_active: z.boolean().optional().default(true),
 })
@@ -15,7 +15,7 @@ export async function GET() {
   const admin = await getAdminUser()
   if (!admin) return forbidden()
 
-  const supabase = await createAdminClient()
+  const supabase = createAdminClient()
   const { data, error } = await supabase
     .from('text_widgets')
     .select('*')
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
-  const supabase = await createAdminClient()
+  const supabase = createAdminClient()
   const { data, error } = await supabase
     .from('text_widgets')
     .insert(parsed.data)

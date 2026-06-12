@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { Plus, Pencil, Trash2, Eye, EyeOff, X, Save } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Plus, Pencil, Trash2, Eye, EyeOff, X, Save, Link2, List, ListOrdered } from 'lucide-react'
 import type { TextWidget } from '@/types'
 
 type Position = 'announcement' | 'home-section'
@@ -25,15 +25,38 @@ const EMPTY_FORM: FormState = {
   is_active: true,
 }
 
-export default function WidgetsPage() {
-  const [widgets, setWidgets] = useState<TextWidget[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
+function ToolBtn({ onClick, title, children }: { onClick: () => void; title: string; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onMouseDown={e => { e.preventDefault(); onClick() }}
+      title={title}
+      className="px-2 py-1 rounded text-brand-gold-muted hover:text-brand-gold hover:bg-brand-border/50 transition-colors text-xs min-w-[26px] flex items-center justify-center"
+    >
+      {children}
+    </button>
+  )
+}
 
-  const [showForm, setShowForm] = useState(false)
+function stripHtml(html: string) {
+  return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+function hasText(html: string) {
+  return html.replace(/<[^>]*>/g, '').trim().length > 0
+}
+
+export default function WidgetsPage() {
+  const [widgets, setWidgets]   = useState<TextWidget[]>([])
+  const [loading, setLoading]   = useState(true)
+  const [error, setError]       = useState<string | null>(null)
+  const [saving, setSaving]     = useState(false)
+
+  const [showForm, setShowForm]   = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
-  const [form, setForm] = useState<FormState>(EMPTY_FORM)
+  const [form, setForm]           = useState<FormState>(EMPTY_FORM)
+
+  const editorRef = useRef<HTMLDivElement>(null)
 
   const loadWidgets = useCallback(async () => {
     setLoading(true)
@@ -52,6 +75,14 @@ export default function WidgetsPage() {
 
   useEffect(() => { loadWidgets() }, [loadWidgets])
 
+  // Populate editor when form opens
+  useEffect(() => {
+    if (showForm && editorRef.current) {
+      editorRef.current.innerHTML = form.content
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showForm])
+
   function openAdd() {
     setEditingId(null)
     setForm(EMPTY_FORM)
@@ -68,18 +99,46 @@ export default function WidgetsPage() {
     setShowForm(false)
     setEditingId(null)
     setForm(EMPTY_FORM)
+    if (editorRef.current) editorRef.current.innerHTML = ''
+  }
+
+  function syncContent() {
+    if (editorRef.current) {
+      setForm(f => ({ ...f, content: editorRef.current!.innerHTML }))
+    }
+  }
+
+  function execCmd(cmd: string, value?: string) {
+    document.execCommand(cmd, false, value)
+    editorRef.current?.focus()
+    syncContent()
+  }
+
+  function handleLink() {
+    const sel = window.getSelection()
+    const selectedText = sel && sel.toString().trim()
+    const url = window.prompt('Enter link URL (e.g. https://example.com)')
+    if (!url) return
+    if (selectedText) {
+      execCmd('createLink', url)
+    } else {
+      const text = window.prompt('Link text to display') || url
+      document.execCommand('insertHTML', false, `<a href="${url}" target="_blank">${text}</a>`)
+      syncContent()
+    }
   }
 
   async function handleSave() {
-    if (!form.title.trim() || !form.content.trim()) return
+    const html = editorRef.current?.innerHTML ?? ''
+    if (!form.title.trim() || !hasText(html)) return
     setSaving(true)
     try {
-      const url = editingId ? `/api/admin/widgets/${editingId}` : '/api/admin/widgets'
+      const url    = editingId ? `/api/admin/widgets/${editingId}` : '/api/admin/widgets'
       const method = editingId ? 'PUT' : 'POST'
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, content: html }),
       })
       if (!res.ok) throw new Error('Save failed')
       cancelForm()
@@ -115,13 +174,15 @@ export default function WidgetsPage() {
     }
   }
 
+  const isSaveDisabled = saving || !form.title.trim() || !hasText(form.content)
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-brand-gold font-bold text-xl">Content Widgets</h1>
           <p className="text-brand-gold-muted text-sm mt-1">
-            Manage text widgets shown on the home page. Changes are live immediately.
+            Manage rich-text widgets shown on the home page. Changes are live immediately.
           </p>
         </div>
         <button
@@ -179,18 +240,81 @@ export default function WidgetsPage() {
             </div>
           </div>
 
+          {/* Rich text editor */}
           <div>
             <label className="block text-brand-gold-muted text-xs font-medium mb-1">
-              Widget Text <span className="text-brand-error">*</span>
+              Widget Content <span className="text-brand-error">*</span>
             </label>
-            <textarea
-              value={form.content}
-              onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
-              rows={4}
-              placeholder="Enter the text to display on the home page..."
-              className="w-full px-3 py-2 bg-brand-bg border border-brand-border rounded-lg text-brand-body text-sm focus:outline-none focus:border-brand-gold resize-none"
-            />
-            <p className="text-brand-gold-muted text-xs mt-1">{form.content.length}/2000 characters</p>
+            <div className="border border-brand-border rounded-lg overflow-hidden focus-within:border-brand-gold transition-colors">
+              {/* Toolbar */}
+              <div className="flex items-center gap-0.5 px-2 py-1.5 bg-brand-bg border-b border-brand-border flex-wrap">
+                <ToolBtn onClick={() => execCmd('bold')} title="Bold (Ctrl+B)">
+                  <strong>B</strong>
+                </ToolBtn>
+                <ToolBtn onClick={() => execCmd('italic')} title="Italic (Ctrl+I)">
+                  <em>I</em>
+                </ToolBtn>
+                <ToolBtn onClick={() => execCmd('underline')} title="Underline (Ctrl+U)">
+                  <span className="underline">U</span>
+                </ToolBtn>
+
+                <div className="w-px h-4 bg-brand-border mx-1 flex-shrink-0" />
+
+                <ToolBtn onClick={() => execCmd('formatBlock', 'h1')} title="Heading 1">
+                  <span className="font-bold">H1</span>
+                </ToolBtn>
+                <ToolBtn onClick={() => execCmd('formatBlock', 'h2')} title="Heading 2">
+                  <span className="font-bold">H2</span>
+                </ToolBtn>
+                <ToolBtn onClick={() => execCmd('formatBlock', 'h3')} title="Heading 3">
+                  <span className="font-bold">H3</span>
+                </ToolBtn>
+                <ToolBtn onClick={() => execCmd('formatBlock', 'p')} title="Normal paragraph">
+                  P
+                </ToolBtn>
+
+                <div className="w-px h-4 bg-brand-border mx-1 flex-shrink-0" />
+
+                <ToolBtn onClick={() => execCmd('insertUnorderedList')} title="Bullet list">
+                  <List className="w-3.5 h-3.5" />
+                </ToolBtn>
+                <ToolBtn onClick={() => execCmd('insertOrderedList')} title="Numbered list">
+                  <ListOrdered className="w-3.5 h-3.5" />
+                </ToolBtn>
+
+                <div className="w-px h-4 bg-brand-border mx-1 flex-shrink-0" />
+
+                <ToolBtn onClick={handleLink} title="Insert link">
+                  <Link2 className="w-3.5 h-3.5" />
+                </ToolBtn>
+                <ToolBtn onClick={() => execCmd('unlink')} title="Remove link">
+                  <span className="line-through opacity-70">url</span>
+                </ToolBtn>
+              </div>
+
+              {/* Editable content area */}
+              <div
+                ref={editorRef}
+                contentEditable
+                suppressContentEditableWarning
+                onInput={syncContent}
+                className={[
+                  'min-h-[180px] max-h-[400px] overflow-y-auto p-3 text-brand-body text-sm focus:outline-none',
+                  '[&_h1]:text-brand-gold [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-2 [&_h1]:mt-1',
+                  '[&_h2]:text-brand-gold [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-1.5 [&_h2]:mt-1',
+                  '[&_h3]:text-brand-gold [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-1',
+                  '[&_p]:mb-2 [&_p]:leading-relaxed',
+                  '[&_a]:text-brand-gold [&_a]:underline [&_a]:cursor-pointer',
+                  '[&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2',
+                  '[&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-2',
+                  '[&_li]:mb-0.5',
+                  '[&_strong]:font-bold [&_em]:italic [&_u]:underline',
+                ].join(' ')}
+              />
+            </div>
+            <p className="text-brand-gold-muted text-xs mt-1">
+              Supports bold, italic, underline, headings, lists, and links.
+            </p>
           </div>
 
           <div className="flex items-center gap-3">
@@ -208,7 +332,7 @@ export default function WidgetsPage() {
           <div className="flex gap-3 pt-1">
             <button
               onClick={handleSave}
-              disabled={saving || !form.title.trim() || !form.content.trim()}
+              disabled={isSaveDisabled}
               className="flex items-center gap-2 px-4 py-2 bg-brand-gold text-brand-bg text-sm font-semibold rounded-lg hover:bg-yellow-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save className="w-4 h-4" />
@@ -258,7 +382,10 @@ export default function WidgetsPage() {
                       {POSITION_LABELS[w.position as Position]?.split(' (')[0] ?? w.position}
                     </span>
                   </div>
-                  <p className="text-brand-gold-muted text-xs mt-1.5 leading-relaxed line-clamp-2">{w.content}</p>
+                  {/* Plain-text preview strips HTML tags */}
+                  <p className="text-brand-gold-muted text-xs mt-1.5 leading-relaxed line-clamp-2">
+                    {stripHtml(w.content)}
+                  </p>
                   <p className="text-brand-gold-muted text-[11px] mt-1">
                     Created {new Date(w.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                   </p>

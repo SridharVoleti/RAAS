@@ -6,7 +6,7 @@ import { z } from 'zod'
 
 const updateSchema = z.object({
   title:     z.string().min(1).max(200).optional(),
-  content:   z.string().min(1).max(2000).optional(),
+  content:   z.string().min(1).max(50000).optional(),
   position:  z.enum(['announcement', 'home-section']).optional(),
   is_active: z.boolean().optional(),
 })
