@@ -30,9 +30,11 @@ const EMPTY_FORM: FormState = {
 
 // Floating toolbar that appears when an image is selected in the editor
 interface ImgToolbar {
-  el: HTMLImageElement
-  top: number
-  left: number
+  el:     HTMLImageElement
+  top:    number   // px from editor top (above the image, for the toolbar)
+  left:   number   // px from editor left
+  width:  number   // rendered width of the image
+  height: number   // rendered height of the image
 }
 
 function ToolBtn({
@@ -82,6 +84,7 @@ export default function WidgetsPage() {
   const fileInputRef     = useRef<HTMLInputElement>(null)
   const savedRangeRef    = useRef<Range | null>(null)
   const [imgToolbar, setImgToolbar] = useState<ImgToolbar | null>(null)
+  const [isResizing, setIsResizing] = useState(false)
 
   // ── Data loading ────────────────────────────────────────────────────────────
 
@@ -204,8 +207,27 @@ export default function WidgetsPage() {
 
   function insertImageHtml(url: string) {
     restoreSelection()
-    document.execCommand('insertHTML', false,
-      `<img src="${url}" style="max-width:100%;height:auto;display:block;margin:8px 0;" />`)
+    editorRef.current?.focus()
+
+    // Build img element — float:left by default so text wraps to the right
+    const img = document.createElement('img')
+    img.src = url
+    img.style.cssText = 'float:left;width:40%;max-width:40%;height:auto;margin:0 14px 8px 0;border-radius:4px;'
+
+    const sel = window.getSelection()
+    if (sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0)
+      range.deleteContents()
+      range.insertNode(img)
+      // Place cursor immediately after the image so typed text flows beside it
+      range.setStartAfter(img)
+      range.collapse(true)
+      sel.removeAllRanges()
+      sel.addRange(range)
+    } else {
+      editorRef.current?.appendChild(img)
+    }
+
     syncContent()
   }
 
@@ -241,21 +263,55 @@ export default function WidgetsPage() {
     if (url?.trim()) insertImageHtml(url.trim())
   }
 
+  // Intercept Ctrl+V image paste — upload to Supabase instead of embedding base64
+  async function handlePaste(e: React.ClipboardEvent<HTMLDivElement>) {
+    const imageItem = Array.from(e.clipboardData?.items ?? []).find(i => i.type.startsWith('image/'))
+    if (!imageItem) return   // let normal text paste through
+    e.preventDefault()
+    const file = imageItem.getAsFile()
+    if (!file) return
+    saveSelection()
+    setUploading(true)
+    setError(null)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res  = await fetch('/api/admin/widgets/upload', { method: 'POST', body: fd })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Upload failed')
+      insertImageHtml(json.url)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Image paste failed.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
   // ── Image repositioning toolbar ─────────────────────────────────────────────
+
+  function calcImgToolbar(img: HTMLImageElement): ImgToolbar {
+    const editorEl  = editorRef.current!
+    const editorRect = editorEl.getBoundingClientRect()
+    const imgRect   = img.getBoundingClientRect()
+    return {
+      el:     img,
+      top:    imgRect.top    - editorRect.top  + editorEl.scrollTop - 40,
+      left:   imgRect.left   - editorRect.left,
+      width:  imgRect.width,
+      height: imgRect.height,
+    }
+  }
 
   function handleEditorClick(e: React.MouseEvent<HTMLDivElement>) {
     const target = e.target as HTMLElement
     if (target.tagName === 'IMG') {
       const img = target as HTMLImageElement
-      const editorEl = editorRef.current!
-      const editorRect = editorEl.getBoundingClientRect()
-      const imgRect = img.getBoundingClientRect()
-      setImgToolbar({
-        el:   img,
-        top:  imgRect.top  - editorRect.top  + editorEl.scrollTop  - 38,
-        left: imgRect.left - editorRect.left,
-      })
+      // Remove outline from previously selected image
+      editorRef.current?.querySelectorAll('img').forEach(i => (i.style.outline = ''))
+      img.style.outline = '2px solid #f0b429'
+      setImgToolbar(calcImgToolbar(img))
     } else {
+      editorRef.current?.querySelectorAll('img').forEach(i => (i.style.outline = ''))
       setImgToolbar(null)
     }
   }
@@ -263,23 +319,49 @@ export default function WidgetsPage() {
   function applyImgFloat(float: 'left' | 'none' | 'right') {
     if (!imgToolbar) return
     const img = imgToolbar.el
+    // Preserve current percentage width across float changes
+    const currentW = Math.round((img.getBoundingClientRect().width / (editorRef.current?.offsetWidth ?? 600)) * 100)
+    const w = Math.min(100, Math.max(10, currentW))
     if (float === 'left') {
-      img.style.cssText = `max-width:50%;height:auto;float:left;margin:0 14px 8px 0;`
+      img.style.cssText = `float:left;width:${w}%;max-width:${w}%;height:auto;margin:0 14px 8px 0;border-radius:4px;outline:2px solid #f0b429;`
     } else if (float === 'right') {
-      img.style.cssText = `max-width:50%;height:auto;float:right;margin:0 0 8px 14px;`
+      img.style.cssText = `float:right;width:${w}%;max-width:${w}%;height:auto;margin:0 0 8px 14px;border-radius:4px;outline:2px solid #f0b429;`
     } else {
-      img.style.cssText = `max-width:100%;height:auto;display:block;margin:8px 0;`
+      img.style.cssText = `display:block;width:${Math.max(w, 50)}%;max-width:${Math.max(w, 50)}%;height:auto;margin:8px auto;border-radius:4px;outline:2px solid #f0b429;`
     }
     syncContent()
-    // Update toolbar position after style change
-    const editorEl = editorRef.current!
-    const editorRect = editorEl.getBoundingClientRect()
-    const imgRect = img.getBoundingClientRect()
-    setImgToolbar(prev => prev ? {
-      ...prev,
-      top:  imgRect.top  - editorRect.top  + editorEl.scrollTop  - 38,
-      left: imgRect.left - editorRect.left,
-    } : null)
+    // Recalculate toolbar position after layout shift
+    requestAnimationFrame(() => setImgToolbar(calcImgToolbar(img)))
+  }
+
+  function startResize(e: React.MouseEvent) {
+    e.preventDefault()
+    if (!imgToolbar) return
+    setIsResizing(true)
+
+    const img         = imgToolbar.el
+    const startX      = e.clientX
+    const startWidth  = img.getBoundingClientRect().width
+    const containerW  = editorRef.current?.offsetWidth ?? 600
+
+    function onMove(ev: MouseEvent) {
+      const newPct = Math.min(100, Math.max(10,
+        Math.round(((startWidth + ev.clientX - startX) / containerW) * 100)
+      ))
+      img.style.width    = `${newPct}%`
+      img.style.maxWidth = `${newPct}%`
+    }
+
+    function onUp() {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup',   onUp)
+      setIsResizing(false)
+      syncContent()
+      requestAnimationFrame(() => setImgToolbar(calcImgToolbar(img)))
+    }
+
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup',   onUp)
   }
 
   function removeImg() {
@@ -487,12 +569,26 @@ export default function WidgetsPage() {
                   </div>
                 )}
 
+                {/* Drag-to-resize handle — bottom-right corner of selected image */}
+                {imgToolbar && (
+                  <div
+                    title="Drag to resize"
+                    onMouseDown={startResize}
+                    className={`absolute w-4 h-4 bg-brand-gold border-2 border-white rounded-sm z-20 ${isResizing ? 'cursor-se-resize' : 'cursor-se-resize hover:scale-125'} transition-transform`}
+                    style={{
+                      top:  Math.max(4, imgToolbar.top + 40 + imgToolbar.height - 8),
+                      left: Math.max(4, imgToolbar.left + imgToolbar.width - 8),
+                    }}
+                  />
+                )}
+
                 <div
                   ref={editorRef}
                   contentEditable
                   suppressContentEditableWarning
                   onInput={syncContent}
                   onClick={handleEditorClick}
+                  onPaste={handlePaste}
                   className={[
                     'min-h-[200px] max-h-[450px] overflow-y-auto p-3 text-brand-body text-sm focus:outline-none',
                     '[&_h1]:text-brand-gold [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-2 [&_h1]:mt-1',
