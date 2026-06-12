@@ -124,7 +124,7 @@ export default function HomeContent({ courses, stats, testimonials, widgets }: P
               <div key={w.id} className="bg-brand-card border border-brand-gold/20 rounded-xl px-5 py-4">
                 <div
                   className={[
-                    'text-brand-body text-sm leading-relaxed',
+                    'flow-root text-brand-body text-sm leading-relaxed',
                     '[&_h1]:text-brand-gold [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-3 [&_h1]:mt-1',
                     '[&_h2]:text-brand-gold [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-2 [&_h2]:mt-1',
                     '[&_h3]:text-brand-gold [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-1.5',
@@ -135,6 +135,7 @@ export default function HomeContent({ courses, stats, testimonials, widgets }: P
                     '[&_li]:mb-1',
                     '[&_strong]:font-bold [&_em]:italic [&_u]:underline',
                     '[&_blockquote]:border-l-2 [&_blockquote]:border-brand-gold [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-brand-gold-muted',
+                    '[&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg',
                   ].join(' ')}
                   dangerouslySetInnerHTML={{ __html: w.content }}
                 />

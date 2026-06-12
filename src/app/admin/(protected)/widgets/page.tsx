@@ -1,7 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, Pencil, Trash2, Eye, EyeOff, X, Save, Link2, List, ListOrdered } from 'lucide-react'
+import {
+  Plus, Pencil, Trash2, Eye, EyeOff, X, Save,
+  Link2, List, ListOrdered, ImagePlus, AlignLeft, AlignCenter, AlignRight, Loader2,
+} from 'lucide-react'
 import type { TextWidget } from '@/types'
 
 type Position = 'announcement' | 'home-section'
@@ -25,13 +28,31 @@ const EMPTY_FORM: FormState = {
   is_active: true,
 }
 
-function ToolBtn({ onClick, title, children }: { onClick: () => void; title: string; children: React.ReactNode }) {
+// Floating toolbar that appears when an image is selected in the editor
+interface ImgToolbar {
+  el: HTMLImageElement
+  top: number
+  left: number
+}
+
+function ToolBtn({
+  onClick, title, active = false, children,
+}: {
+  onClick: () => void
+  title: string
+  active?: boolean
+  children: React.ReactNode
+}) {
   return (
     <button
       type="button"
       onMouseDown={e => { e.preventDefault(); onClick() }}
       title={title}
-      className="px-2 py-1 rounded text-brand-gold-muted hover:text-brand-gold hover:bg-brand-border/50 transition-colors text-xs min-w-[26px] flex items-center justify-center"
+      className={`px-2 py-1 rounded text-xs min-w-[26px] flex items-center justify-center transition-colors ${
+        active
+          ? 'bg-brand-gold text-brand-bg'
+          : 'text-brand-gold-muted hover:text-brand-gold hover:bg-brand-border/50'
+      }`}
     >
       {children}
     </button>
@@ -51,12 +72,18 @@ export default function WidgetsPage() {
   const [loading, setLoading]   = useState(true)
   const [error, setError]       = useState<string | null>(null)
   const [saving, setSaving]     = useState(false)
+  const [uploading, setUploading] = useState(false)
 
   const [showForm, setShowForm]   = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm]           = useState<FormState>(EMPTY_FORM)
 
-  const editorRef = useRef<HTMLDivElement>(null)
+  const editorRef        = useRef<HTMLDivElement>(null)
+  const fileInputRef     = useRef<HTMLInputElement>(null)
+  const savedRangeRef    = useRef<Range | null>(null)
+  const [imgToolbar, setImgToolbar] = useState<ImgToolbar | null>(null)
+
+  // ── Data loading ────────────────────────────────────────────────────────────
 
   const loadWidgets = useCallback(async () => {
     setLoading(true)
@@ -75,13 +102,15 @@ export default function WidgetsPage() {
 
   useEffect(() => { loadWidgets() }, [loadWidgets])
 
-  // Populate editor when form opens
+  // Populate editor when the form opens
   useEffect(() => {
     if (showForm && editorRef.current) {
       editorRef.current.innerHTML = form.content
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showForm])
+
+  // ── Form lifecycle ──────────────────────────────────────────────────────────
 
   function openAdd() {
     setEditingId(null)
@@ -99,32 +128,13 @@ export default function WidgetsPage() {
     setShowForm(false)
     setEditingId(null)
     setForm(EMPTY_FORM)
+    setImgToolbar(null)
     if (editorRef.current) editorRef.current.innerHTML = ''
   }
 
   function syncContent() {
     if (editorRef.current) {
       setForm(f => ({ ...f, content: editorRef.current!.innerHTML }))
-    }
-  }
-
-  function execCmd(cmd: string, value?: string) {
-    document.execCommand(cmd, false, value)
-    editorRef.current?.focus()
-    syncContent()
-  }
-
-  function handleLink() {
-    const sel = window.getSelection()
-    const selectedText = sel && sel.toString().trim()
-    const url = window.prompt('Enter link URL (e.g. https://example.com)')
-    if (!url) return
-    if (selectedText) {
-      execCmd('createLink', url)
-    } else {
-      const text = window.prompt('Link text to display') || url
-      document.execCommand('insertHTML', false, `<a href="${url}" target="_blank">${text}</a>`)
-      syncContent()
     }
   }
 
@@ -149,6 +159,137 @@ export default function WidgetsPage() {
       setSaving(false)
     }
   }
+
+  // ── Text-formatting commands ────────────────────────────────────────────────
+
+  function execCmd(cmd: string, value?: string) {
+    editorRef.current?.focus()
+    document.execCommand(cmd, false, value)
+    syncContent()
+  }
+
+  function handleLink() {
+    const sel = window.getSelection()
+    const selectedText = sel?.toString().trim()
+    const url = window.prompt('Enter link URL (e.g. https://example.com)')
+    if (!url) return
+    if (selectedText) {
+      execCmd('createLink', url)
+    } else {
+      const text = window.prompt('Link text to display') || url
+      document.execCommand('insertHTML', false,
+        `<a href="${url}" target="_blank" rel="noopener">${text}</a>`)
+      syncContent()
+    }
+  }
+
+  // ── Image handling ──────────────────────────────────────────────────────────
+
+  function saveSelection() {
+    const sel = window.getSelection()
+    if (sel && sel.rangeCount > 0) {
+      savedRangeRef.current = sel.getRangeAt(0).cloneRange()
+    }
+  }
+
+  function restoreSelection() {
+    if (!savedRangeRef.current) return
+    editorRef.current?.focus()
+    const sel = window.getSelection()
+    if (sel) {
+      sel.removeAllRanges()
+      sel.addRange(savedRangeRef.current)
+    }
+  }
+
+  function insertImageHtml(url: string) {
+    restoreSelection()
+    document.execCommand('insertHTML', false,
+      `<img src="${url}" style="max-width:100%;height:auto;display:block;margin:8px 0;" />`)
+    syncContent()
+  }
+
+  // Triggered by clicking "Upload Image" toolbar button
+  function handleUploadClick() {
+    saveSelection()
+    fileInputRef.current?.click()
+  }
+
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    setError(null)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/admin/widgets/upload', { method: 'POST', body: fd })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Upload failed')
+      insertImageHtml(json.url)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Image upload failed.')
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  function handleImageUrl() {
+    saveSelection()
+    const url = window.prompt('Enter image URL (https://...)')
+    if (url?.trim()) insertImageHtml(url.trim())
+  }
+
+  // ── Image repositioning toolbar ─────────────────────────────────────────────
+
+  function handleEditorClick(e: React.MouseEvent<HTMLDivElement>) {
+    const target = e.target as HTMLElement
+    if (target.tagName === 'IMG') {
+      const img = target as HTMLImageElement
+      const editorEl = editorRef.current!
+      const editorRect = editorEl.getBoundingClientRect()
+      const imgRect = img.getBoundingClientRect()
+      setImgToolbar({
+        el:   img,
+        top:  imgRect.top  - editorRect.top  + editorEl.scrollTop  - 38,
+        left: imgRect.left - editorRect.left,
+      })
+    } else {
+      setImgToolbar(null)
+    }
+  }
+
+  function applyImgFloat(float: 'left' | 'none' | 'right') {
+    if (!imgToolbar) return
+    const img = imgToolbar.el
+    if (float === 'left') {
+      img.style.cssText = `max-width:50%;height:auto;float:left;margin:0 14px 8px 0;`
+    } else if (float === 'right') {
+      img.style.cssText = `max-width:50%;height:auto;float:right;margin:0 0 8px 14px;`
+    } else {
+      img.style.cssText = `max-width:100%;height:auto;display:block;margin:8px 0;`
+    }
+    syncContent()
+    // Update toolbar position after style change
+    const editorEl = editorRef.current!
+    const editorRect = editorEl.getBoundingClientRect()
+    const imgRect = img.getBoundingClientRect()
+    setImgToolbar(prev => prev ? {
+      ...prev,
+      top:  imgRect.top  - editorRect.top  + editorEl.scrollTop  - 38,
+      left: imgRect.left - editorRect.left,
+    } : null)
+  }
+
+  function removeImg() {
+    if (!imgToolbar) return
+    imgToolbar.el.remove()
+    setImgToolbar(null)
+    syncContent()
+  }
+
+  // ── CRUD ────────────────────────────────────────────────────────────────────
 
   async function handleToggle(w: TextWidget) {
     try {
@@ -176,13 +317,15 @@ export default function WidgetsPage() {
 
   const isSaveDisabled = saving || !form.title.trim() || !hasText(form.content)
 
+  // ── Render ──────────────────────────────────────────────────────────────────
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-brand-gold font-bold text-xl">Content Widgets</h1>
           <p className="text-brand-gold-muted text-sm mt-1">
-            Manage rich-text widgets shown on the home page. Changes are live immediately.
+            Rich-text widgets shown on the home page. Supports text, images, and links.
           </p>
         </div>
         <button
@@ -200,7 +343,16 @@ export default function WidgetsPage() {
         </div>
       )}
 
-      {/* Add/Edit form */}
+      {/* Hidden file input for image upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileSelect}
+      />
+
+      {/* Add / Edit form */}
       {showForm && (
         <div className="bg-brand-card border border-brand-gold/30 rounded-xl p-5 space-y-4">
           <div className="flex items-center justify-between mb-1">
@@ -212,6 +364,7 @@ export default function WidgetsPage() {
             </button>
           </div>
 
+          {/* Title + Position */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-brand-gold-muted text-xs font-medium mb-1">
@@ -225,7 +378,6 @@ export default function WidgetsPage() {
                 className="w-full px-3 py-2 bg-brand-bg border border-brand-border rounded-lg text-brand-body text-sm focus:outline-none focus:border-brand-gold"
               />
             </div>
-
             <div>
               <label className="block text-brand-gold-muted text-xs font-medium mb-1">Position</label>
               <select
@@ -245,36 +397,26 @@ export default function WidgetsPage() {
             <label className="block text-brand-gold-muted text-xs font-medium mb-1">
               Widget Content <span className="text-brand-error">*</span>
             </label>
+
             <div className="border border-brand-border rounded-lg overflow-hidden focus-within:border-brand-gold transition-colors">
               {/* Toolbar */}
               <div className="flex items-center gap-0.5 px-2 py-1.5 bg-brand-bg border-b border-brand-border flex-wrap">
-                <ToolBtn onClick={() => execCmd('bold')} title="Bold (Ctrl+B)">
-                  <strong>B</strong>
-                </ToolBtn>
-                <ToolBtn onClick={() => execCmd('italic')} title="Italic (Ctrl+I)">
-                  <em>I</em>
-                </ToolBtn>
-                <ToolBtn onClick={() => execCmd('underline')} title="Underline (Ctrl+U)">
-                  <span className="underline">U</span>
-                </ToolBtn>
+                {/* Text formatting */}
+                <ToolBtn onClick={() => execCmd('bold')}      title="Bold (Ctrl+B)"><strong>B</strong></ToolBtn>
+                <ToolBtn onClick={() => execCmd('italic')}    title="Italic (Ctrl+I)"><em>I</em></ToolBtn>
+                <ToolBtn onClick={() => execCmd('underline')} title="Underline (Ctrl+U)"><span className="underline">U</span></ToolBtn>
 
                 <div className="w-px h-4 bg-brand-border mx-1 flex-shrink-0" />
 
-                <ToolBtn onClick={() => execCmd('formatBlock', 'h1')} title="Heading 1">
-                  <span className="font-bold">H1</span>
-                </ToolBtn>
-                <ToolBtn onClick={() => execCmd('formatBlock', 'h2')} title="Heading 2">
-                  <span className="font-bold">H2</span>
-                </ToolBtn>
-                <ToolBtn onClick={() => execCmd('formatBlock', 'h3')} title="Heading 3">
-                  <span className="font-bold">H3</span>
-                </ToolBtn>
-                <ToolBtn onClick={() => execCmd('formatBlock', 'p')} title="Normal paragraph">
-                  P
-                </ToolBtn>
+                {/* Block types */}
+                <ToolBtn onClick={() => execCmd('formatBlock', 'h1')} title="Heading 1"><span className="font-bold">H1</span></ToolBtn>
+                <ToolBtn onClick={() => execCmd('formatBlock', 'h2')} title="Heading 2"><span className="font-bold">H2</span></ToolBtn>
+                <ToolBtn onClick={() => execCmd('formatBlock', 'h3')} title="Heading 3"><span className="font-bold">H3</span></ToolBtn>
+                <ToolBtn onClick={() => execCmd('formatBlock', 'p')}  title="Normal paragraph">P</ToolBtn>
 
                 <div className="w-px h-4 bg-brand-border mx-1 flex-shrink-0" />
 
+                {/* Lists */}
                 <ToolBtn onClick={() => execCmd('insertUnorderedList')} title="Bullet list">
                   <List className="w-3.5 h-3.5" />
                 </ToolBtn>
@@ -284,39 +426,96 @@ export default function WidgetsPage() {
 
                 <div className="w-px h-4 bg-brand-border mx-1 flex-shrink-0" />
 
-                <ToolBtn onClick={handleLink} title="Insert link">
-                  <Link2 className="w-3.5 h-3.5" />
+                {/* Links */}
+                <ToolBtn onClick={handleLink}             title="Insert link"><Link2 className="w-3.5 h-3.5" /></ToolBtn>
+                <ToolBtn onClick={() => execCmd('unlink')} title="Remove link"><span className="line-through opacity-70 text-xs">url</span></ToolBtn>
+
+                <div className="w-px h-4 bg-brand-border mx-1 flex-shrink-0" />
+
+                {/* Images */}
+                <ToolBtn onClick={handleUploadClick} title="Upload image from computer" active={uploading}>
+                  {uploading
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <ImagePlus className="w-3.5 h-3.5" />}
                 </ToolBtn>
-                <ToolBtn onClick={() => execCmd('unlink')} title="Remove link">
-                  <span className="line-through opacity-70">url</span>
+                <ToolBtn onClick={handleImageUrl} title="Insert image by URL">
+                  <span className="text-[10px] font-mono">IMG</span>
                 </ToolBtn>
               </div>
 
-              {/* Editable content area */}
-              <div
-                ref={editorRef}
-                contentEditable
-                suppressContentEditableWarning
-                onInput={syncContent}
-                className={[
-                  'min-h-[180px] max-h-[400px] overflow-y-auto p-3 text-brand-body text-sm focus:outline-none',
-                  '[&_h1]:text-brand-gold [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-2 [&_h1]:mt-1',
-                  '[&_h2]:text-brand-gold [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-1.5 [&_h2]:mt-1',
-                  '[&_h3]:text-brand-gold [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-1',
-                  '[&_p]:mb-2 [&_p]:leading-relaxed',
-                  '[&_a]:text-brand-gold [&_a]:underline [&_a]:cursor-pointer',
-                  '[&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2',
-                  '[&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-2',
-                  '[&_li]:mb-0.5',
-                  '[&_strong]:font-bold [&_em]:italic [&_u]:underline',
-                ].join(' ')}
-              />
+              {/* Editable content area — relative so the image toolbar can be positioned inside it */}
+              <div className="relative">
+                {/* Image float toolbar — appears when you click an image */}
+                {imgToolbar && (
+                  <div
+                    className="absolute z-10 flex items-center gap-0.5 bg-brand-bg border border-brand-gold/40 rounded-lg px-1.5 py-1 shadow-lg"
+                    style={{ top: Math.max(4, imgToolbar.top), left: Math.max(4, imgToolbar.left) }}
+                  >
+                    <button
+                      type="button"
+                      onMouseDown={e => { e.preventDefault(); applyImgFloat('left') }}
+                      title="Float left (text wraps right)"
+                      className="p-1 rounded hover:bg-brand-border/50 text-brand-gold-muted hover:text-brand-gold transition-colors"
+                    >
+                      <AlignLeft className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={e => { e.preventDefault(); applyImgFloat('none') }}
+                      title="Center / no float"
+                      className="p-1 rounded hover:bg-brand-border/50 text-brand-gold-muted hover:text-brand-gold transition-colors"
+                    >
+                      <AlignCenter className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={e => { e.preventDefault(); applyImgFloat('right') }}
+                      title="Float right (text wraps left)"
+                      className="p-1 rounded hover:bg-brand-border/50 text-brand-gold-muted hover:text-brand-gold transition-colors"
+                    >
+                      <AlignRight className="w-3.5 h-3.5" />
+                    </button>
+                    <div className="w-px h-3.5 bg-brand-border mx-0.5" />
+                    <button
+                      type="button"
+                      onMouseDown={e => { e.preventDefault(); removeImg() }}
+                      title="Remove image"
+                      className="p-1 rounded hover:bg-brand-error/20 text-brand-gold-muted hover:text-brand-error transition-colors"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                <div
+                  ref={editorRef}
+                  contentEditable
+                  suppressContentEditableWarning
+                  onInput={syncContent}
+                  onClick={handleEditorClick}
+                  className={[
+                    'min-h-[200px] max-h-[450px] overflow-y-auto p-3 text-brand-body text-sm focus:outline-none',
+                    '[&_h1]:text-brand-gold [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-2 [&_h1]:mt-1',
+                    '[&_h2]:text-brand-gold [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-1.5 [&_h2]:mt-1',
+                    '[&_h3]:text-brand-gold [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-1',
+                    '[&_p]:mb-2 [&_p]:leading-relaxed',
+                    '[&_a]:text-brand-gold [&_a]:underline [&_a]:cursor-pointer',
+                    '[&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2',
+                    '[&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-2',
+                    '[&_li]:mb-0.5',
+                    '[&_strong]:font-bold [&_em]:italic [&_u]:underline',
+                    '[&_img]:max-w-full [&_img]:h-auto [&_img]:rounded',
+                    '[&_img]:cursor-pointer [&_img]:outline-2 [&_img]:outline-transparent',
+                  ].join(' ')}
+                />
+              </div>
             </div>
             <p className="text-brand-gold-muted text-xs mt-1">
-              Supports bold, italic, underline, headings, lists, and links.
+              Click an inserted image to reposition it (float left / right / centre).
             </p>
           </div>
 
+          {/* Active toggle */}
           <div className="flex items-center gap-3">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -329,6 +528,7 @@ export default function WidgetsPage() {
             </label>
           </div>
 
+          {/* Save / Cancel */}
           <div className="flex gap-3 pt-1">
             <button
               onClick={handleSave}
@@ -355,7 +555,7 @@ export default function WidgetsPage() {
         <div className="bg-brand-card border border-brand-border rounded-xl p-8 text-center">
           <p className="text-brand-gold-muted text-sm">No widgets yet.</p>
           <p className="text-brand-gold-muted text-xs mt-1">
-            Click &ldquo;Add Widget&rdquo; to create your first text announcement.
+            Click &ldquo;Add Widget&rdquo; to create your first announcement.
           </p>
         </div>
       ) : (
@@ -382,7 +582,6 @@ export default function WidgetsPage() {
                       {POSITION_LABELS[w.position as Position]?.split(' (')[0] ?? w.position}
                     </span>
                   </div>
-                  {/* Plain-text preview strips HTML tags */}
                   <p className="text-brand-gold-muted text-xs mt-1.5 leading-relaxed line-clamp-2">
                     {stripHtml(w.content)}
                   </p>
@@ -391,25 +590,16 @@ export default function WidgetsPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <button
-                    onClick={() => handleToggle(w)}
-                    title={w.is_active ? 'Hide widget' : 'Show widget'}
-                    className="p-2 text-brand-gold-muted hover:text-brand-gold rounded-lg hover:bg-brand-border/40 transition-colors"
-                  >
+                  <button onClick={() => handleToggle(w)} title={w.is_active ? 'Hide' : 'Show'}
+                    className="p-2 text-brand-gold-muted hover:text-brand-gold rounded-lg hover:bg-brand-border/40 transition-colors">
                     {w.is_active ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
-                  <button
-                    onClick={() => openEdit(w)}
-                    title="Edit widget"
-                    className="p-2 text-brand-gold-muted hover:text-brand-gold rounded-lg hover:bg-brand-border/40 transition-colors"
-                  >
+                  <button onClick={() => openEdit(w)} title="Edit"
+                    className="p-2 text-brand-gold-muted hover:text-brand-gold rounded-lg hover:bg-brand-border/40 transition-colors">
                     <Pencil className="w-4 h-4" />
                   </button>
-                  <button
-                    onClick={() => handleDelete(w)}
-                    title="Delete widget"
-                    className="p-2 text-brand-gold-muted hover:text-brand-error rounded-lg hover:bg-brand-error/10 transition-colors"
-                  >
+                  <button onClick={() => handleDelete(w)} title="Delete"
+                    className="p-2 text-brand-gold-muted hover:text-brand-error rounded-lg hover:bg-brand-error/10 transition-colors">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
