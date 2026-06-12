@@ -65,8 +65,9 @@ function stripHtml(html: string) {
   return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
-function hasText(html: string) {
-  return html.replace(/<[^>]*>/g, '').trim().length > 0
+function hasContent(html: string) {
+  // True if there is visible text OR at least one image
+  return html.replace(/<[^>]*>/g, '').trim().length > 0 || /<img\s/i.test(html)
 }
 
 export default function WidgetsPage() {
@@ -142,8 +143,10 @@ export default function WidgetsPage() {
   }
 
   async function handleSave() {
+    // Strip selection outlines before reading HTML so they don't persist in saved content
+    editorRef.current?.querySelectorAll('img').forEach(img => { img.style.outline = '' })
     const html = editorRef.current?.innerHTML ?? ''
-    if (!form.title.trim() || !hasText(html)) return
+    if (!form.title.trim() || !hasContent(html)) return
     setSaving(true)
     try {
       const url    = editingId ? `/api/admin/widgets/${editingId}` : '/api/admin/widgets'
@@ -323,12 +326,13 @@ export default function WidgetsPage() {
     const currentW = Math.round((img.getBoundingClientRect().width / (editorRef.current?.offsetWidth ?? 600)) * 100)
     const w = Math.min(100, Math.max(10, currentW))
     if (float === 'left') {
-      img.style.cssText = `float:left;width:${w}%;max-width:${w}%;height:auto;margin:0 14px 8px 0;border-radius:4px;outline:2px solid #f0b429;`
+      img.style.cssText = `float:left;width:${w}%;max-width:${w}%;height:auto;margin:0 14px 8px 0;border-radius:4px;`
     } else if (float === 'right') {
-      img.style.cssText = `float:right;width:${w}%;max-width:${w}%;height:auto;margin:0 0 8px 14px;border-radius:4px;outline:2px solid #f0b429;`
+      img.style.cssText = `float:right;width:${w}%;max-width:${w}%;height:auto;margin:0 0 8px 14px;border-radius:4px;`
     } else {
-      img.style.cssText = `display:block;width:${Math.max(w, 50)}%;max-width:${Math.max(w, 50)}%;height:auto;margin:8px auto;border-radius:4px;outline:2px solid #f0b429;`
+      img.style.cssText = `display:block;width:${Math.max(w, 50)}%;max-width:${Math.max(w, 50)}%;height:auto;margin:8px auto;border-radius:4px;`
     }
+    img.style.outline = '2px solid #f0b429'   // re-apply selection indicator (stripped on save)
     syncContent()
     // Recalculate toolbar position after layout shift
     requestAnimationFrame(() => setImgToolbar(calcImgToolbar(img)))
@@ -397,7 +401,7 @@ export default function WidgetsPage() {
     }
   }
 
-  const isSaveDisabled = saving || !form.title.trim() || !hasText(form.content)
+  const isSaveDisabled = saving || !form.title.trim() || !hasContent(form.content)
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
