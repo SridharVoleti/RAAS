@@ -62,19 +62,6 @@ export default function HomeContent({ courses, stats, testimonials, widgets }: P
           Verification link is invalid or expired. Please request a new one.
         </div>
       )}
-      {/* Hero */}
-      <section className="relative overflow-hidden bg-hero-gradient py-20 px-4">
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
-          <span className="text-[280px] font-bold text-brand-gold opacity-[0.04] leading-none">ॐ</span>
-        </div>
-        <div className="relative max-w-4xl mx-auto text-center">
-          <div className="text-5xl mb-4">ॐ</div>
-          <h1 className="text-4xl sm:text-5xl font-bold text-brand-gold mb-3">{t.hero.title}</h1>
-          <p className="text-xl text-brand-gold-secondary mb-1">{t.hero.tagline}</p>
-          <p className="text-lg text-brand-gold-muted mb-4">{t.hero.tagline2}</p>
-        </div>
-      </section>
-
       {/* Learning Paths */}
       <section className="max-w-7xl mx-auto px-4 py-10">
         <h2 className="text-brand-gold font-bold text-xl text-center mb-6">{t.paths.heading}</h2>
