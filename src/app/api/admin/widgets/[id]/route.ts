@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { getAdminUser, forbidden } from '@/lib/admin'
 import { createAdminClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
@@ -38,6 +39,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     return NextResponse.json({ error: 'Failed to update widget' }, { status: 500 })
   }
 
+  revalidateTag('widgets')
   logger.info({ widgetId, admin: admin.email }, 'admin.widgets.updated')
   return NextResponse.json({ widget: data })
 }
@@ -61,6 +63,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: 'Failed to delete widget' }, { status: 500 })
   }
 
+  revalidateTag('widgets')
   logger.info({ widgetId, admin: admin.email }, 'admin.widgets.deleted')
   return NextResponse.json({ ok: true })
 }

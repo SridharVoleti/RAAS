@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { getAdminUser, forbidden } from '@/lib/admin'
 import { createAdminClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
@@ -51,6 +52,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Failed to create widget' }, { status: 500 })
   }
 
+  revalidateTag('widgets')
   logger.info({ widgetId: data.id, admin: admin.email }, 'admin.widgets.created')
   return NextResponse.json({ widget: data }, { status: 201 })
 }
