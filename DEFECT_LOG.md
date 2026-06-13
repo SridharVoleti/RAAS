@@ -16,6 +16,102 @@ Format: newest defects at the top within each section.
 
 ---
 
+## UI — Admin Content Widgets
+
+---
+
+### UI-002 · Widget selection outline (gold border) saved into HTML and rendered on home page
+| | |
+|---|---|
+| **Date** | 2026-06-12 |
+| **Severity** | P2 |
+| **Status** | Fixed |
+| **Commit** | 0f9b11d |
+
+**Issue**
+After inserting and repositioning an image in the widget rich text editor, the gold selection outline (`outline: 2px solid #f0b429`) was visible on published widgets on the home page.
+
+**Root Cause**
+`applyImgFloat` embedded `outline` directly in the image's `cssText` string, and `handleEditorClick` set `img.style.outline` directly on the DOM element. Both were captured in `innerHTML` when `handleSave` called `editorRef.current.innerHTML`, so the outline was persisted to the database.
+
+**Solution**
+Strip `outline` from `applyImgFloat`'s cssText; re-apply it as a separate `img.style.outline` assignment (not in cssText). In `handleSave`, query all images and set `img.style.outline = ''` before reading `innerHTML`.
+
+**Prevention**
+Editor-only visual indicators (focus rings, selection outlines, placeholder text) must never be part of the serialised `innerHTML`. Strip or use non-serialised CSS (e.g. `:focus` pseudo-class) for anything that shouldn't reach the DB.
+
+---
+
+### UI-001 · Widget Save button disabled when content contains only images (no text)
+| | |
+|---|---|
+| **Date** | 2026-06-12 |
+| **Severity** | P2 |
+| **Status** | Fixed |
+| **Commit** | 0f9b11d |
+
+**Issue**
+After inserting one or more images into the widget editor, the Save button remained disabled even with a valid title.
+
+**Root Cause**
+`hasText(html)` stripped all HTML tags with a regex and checked if any text remained. `<img>` elements have no text content, so image-only widgets always evaluated to empty and the guard `!hasText(html)` kept the button in a disabled state.
+
+**Solution**
+Renamed to `hasContent(html)`. Returns true if visible text is present OR if the HTML contains at least one `<img` tag.
+
+**Prevention**
+"Content present" checks for rich text must account for non-text media. Validate against the media type set the editor supports.
+
+---
+
+## EMAIL — Newsletter & Transactional Email
+
+---
+
+### EMAIL-002 · Newsletter stuck as "Sent" indefinitely — never delivered to Gmail
+| | |
+|---|---|
+| **Date** | 2026-06-12 |
+| **Severity** | P1 |
+| **Status** | Fixed |
+| **Commit** | a7626c7 |
+
+**Issue**
+Newsletter showed "Sent" status in Resend dashboard for 30+ minutes with no delivery update. Recipients (all Gmail) never received the email. `from:srikrishnamargam.in in:anywhere` in Gmail returned zero results — Gmail never received the message.
+
+**Root Cause**
+Sending one email with 8 Gmail addresses in the `bcc` field caused Resend's outbound infrastructure to stall the delivery queue. BCC bulk sending to multiple Gmail addresses from a shared Resend IP is treated as a spam pattern; Gmail's MTAs rate-limit or temporarily refuse the connection, and Resend queued without surfacing a "delivery delayed" status. SPF and DKIM were verified, so the issue was the BCC pattern itself, not domain authentication.
+
+**Solution**
+Replaced single BCC email with `resend.batch.send()` — one individual email per recipient, sent in one API call per batch of 50. Each email has a clean single `to:` field. Resend treats these as normal transactional traffic.
+
+**Prevention**
+BCC is a spam signal for email infrastructure. For bulk delivery always use individual `to:` per recipient, even if it means more API calls. Use a batch endpoint (`resend.batch.send`) for efficiency.
+
+---
+
+### EMAIL-001 · Newsletter shows 0 registered users despite enrolled students
+| | |
+|---|---|
+| **Date** | 2026-06-10 |
+| **Severity** | P2 |
+| **Status** | Fixed |
+| **Commit** | 4ea11f3 |
+
+**Issue**
+Newsletter composer showed "0 registered members will receive this" even with 3–5 enrolled students.
+
+**Root Cause**
+`getAllUserEmails` used `if (error || !data?.users?.length) break` — any error from `auth.admin.listUsers` silently broke the loop and returned `[]`. The error was never logged.
+
+**Solution**
+Log the actual error; add a two-tier fallback: primary = `listUsers`, fallback = `profiles` table → `getUserById` in parallel chunks of 10. Surface `fetchError` in GET response; show diagnostic in the UI.
+
+**Prevention**
+Never silently break on Supabase errors for critical data fetches. Always log the error object (not just a boolean) and provide a fallback or surface the error to the caller.
+
+---
+
 ## QUIZ — Lesson Quizzes
 
 ---
@@ -26,7 +122,7 @@ Format: newest defects at the top within each section.
 | **Date** | 2026-06-11 |
 | **Severity** | P2 |
 | **Status** | Fixed |
-| **Commit** | — |
+| **Commit** | 7e939d7 |
 
 **Issue**
 A quiz question added earlier by the admin did not appear in the student watch page (no "Test your knowledge" entry in the Lessons panel) even though the row existed in `quiz_questions`.
