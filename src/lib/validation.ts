@@ -74,6 +74,7 @@ const CourseBaseSchema = z.object({
   is_free:        z.boolean().optional(),
   price:          z.number().nonnegative('Price cannot be negative').optional(),
   has_quiz:       z.boolean().optional(),
+  has_exam:       z.boolean().optional(),
   order_index:    z.number().int().nonnegative().optional(),
   is_published:   z.boolean().optional(),
 })
@@ -84,6 +85,7 @@ export const UpdateCourseSchema = CourseBaseSchema.partial()
 // ── Lessons ───────────────────────────────────────────────────────────────────
 
 const LessonBaseSchema = z.object({
+  chapter_id:       z.number().int().positive().nullable().optional(),
   section_title:    z.string().max(100).nullable().optional(),
   title_en:         z.string().min(2).max(200),
   title_te:         z.string().max(200).nullable().optional(),
@@ -97,6 +99,17 @@ export const CreateLessonSchema = LessonBaseSchema
 export const UpdateLessonSchema = LessonBaseSchema.extend({
   order_index: z.number().int().positive(),
 })
+
+// ── Chapters ──────────────────────────────────────────────────
+
+const ChapterBaseSchema = z.object({
+  title_en:    z.string().min(2).max(200),
+  title_te:    z.string().max(200).optional(),
+  order_index: z.number().int().nonnegative().optional(),
+})
+
+export const CreateChapterSchema = ChapterBaseSchema
+export const UpdateChapterSchema = ChapterBaseSchema.partial()
 
 // ── Quiz ─────────────────────────────────────────────────────────────────────
 
@@ -119,10 +132,44 @@ export const CreateQuizQuestionSchema = QuizQuestionBaseSchema
 export const UpdateQuizQuestionSchema = QuizQuestionBaseSchema.partial().extend({
   correct_option: z.enum(['a', 'b', 'c', 'd']),
   lesson_id:      z.number().int().positive().optional(),
+  chapter_id:     z.number().int().positive().optional(),
 })
 
 export const QuizSubmitSchema = z.object({
   answers: z.record(z.string(), z.enum(['a', 'b', 'c', 'd'])),
+})
+
+// ── Exam ──────────────────────────────────────────────────────────────────────
+
+const ExamQuestionBaseSchema = z.object({
+  course_id:      z.number().int().positive(),
+  difficulty:     z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  question_en:    z.string().min(2).max(2000),
+  question_te:    z.string().max(2000).optional(),
+  option_a_en:    z.string().min(1).max(500),
+  option_a_te:    z.string().max(500).optional(),
+  option_b_en:    z.string().min(1).max(500),
+  option_b_te:    z.string().max(500).optional(),
+  option_c_en:    z.string().min(1).max(500),
+  option_c_te:    z.string().max(500).optional(),
+  option_d_en:    z.string().min(1).max(500),
+  option_d_te:    z.string().max(500).optional(),
+  correct_option: z.enum(['a', 'b', 'c', 'd']),
+})
+
+export const CreateExamQuestionSchema = ExamQuestionBaseSchema
+export const UpdateExamQuestionSchema = ExamQuestionBaseSchema.partial().extend({
+  correct_option: z.enum(['a', 'b', 'c', 'd']).optional(),
+})
+
+export const ExamAnswerSchema = z.object({
+  session_id: z.string().uuid(),
+  question_id: z.number().int().positive(),
+  answer: z.enum(['a', 'b', 'c', 'd']),
+})
+
+export const ExamEnrollSchema = z.object({
+  courseId: z.number().int().positive(),
 })
 
 // ── Email templates ───────────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/server'
 import CourseForm from '@/components/admin/CourseForm'
+import ChapterManager from '@/components/admin/ChapterManager'
 import LessonManager from '@/components/admin/LessonManager'
 import type { Course } from '@/types'
 
@@ -28,6 +29,8 @@ export default async function EditCoursePage({ params }: { params: Promise<{ id:
       </div>
 
       <CourseForm course={course} />
+
+      <ChapterManager courseId={course.id} />
 
       <LessonManager courseId={course.id} />
     </div>

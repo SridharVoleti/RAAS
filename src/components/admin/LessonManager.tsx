@@ -1,10 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ChevronUp, ChevronDown, Pencil, Trash2, Plus, X, Check, Eye, HelpCircle } from 'lucide-react'
+import { ChevronUp, ChevronDown, Pencil, Trash2, Plus, X, Check, Eye } from 'lucide-react'
 import ConfirmModal from './ConfirmModal'
-import QuizManager from './QuizManager'
-import type { Lesson } from '@/types'
+import type { Chapter, Lesson } from '@/types'
 
 function extractYouTubeId(input: string): string {
   const match = input.match(/(?:v=|\/embed\/|\.be\/)([A-Za-z0-9_-]{11})/)
@@ -12,6 +11,7 @@ function extractYouTubeId(input: string): string {
 }
 
 const emptyLesson = {
+  chapter_id: undefined as number | undefined,
   section_title: '', title_en: '', title_te: '',
   youtube_video_id: '', duration: '', is_preview: false, order_index: 1,
 }
@@ -20,6 +20,7 @@ interface Props { courseId: number }
 
 export default function LessonManager({ courseId }: Props) {
   const [lessons, setLessons] = useState<Lesson[]>([])
+  const [chapters, setChapters] = useState<Chapter[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState<Partial<Lesson>>({})
@@ -28,10 +29,10 @@ export default function LessonManager({ courseId }: Props) {
   const [deleteTarget, setDeleteTarget] = useState<Lesson | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [quizOpenId, setQuizOpenId] = useState<number | null>(null)
 
   useEffect(() => {
     fetchLessons()
+    fetchChapters()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId])
 
@@ -41,6 +42,11 @@ export default function LessonManager({ courseId }: Props) {
     const data = await res.json()
     setLessons(data)
     setLoading(false)
+  }
+
+  async function fetchChapters() {
+    const res = await fetch(`/api/admin/chapters?courseId=${courseId}`)
+    if (res.ok) setChapters(await res.json())
   }
 
   async function handleAdd() {
@@ -129,9 +135,9 @@ export default function LessonManager({ courseId }: Props) {
       ) : (
         <div>
           {/* Column headers */}
-          <div className="grid grid-cols-[28px_1fr_120px_80px_60px_100px] gap-2 px-4 py-2 text-brand-gold-muted text-[10px] uppercase font-medium border-b border-brand-border bg-brand-bg">
+          <div className="grid grid-cols-[28px_1fr_120px_120px_80px_60px_80px] gap-2 px-4 py-2 text-brand-gold-muted text-[10px] uppercase font-medium border-b border-brand-border bg-brand-bg">
             <span>#</span><span>Title (EN) / Section</span><span>YouTube ID</span>
-            <span>Duration</span><span>Preview</span><span className="text-right">Actions</span>
+            <span>Chapter</span><span>Duration</span><span>Preview</span><span className="text-right">Actions</span>
           </div>
 
           {sorted.map((lesson, idx) => (
@@ -140,6 +146,17 @@ export default function LessonManager({ courseId }: Props) {
                 /* ── Inline edit form ── */
                 <div className="p-4 bg-brand-bg/60 space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-brand-gold-muted text-[10px] mb-0.5 block">Chapter</label>
+                      <select
+                        value={editForm.chapter_id ?? ''}
+                        onChange={e => setEditForm(f => ({ ...f, chapter_id: e.target.value ? Number(e.target.value) : undefined }))}
+                        className={inputCls}
+                      >
+                        <option value="">— No chapter —</option>
+                        {chapters.map(c => <option key={c.id} value={c.id}>{c.order_index}. {c.title_en}</option>)}
+                      </select>
+                    </div>
                     <div>
                       <label className="text-brand-gold-muted text-[10px] mb-0.5 block">Section Title</label>
                       <input value={editForm.section_title ?? ''} onChange={e => setEditForm(f => ({ ...f, section_title: e.target.value }))} className={inputCls} placeholder="Optional section" />
@@ -180,13 +197,18 @@ export default function LessonManager({ courseId }: Props) {
                 </div>
               ) : (
                 /* ── Read-only row ── */
-                <div className="grid grid-cols-[28px_1fr_120px_80px_60px_100px] gap-2 px-4 py-3 items-center hover:bg-brand-bg/40 transition-colors">
+                <div className="grid grid-cols-[28px_1fr_120px_120px_80px_60px_80px] gap-2 px-4 py-3 items-center hover:bg-brand-bg/40 transition-colors">
                   <span className="text-brand-gold-muted text-xs font-mono">{idx + 1}</span>
                   <div>
                     <div className="text-brand-body text-xs font-medium">{lesson.title_en}</div>
                     {lesson.section_title && <div className="text-brand-gold-muted text-[10px]">{lesson.section_title}</div>}
                   </div>
                   <span className="text-brand-gold-muted text-xs font-mono truncate">{lesson.youtube_video_id}</span>
+                  <span className="text-brand-gold-muted text-xs truncate">
+                    {lesson.chapter_id
+                      ? (chapters.find(c => c.id === lesson.chapter_id)?.title_en ?? `#${lesson.chapter_id}`)
+                      : '—'}
+                  </span>
                   <span className="text-brand-body text-xs">{lesson.duration || '—'}</span>
                   <span>{lesson.is_preview ? <Eye className="w-3.5 h-3.5 text-brand-success" /> : <span className="text-brand-border text-xs">—</span>}</span>
                   <div className="flex items-center gap-1 justify-end">
@@ -202,31 +224,11 @@ export default function LessonManager({ courseId }: Props) {
                       className="p-1 text-brand-gold-muted hover:text-brand-gold transition-colors">
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
-                    <button
-                      onClick={() => setQuizOpenId(prev => prev === lesson.id ? null : lesson.id)}
-                      title="Manage quiz questions for this lesson"
-                      className={`p-1 transition-colors ${quizOpenId === lesson.id ? 'text-brand-gold' : 'text-brand-gold-muted hover:text-brand-gold'}`}>
-                      <HelpCircle className="w-3.5 h-3.5" />
-                    </button>
                     <button onClick={() => setDeleteTarget(lesson)}
                       className="p-1 text-brand-gold-muted hover:text-brand-error transition-colors">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                </div>
-              )}
-
-              {/* ── Per-lesson quiz panel ── */}
-              {quizOpenId === lesson.id && (
-                <div className="border-t border-brand-gold/20 bg-brand-bg/40 px-4 py-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <HelpCircle className="w-3.5 h-3.5 text-brand-gold" />
-                    <span className="text-brand-gold text-xs font-semibold">Quiz for: {lesson.title_en}</span>
-                    <button onClick={() => setQuizOpenId(null)} className="ml-auto text-brand-gold-muted hover:text-brand-gold transition-colors">
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <QuizManager lessonId={lesson.id} lessons={lessons} />
                 </div>
               )}
             </div>
@@ -237,6 +239,17 @@ export default function LessonManager({ courseId }: Props) {
             <div className="p-4 border-t border-brand-border bg-brand-bg/60 space-y-3">
               <h4 className="text-brand-gold text-xs font-semibold">New Lesson</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="text-brand-gold-muted text-[10px] mb-0.5 block">Chapter</label>
+                  <select
+                    value={addForm.chapter_id ?? ''}
+                    onChange={e => setAddForm(f => ({ ...f, chapter_id: e.target.value ? Number(e.target.value) : undefined }))}
+                    className={inputCls}
+                  >
+                    <option value="">— No chapter —</option>
+                    {chapters.map(c => <option key={c.id} value={c.id}>{c.order_index}. {c.title_en}</option>)}
+                  </select>
+                </div>
                 <div>
                   <label className="text-brand-gold-muted text-[10px] mb-0.5 block">Section Title</label>
                   <input value={addForm.section_title} onChange={e => setAddForm(f => ({ ...f, section_title: e.target.value }))} className={inputCls} placeholder="Optional grouping" />

@@ -69,8 +69,8 @@ export default function WatchClient({
   const [viewingQuiz, setViewingQuiz] = useState(false)
   const [passedQuizIds, setPassedQuizIds] = useState<Set<number>>(() => new Set(
     quizSubmissions
-      .filter(s => s.total_questions > 0 && (s.score / s.total_questions) * 100 >= QUIZ_PASS_PCT)
-      .map(s => s.lesson_id)
+      .filter(s => s.lesson_id !== undefined && s.total_questions > 0 && (s.score / s.total_questions) * 100 >= QUIZ_PASS_PCT)
+      .map(s => s.lesson_id as number)
   ))
   const [activeTab, setActiveTab] = useState<TabType>('lessons')
   const [notes, setNotes] = useState('')
@@ -100,9 +100,9 @@ export default function WatchClient({
   const progressPct = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0
   const isCurrentComplete = currentLesson ? completedIds.has(currentLesson.id) : false
 
-  // Quiz data for the current lesson
+  // Quiz data for the current lesson (only questions with a lesson_id)
   const quizCounts = quizQuestions.reduce<Record<number, number>>((acc, q) => {
-    acc[q.lesson_id] = (acc[q.lesson_id] || 0) + 1
+    if (q.lesson_id !== undefined) acc[q.lesson_id] = (acc[q.lesson_id] || 0) + 1
     return acc
   }, {})
   const currentQuizQuestions = quizQuestions.filter(q => q.lesson_id === currentLesson?.id)

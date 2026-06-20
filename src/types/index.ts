@@ -1,5 +1,20 @@
 export type Language = 'en' | 'te'
 
+export type RazorpayOptions = {
+  key: string; amount: number; currency: string; name: string
+  description: string; order_id: string
+  handler: (response?: { razorpay_payment_id: string; razorpay_order_id: string }) => void
+  prefill?: { email?: string }
+  theme?: { color?: string }
+  modal?: { ondismiss?: () => void }
+}
+
+declare global {
+  interface Window {
+    Razorpay: new (options: RazorpayOptions) => { open: () => void }
+  }
+}
+
 export interface Path {
   id: number
   slug: string
@@ -35,14 +50,25 @@ export interface Course {
   review_count: number
   student_count: number
   has_quiz: boolean
+  has_exam?: boolean
   order_index: number
   is_published: boolean
   curriculum?: string[]
 }
 
+export interface Chapter {
+  id: number
+  course_id: number
+  title_en: string
+  title_te?: string
+  order_index: number
+  created_at: string
+}
+
 export interface Lesson {
   id: number
   course_id: number
+  chapter_id?: number
   section_title?: string
   title_en: string
   title_te?: string
@@ -104,7 +130,8 @@ export interface PaymentLog {
 
 export interface QuizQuestion {
   id: number
-  lesson_id: number
+  lesson_id?: number
+  chapter_id?: number
   question_en: string
   question_te?: string
   option_a_en: string
@@ -124,7 +151,8 @@ export type QuizQuestion_Public = Omit<QuizQuestion, 'correct_option'>
 export interface QuizSubmission {
   id: number
   user_id: string
-  lesson_id: number
+  lesson_id?: number
+  chapter_id?: number
   score: number
   total_questions: number
   submitted_at: string
@@ -135,6 +163,59 @@ export interface QuizResult {
   total: number
   results: Record<number, { correct: boolean; correct_option: 'a' | 'b' | 'c' | 'd' }>
 }
+
+export interface ExamQuestion {
+  id: number
+  course_id: number
+  difficulty: 1 | 2 | 3
+  question_en: string
+  question_te?: string
+  option_a_en: string
+  option_a_te?: string
+  option_b_en: string
+  option_b_te?: string
+  option_c_en: string
+  option_c_te?: string
+  option_d_en: string
+  option_d_te?: string
+  correct_option: 'a' | 'b' | 'c' | 'd'
+  created_at: string
+}
+
+export type ExamQuestion_Public = Omit<ExamQuestion, 'correct_option'>
+
+export interface ExamSession {
+  id: string
+  user_id: string
+  course_id: number
+  session_type: 'course' | 'exam_only'
+  status: 'in_progress' | 'submitted'
+  question_sequence: number[]
+  answers: Record<string, 'a' | 'b' | 'c' | 'd'>
+  current_difficulty: 1 | 2 | 3
+  questions_answered: number
+  score: number | null
+  passed: boolean | null
+  started_at: string
+  submitted_at: string | null
+}
+
+export interface ExamNextQuestion {
+  question: ExamQuestion_Public
+  question_number: number
+  total_questions: number
+  done: false
+}
+
+export interface ExamComplete {
+  done: true
+  score: number
+  total: number
+  passed: boolean
+  session_id: string
+}
+
+export type ExamNextResponse = ExamNextQuestion | ExamComplete
 
 export interface TextWidget {
   id: number

@@ -38,12 +38,16 @@ function toQForm(q: QuizQuestion): QForm {
 }
 
 interface Props {
-  lessonId: number
+  lessonId?: number
+  chapterId?: number
   /** All lessons of the course, used to move a question to another lesson */
   lessons?: Lesson[]
 }
 
-export default function QuizManager({ lessonId, lessons = [] }: Props) {
+export default function QuizManager({ lessonId, chapterId, lessons = [] }: Props) {
+  const apiBase = chapterId
+    ? `/api/admin/chapters/${chapterId}/quiz`
+    : `/api/admin/lessons/${lessonId}/quiz`
   const [questions, setQuestions] = useState<QuizQuestion[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -59,11 +63,11 @@ export default function QuizManager({ lessonId, lessons = [] }: Props) {
   useEffect(() => {
     fetchQuestions()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lessonId])
+  }, [lessonId, chapterId])
 
   async function fetchQuestions() {
     setLoading(true)
-    const res = await fetch(`/api/admin/lessons/${lessonId}/quiz`)
+    const res = await fetch(apiBase)
     const data = await res.json()
     setQuestions(data)
     setLoading(false)
@@ -81,7 +85,7 @@ export default function QuizManager({ lessonId, lessons = [] }: Props) {
     if (err) { setError(err); return }
     setError('')
     setSaving(true)
-    const res = await fetch(`/api/admin/lessons/${lessonId}/quiz`, {
+    const res = await fetch(apiBase, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...addForm, order_index: questions.length + 1 }),
     })

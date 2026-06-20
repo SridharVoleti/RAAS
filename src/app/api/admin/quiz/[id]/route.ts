@@ -31,8 +31,8 @@ export async function PUT(
     correct_option: body.correct_option,
     order_index:    body.order_index,
   }
-  // Move the question to a different lesson when requested
-  if (body.lesson_id !== undefined) update.lesson_id = body.lesson_id
+  if (body.lesson_id !== undefined)  update.lesson_id  = body.lesson_id
+  if (body.chapter_id !== undefined) update.chapter_id = body.chapter_id
 
   const { data, error } = await supabase
     .from('quiz_questions')

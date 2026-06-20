@@ -1,34 +1,24 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { getAdminUser, forbidden } from '@/lib/admin'
-import { parseBody, UpdateLessonSchema } from '@/lib/validation'
+import { parseBody, UpdateChapterSchema } from '@/lib/validation'
 
-export async function PUT(
+export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const admin = await getAdminUser()
   if (!admin) return forbidden()
 
-  const parsed = await parseBody(req, UpdateLessonSchema)
+  const parsed = await parseBody(req, UpdateChapterSchema)
   if (!parsed.success) return parsed.response
-  const body = parsed.data
 
   const { id } = await params
   const supabase = await createAdminClient()
 
   const { data, error } = await supabase
-    .from('lessons')
-    .update({
-      chapter_id:       body.chapter_id ?? null,
-      section_title:    body.section_title ?? null,
-      title_en:         body.title_en,
-      title_te:         body.title_te ?? null,
-      youtube_video_id: body.youtube_video_id,
-      duration:         body.duration ?? null,
-      order_index:      body.order_index,
-      is_preview:       body.is_preview ?? false,
-    })
+    .from('chapters')
+    .update(parsed.data)
     .eq('id', Number(id))
     .select()
     .single()
@@ -47,7 +37,7 @@ export async function DELETE(
   const { id } = await params
   const supabase = await createAdminClient()
 
-  const { error } = await supabase.from('lessons').delete().eq('id', Number(id))
+  const { error } = await supabase.from('chapters').delete().eq('id', Number(id))
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ success: true })
+  return new NextResponse(null, { status: 204 })
 }
