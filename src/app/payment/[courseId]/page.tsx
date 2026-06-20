@@ -8,24 +8,7 @@ import { getCourseById, getCourseBySlug } from '@/lib/getCourses'
 import { getISTHour } from '@/lib/utils'
 import type { Course } from '@/types'
 
-declare global {
-  interface Window {
-    Razorpay: new (options: RazorpayOptions) => { open: () => void }
-  }
-}
-
-type RazorpayOptions = {
-  key: string
-  amount: number
-  currency: string
-  name: string
-  description: string
-  order_id: string
-  handler: (response: { razorpay_payment_id: string; razorpay_order_id: string }) => void
-  prefill?: { email?: string }
-  theme?: { color?: string }
-  modal?: { ondismiss?: () => void }
-}
+import type { RazorpayOptions } from '@/types'
 
 async function loadRazorpayScript(): Promise<boolean> {
   if (typeof window !== 'undefined' && window.Razorpay) return true
@@ -174,7 +157,7 @@ export default function PaymentPage() {
               disabled={loading !== null}
               className="w-full p-4 bg-brand-gold text-brand-bg rounded-xl text-left hover:bg-yellow-400 transition-colors disabled:opacity-60 group"
             >
-              <div className="font-bold text-sm">₹{course.price} · {t.payment.optionPay}</div>
+              <div className="font-bold text-sm">{t.payment.optionPay}</div>
               <div className="text-brand-bg/70 text-xs mt-0.5">{t.payment.optionPaySub}</div>
               {loading === 'pay' && <div className="text-brand-bg/70 text-xs mt-1">Loading…</div>}
             </button>
