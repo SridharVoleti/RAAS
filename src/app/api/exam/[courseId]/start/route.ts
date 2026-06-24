@@ -166,5 +166,3 @@ function getCandidateDifficulties(target: number): number[] {
   if (target === 3) return [3, 2]
   return [2, 1, 3]
 }
-
-export { EXAM_LENGTH, PASS_THRESHOLD, COOLDOWN_HOURS, pickQuestion, getCandidateDifficulties }
