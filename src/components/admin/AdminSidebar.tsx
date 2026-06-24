@@ -2,19 +2,22 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, BookOpen, CreditCard, Users, Mail, Shield, BarChart2, LogOut, Type, Newspaper } from 'lucide-react'
+import { LayoutDashboard, BookOpen, CreditCard, Users, Mail, Shield, BarChart2, LogOut, Type, Newspaper, Settings, Heart, ClipboardList } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const NAV = [
-  { label: 'Dashboard', href: '/admin',           icon: LayoutDashboard, exact: true },
-  { label: 'Courses',   href: '/admin/courses',   icon: BookOpen },
-  { label: 'Payments',  href: '/admin/payments',  icon: CreditCard },
-  { label: 'Students',  href: '/admin/students',  icon: Users },
-  { label: 'Analytics', href: '/admin/analytics', icon: BarChart2 },
-  { label: 'Email',     href: '/admin/email',     icon: Mail },
-  { label: 'Admins',    href: '/admin/admins',    icon: Shield },
-  { label: 'Newsletter', href: '/admin/newsletter', icon: Newspaper },
-  { label: 'Content',   href: '/admin/widgets',   icon: Type },
+  { label: 'Dashboard',   href: '/admin',                icon: LayoutDashboard, exact: true },
+  { label: 'Courses',     href: '/admin/courses',        icon: BookOpen },
+  { label: 'Exam Bank',   href: '/admin/exam-questions', icon: ClipboardList },
+  { label: 'Payments',    href: '/admin/payments',       icon: CreditCard },
+  { label: 'Students',    href: '/admin/students',       icon: Users },
+  { label: 'Analytics',   href: '/admin/analytics',      icon: BarChart2 },
+  { label: 'Email',       href: '/admin/email',          icon: Mail },
+  { label: 'Admins',      href: '/admin/admins',         icon: Shield },
+  { label: 'Newsletter',  href: '/admin/newsletter',     icon: Newspaper },
+  { label: 'Content',     href: '/admin/widgets',        icon: Type },
+  { label: 'Donations',   href: '/admin/donations',      icon: Heart },
+  { label: 'Settings',    href: '/admin/settings',       icon: Settings },
 ]
 
 interface Props {

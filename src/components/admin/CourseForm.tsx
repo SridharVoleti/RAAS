@@ -36,6 +36,7 @@ export default function CourseForm({ course }: Props) {
     badge:          course?.badge ?? '',
     duration:       course?.duration ?? '4 weeks',
     has_quiz:       course?.has_quiz ?? false,
+    has_exam:       course?.has_exam ?? false,
     order_index:    course?.order_index ?? 0,
     is_free:        course?.is_free ?? false,
     price:          course?.price ?? 0,
@@ -232,6 +233,11 @@ export default function CourseForm({ course }: Props) {
             <input type="checkbox" checked={form.has_quiz} onChange={e => set('has_quiz', e.target.checked)}
               className="w-4 h-4 accent-yellow-400" />
             <span className="text-brand-body text-sm">Has Quiz</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input type="checkbox" checked={form.has_exam} onChange={e => set('has_exam', e.target.checked)}
+              className="w-4 h-4 accent-yellow-400" />
+            <span className="text-brand-body text-sm">Has Certification Exam</span>
           </label>
         </div>
       </div>

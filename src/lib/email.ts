@@ -363,6 +363,74 @@ This link is valid for 24 hours. If you did not create this account, you can ign
   }
 }
 
+/** Send a donation receipt email. amountPaise is in paise. */
+export async function sendDonationReceiptEmail(
+  userId: string,
+  amountPaise: number,
+  receiptNumber: string,
+  purpose: 'general' | 'course',
+  courseName?: string,
+): Promise<void> {
+  try {
+    const resend = getResendClient()
+    if (!resend) return
+
+    const supabase = await createAdminClient()
+    const [
+      { data: { user } },
+      { data: profile },
+    ] = await Promise.all([
+      supabase.auth.admin.getUserById(userId),
+      supabase.from('profiles').select('full_name').eq('id', userId).single(),
+    ])
+
+    if (!user?.email) {
+      logger.warn({ userId }, 'email.donation_receipt.missing_user')
+      return
+    }
+    if (user.email.endsWith('@mobile.srikrishnamargam.in')) return
+
+    const name    = profile?.full_name || 'Devotee'
+    const amount  = (amountPaise / 100).toFixed(2)
+    const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
+    const purposeLine = purpose === 'course' && courseName
+      ? `Course: ${courseName}`
+      : 'General Platform Support'
+
+    const subject = `Donation Receipt – Krishnamargam (${receiptNumber})`
+    const body = `Namaskar ${name},
+
+Thank you for your generous donation to Krishnamargam. Your contribution helps keep Vedic wisdom accessible to all seekers.
+
+DONATION RECEIPT
+────────────────
+Receipt No.: ${receiptNumber}
+Date:        ${dateStr}
+Amount:      ₹${amount}
+Purpose:     ${purposeLine}
+────────────────
+
+This serves as your official donation receipt.
+
+May your act of generosity bring you peace and blessings.
+
+ॐ శాంతి శాంతి శాంతిః`
+
+    const cfg: BrandConfig = { ...BRAND, ctaPath: '/explore', ctaLabel: 'Explore Courses →' }
+
+    await resend.emails.send({
+      from:    BRAND.fromEmail,
+      to:      [user.email],
+      subject,
+      html:    renderHtml(body, subject, cfg),
+    })
+
+    logger.info({ userId, receiptNumber, amount, to: user.email }, 'email.donation_receipt.sent')
+  } catch (err) {
+    logger.error({ err, userId, receiptNumber }, 'email.donation_receipt.failed')
+  }
+}
+
 /** Send a payment receipt email. amount is in the smallest currency unit (paise). */
 export async function sendPaymentReceivedEmail(
   userId: string,

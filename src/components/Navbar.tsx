@@ -123,6 +123,9 @@ export default function Navbar() {
                 <Link href="/my-courses" className="text-brand-gold-secondary hover:text-brand-gold transition-colors text-sm font-medium">
                   {t.nav.myCourses}
                 </Link>
+                <Link href="/donate" className="text-brand-gold-secondary hover:text-brand-gold transition-colors text-sm font-medium">
+                  {t.nav.donate}
+                </Link>
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-brand-gold flex items-center justify-center text-brand-bg text-xs font-bold">
                     {profile.avatar_initials}

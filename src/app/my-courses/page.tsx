@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Trophy, Award } from 'lucide-react'
+import { Trophy, Award, ClipboardCheck } from 'lucide-react'
 import { useLang } from '@/contexts/LanguageContext'
 import { createClient } from '@/lib/supabase/client'
 import type { CourseWithProgress, Profile } from '@/types'
@@ -165,6 +165,16 @@ export default function MyCoursesPage() {
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-brand-gold-muted text-xs">{course.duration}</span>
                       <div className="flex gap-1.5">
+                        {status === 'completed' && course.has_exam && (
+                          <button
+                            onClick={() => router.push(`/exam/${course.id}`)}
+                            title="Take Certification Exam"
+                            className="px-2 py-1 border border-brand-gold text-brand-gold text-xs font-semibold rounded-lg hover:bg-brand-gold hover:text-brand-bg transition-colors flex items-center gap-1"
+                          >
+                            <ClipboardCheck className="w-3 h-3" />
+                            Exam
+                          </button>
+                        )}
                         {status === 'completed' && (
                           <button
                             onClick={() => router.push(`/certificate/${course.id}`)}
