@@ -128,8 +128,7 @@ export async function POST(
 }
 
 async function pickQuestion(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: any,
+  supabase: ReturnType<typeof createAdminClient>,
   courseId: number,
   difficulty: number,
   usedIds: number[]
