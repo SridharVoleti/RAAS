@@ -6,6 +6,8 @@ import { Star } from 'lucide-react'
 import { useLang } from '@/contexts/LanguageContext'
 import CourseCard from '@/components/CourseCard'
 import CourseDetailOverlay from '@/components/CourseDetailOverlay'
+import WelcomeVideoDialog from '@/components/WelcomeVideoDialog'
+import { createClient } from '@/lib/supabase/client'
 import type { Course, Testimonial, TextWidget } from '@/types'
 import type { HomeStats } from '@/lib/homeData'
 
@@ -33,6 +35,18 @@ export default function HomeContent({ courses, stats, testimonials, widgets }: P
     }
   }, [searchParams, router])
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsLoggedIn(!!session)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(!!session)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
   const topCourses = [...courses].sort((a, b) => b.student_count - a.student_count).slice(0, 6)
   const raasCount = courses.filter(c => c.path_id === 1).length
@@ -62,6 +76,37 @@ export default function HomeContent({ courses, stats, testimonials, widgets }: P
           Verification link is invalid or expired. Please request a new one.
         </div>
       )}
+      {/* Sign-up / Sign-in nudge — shown only to guests */}
+      {isLoggedIn === false && (
+        <div className="max-w-xl mx-auto px-4 pt-8 pb-0">
+          <div className="relative flex items-center justify-center gap-3 rounded-xl border border-brand-gold/40 bg-brand-gold/5 px-5 py-3 text-center overflow-hidden">
+            {/* twinkling star particles */}
+            <span className="absolute left-3 top-2 text-brand-gold text-xs animate-[twinkle_1.6s_ease-in-out_infinite]">✦</span>
+            <span className="absolute right-5 bottom-2 text-brand-gold text-[10px] animate-[twinkle_2.1s_ease-in-out_0.4s_infinite]">✦</span>
+            <span className="absolute left-[40%] top-1.5 text-brand-gold text-[8px] animate-[twinkle_1.9s_ease-in-out_0.8s_infinite]">✦</span>
+            <p className="text-brand-gold text-sm font-medium">
+              {lang === 'te'
+                ? 'కొత్త వినియోగదారులు '
+                : 'New here? '}
+              <button
+                onClick={() => router.push('/register')}
+                className="underline underline-offset-2 hover:text-yellow-300 transition-colors font-semibold"
+              >
+                {lang === 'te' ? 'నమోదు చేసుకోండి' : 'Sign up'}
+              </button>
+              {lang === 'te' ? ' లేదా ' : ' or '}
+              <button
+                onClick={() => router.push('/login')}
+                className="underline underline-offset-2 hover:text-yellow-300 transition-colors font-semibold"
+              >
+                {lang === 'te' ? 'లాగిన్ అవ్వండి' : 'Sign in'}
+              </button>
+              {lang === 'te' ? ' చేసి మీ అభ్యాసాన్ని ప్రారంభించండి' : ' to start your journey'}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Learning Paths */}
       <section className="max-w-7xl mx-auto px-4 py-10">
         <h2 className="text-brand-gold font-bold text-xl text-center mb-6">{t.paths.heading}</h2>
@@ -193,6 +238,7 @@ export default function HomeContent({ courses, stats, testimonials, widgets }: P
       </section>
 
       <CourseDetailOverlay course={selectedCourse} onClose={() => setSelectedCourse(null)} />
+      <WelcomeVideoDialog />
     </div>
   )
 }
