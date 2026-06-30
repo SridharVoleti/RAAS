@@ -93,7 +93,9 @@ export async function GET(
 
   const filename = `quiz-questions-course-${courseId}.csv`
 
-  return new NextResponse(csvLines.join('\r\n'), {
+  // Prepend UTF-8 BOM so Excel opens and re-saves the file as UTF-8,
+  // preserving Telugu and other non-Latin characters.
+  return new NextResponse('﻿' + csvLines.join('\r\n'), {
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
       'Content-Disposition': `attachment; filename="${filename}"`,

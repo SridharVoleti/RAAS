@@ -8,7 +8,8 @@ const MAX_ROWS = 500
 // ── Lightweight RFC-4180 CSV parser ──────────────────────────────────────────
 
 function parseCSV(text: string): Record<string, string>[] {
-  const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  // Strip UTF-8 BOM that Excel adds when saving as "CSV UTF-8 (with BOM)"
+  const normalized = text.replace(/^﻿/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n')
   const lines = normalized.split('\n')
 
   function splitLine(line: string): string[] {

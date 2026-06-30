@@ -19,7 +19,9 @@ export async function GET() {
   }
   sampleCells.push('"b"')
 
-  const csv = [
+  // Prepend UTF-8 BOM so Excel opens and re-saves the file as UTF-8,
+  // preserving Telugu and other non-Latin characters.
+  const csv = '﻿' + [
     headers.map(h => `"${h}"`).join(','),
     sampleCells.join(','),
   ].join('\r\n')

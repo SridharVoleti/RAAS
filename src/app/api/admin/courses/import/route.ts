@@ -11,7 +11,8 @@ function parseCSV(text: string): string[][] {
   let row: string[] = []
   let cell = ''
   let inQuotes = false
-  const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  // Strip UTF-8 BOM that Excel adds when saving as "CSV UTF-8 (with BOM)"
+  const normalized = text.replace(/^﻿/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n')
 
   for (let i = 0; i < normalized.length; i++) {
     const ch = normalized[i]
@@ -101,11 +102,13 @@ const TEMPLATE_ROWS = [
 ]
 
 function buildTemplate(): string {
+  // Prepend UTF-8 BOM so Excel opens and re-saves the file as UTF-8,
+  // preserving Telugu and other non-Latin characters.
   const lines = [
     TEMPLATE_HEADERS.map(csvEscape).join(','),
     ...TEMPLATE_ROWS.map(row => row.map(csvEscape).join(',')),
   ]
-  return lines.join('\n')
+  return '﻿' + lines.join('\n')
 }
 
 // ── Route handlers ────────────────────────────────────────────────────────────

@@ -46,7 +46,8 @@ function splitCSVLine(line: string): string[] {
 }
 
 function parseCSV(text: string): Record<string, string>[] {
-  const lines = text.split(/\r?\n/).filter(l => l.trim())
+  // Strip UTF-8 BOM that Excel adds when saving as "CSV UTF-8 (with BOM)"
+  const lines = text.replace(/^﻿/, '').split(/\r?\n/).filter(l => l.trim())
   if (lines.length < 2) return []
   const headers = splitCSVLine(lines[0]).map(h => h.trim())
   return lines.slice(1).map(line => {
