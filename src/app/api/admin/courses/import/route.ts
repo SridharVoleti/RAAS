@@ -217,50 +217,94 @@ export async function POST(req: Request) {
 
   const supabase = await createAdminClient()
 
-  // ── Insert course ─────────────────────────────────────────────────────────
-  const { data: course, error: courseError } = await supabase
+  // ── Find or create course ─────────────────────────────────────────────────
+  let courseCreated = false
+
+  const { data: existing } = await supabase
     .from('courses')
-    .insert(coursePayload)
-    .select()
-    .single()
+    .select('*')
+    .eq('slug', slug)
+    .maybeSingle()
 
-  if (courseError) {
-    logger.error({ err: courseError }, 'course import — course insert failed')
-    return NextResponse.json({ error: courseError.message }, { status: 500 })
+  let course = existing
+
+  if (!course) {
+    const { data: created, error: courseError } = await supabase
+      .from('courses')
+      .insert(coursePayload)
+      .select()
+      .single()
+
+    if (courseError) {
+      logger.error({ err: courseError }, 'course import — course insert failed')
+      return NextResponse.json({ error: courseError.message }, { status: 500 })
+    }
+
+    course = created
+    courseCreated = true
+    logger.info({ courseId: course.id, slug: course.slug }, 'course import — course created')
+  } else {
+    logger.info({ courseId: course.id, slug: course.slug }, 'course import — course already exists, appending lessons')
   }
 
-  logger.info({ courseId: course.id, slug: course.slug }, 'course import — course created')
+  // ── Fetch existing video IDs for this course (for dedup) ─────────────────
+  const { data: existingLessons } = await supabase
+    .from('lessons')
+    .select('youtube_video_id, order_index')
+    .eq('course_id', course.id)
 
-  // ── Insert lessons ────────────────────────────────────────────────────────
-  const lessonPayloads = lessonRows.map((r, i) => ({
-    course_id:        course.id,
-    chapter_id:       null,
-    section_title:    r.section_title || null,
-    title_en:         r.lesson_title_en.trim(),
-    title_te:         r.lesson_title_te?.trim() || null,
-    youtube_video_id: extractYouTubeId(r.youtube_video_id.trim()),
-    duration:         r.lesson_duration?.trim() || null,
-    order_index:      i + 1,
-    is_preview:       r.is_preview?.toLowerCase() === 'true',
-  }))
+  const existingVideoIds = new Set((existingLessons ?? []).map(l => l.youtube_video_id))
+  const nextOrderIndex = existingLessons && existingLessons.length > 0
+    ? Math.max(...existingLessons.map(l => l.order_index)) + 1
+    : 1
 
-  const { error: lessonsError } = await supabase.from('lessons').insert(lessonPayloads)
+  // ── Build lesson payloads, skipping duplicates ────────────────────────────
+  const lessonPayloads: {
+    course_id: number; chapter_id: null; section_title: string | null
+    title_en: string; title_te: string | null; youtube_video_id: string
+    duration: string | null; order_index: number; is_preview: boolean
+  }[] = []
 
-  if (lessonsError) {
-    logger.error({ err: lessonsError, courseId: course.id }, 'course import — lessons insert failed')
-    return NextResponse.json(
-      { course, lessons_created: 0, warning: lessonsError.message },
-      { status: 207 }
-    )
+  let lessonsSkipped = 0
+  for (const r of lessonRows) {
+    const videoId = extractYouTubeId(r.youtube_video_id.trim())
+    if (existingVideoIds.has(videoId)) {
+      lessonsSkipped++
+      continue
+    }
+    existingVideoIds.add(videoId) // prevent duplicates within the CSV itself
+    lessonPayloads.push({
+      course_id:        course.id,
+      chapter_id:       null,
+      section_title:    r.section_title || null,
+      title_en:         r.lesson_title_en.trim(),
+      title_te:         r.lesson_title_te?.trim() || null,
+      youtube_video_id: videoId,
+      duration:         r.lesson_duration?.trim() || null,
+      order_index:      nextOrderIndex + lessonPayloads.length,
+      is_preview:       r.is_preview?.toLowerCase() === 'true',
+    })
   }
 
-  logger.info({ courseId: course.id, count: lessonPayloads.length }, 'course import — lessons created')
+  if (lessonPayloads.length > 0) {
+    const { error: lessonsError } = await supabase.from('lessons').insert(lessonPayloads)
+
+    if (lessonsError) {
+      logger.error({ err: lessonsError, courseId: course.id }, 'course import — lessons insert failed')
+      return NextResponse.json(
+        { course, course_created: courseCreated, lessons_created: 0, lessons_skipped: lessonsSkipped, warning: lessonsError.message },
+        { status: 207 }
+      )
+    }
+  }
+
+  logger.info({ courseId: course.id, count: lessonPayloads.length, skipped: lessonsSkipped }, 'course import — lessons processed')
 
   revalidatePath('/explore')
   revalidatePath('/')
 
   return NextResponse.json(
-    { course, lessons_created: lessonPayloads.length },
-    { status: 201 }
+    { course, course_created: courseCreated, lessons_created: lessonPayloads.length, lessons_skipped: lessonsSkipped },
+    { status: courseCreated ? 201 : 200 }
   )
 }

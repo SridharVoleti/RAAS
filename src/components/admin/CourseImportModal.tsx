@@ -5,7 +5,9 @@ import { Download, Upload, X, CheckCircle, AlertCircle, FileText } from 'lucide-
 
 interface ImportResult {
   course: { id: number; slug: string; title_en: string }
+  course_created: boolean
   lessons_created: number
+  lessons_skipped: number
   warning?: string
 }
 
@@ -48,7 +50,7 @@ export default function CourseImportModal({ onClose, onImported }: Props) {
       }
 
       setResult(data)
-      if (res.status === 201) onImported()
+      if (res.ok || res.status === 207) onImported()
     } catch {
       setError('Network error — please try again')
     } finally {
@@ -154,14 +156,24 @@ export default function CourseImportModal({ onClose, onImported }: Props) {
             <div className={`p-3 rounded-lg border ${result.warning ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-brand-success/10 border-brand-success/30'}`}>
               <div className="flex items-start gap-2">
                 <CheckCircle className={`w-4 h-4 flex-shrink-0 mt-0.5 ${result.warning ? 'text-yellow-400' : 'text-brand-success'}`} />
-                <div>
+                <div className="space-y-0.5">
                   <p className={`text-sm font-medium ${result.warning ? 'text-yellow-300' : 'text-brand-success'}`}>
-                    Course created!
+                    {result.course_created ? 'Course created!' : 'Lessons added to existing course'}
                   </p>
-                  <p className="text-brand-gold-muted text-xs mt-0.5">
-                    <span className="text-brand-body font-medium">{result.course.title_en}</span>
-                    {' '}— {result.lessons_created} lesson{result.lessons_created !== 1 ? 's' : ''} imported
-                  </p>
+                  <p className="text-brand-body text-xs font-medium">{result.course.title_en}</p>
+                  {result.lessons_created > 0 && (
+                    <p className="text-brand-gold-muted text-xs">
+                      {result.lessons_created} lesson{result.lessons_created !== 1 ? 's' : ''} added
+                    </p>
+                  )}
+                  {result.lessons_skipped > 0 && (
+                    <p className="text-brand-gold-muted text-xs">
+                      {result.lessons_skipped} skipped — video already exists in this course
+                    </p>
+                  )}
+                  {result.lessons_created === 0 && result.lessons_skipped > 0 && (
+                    <p className="text-brand-gold-muted text-xs">All videos in the CSV already exist in this course.</p>
+                  )}
                   {result.warning && (
                     <p className="text-yellow-400 text-xs mt-1">Warning: {result.warning}</p>
                   )}
