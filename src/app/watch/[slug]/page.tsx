@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import WatchClient from '@/components/WatchClient'
-import type { Course, Lesson, QuizQuestion_Public, QuizSubmission } from '@/types'
+import type { Chapter, Course, Lesson, QuizQuestion_Public, QuizSubmission } from '@/types'
 
 export default async function WatchPage({
   params,
@@ -48,8 +48,8 @@ export default async function WatchPage({
     return <NotEnrolledScreen course={course as Course} status="pending" />
   }
 
-  // Fetch lessons + progress in parallel
-  const [{ data: lessons }, { data: progressRows }] = await Promise.all([
+  // Fetch lessons + progress + chapters in parallel
+  const [{ data: lessons }, { data: progressRows }, { data: chapters }] = await Promise.all([
     adminSupabase
       .from('lessons')
       .select('*')
@@ -60,33 +60,66 @@ export default async function WatchPage({
       .select('lesson_id')
       .eq('user_id', user.id)
       .eq('course_id', course.id),
+    adminSupabase
+      .from('chapters')
+      .select('id, title_en, title_te, order_index')
+      .eq('course_id', course.id)
+      .order('order_index'),
   ])
 
   const allLessons = (lessons || []) as Lesson[]
+  const allChapters = (chapters || []) as Chapter[]
   const lessonIds = allLessons.map(l => l.id)
+  const chapterIds = allChapters.map(c => c.id)
 
-  // Fetch all quiz questions and user's submissions for this course's lessons
+  // Fetch lesson quiz questions, chapter quiz question counts, and all submissions in parallel
   const [
     { data: quizQuestions, error: quizQuestionsError },
     { data: quizSubmissions, error: quizSubmissionsError },
-  ] = lessonIds.length > 0
-    ? await Promise.all([
-        adminSupabase
+    { data: chapterQRows },
+  ] = await Promise.all([
+    lessonIds.length > 0
+      ? adminSupabase
           .from('quiz_questions')
           .select('id, lesson_id, question_en, question_te, option_a_en, option_a_te, option_b_en, option_b_te, option_c_en, option_c_te, option_d_en, option_d_te, order_index')
           .in('lesson_id', lessonIds)
-          .order('order_index'),
-        supabase
+          .order('order_index')
+      : Promise.resolve({ data: [], error: null }),
+    lessonIds.length > 0
+      ? supabase
           .from('quiz_submissions')
           .select('*')
           .eq('user_id', user.id)
-          .in('lesson_id', lessonIds),
-      ])
-    : [{ data: [], error: null }, { data: [], error: null }]
+          .in('lesson_id', lessonIds)
+      : Promise.resolve({ data: [], error: null }),
+    chapterIds.length > 0
+      ? adminSupabase
+          .from('quiz_questions')
+          .select('chapter_id')
+          .in('chapter_id', chapterIds)
+      : Promise.resolve({ data: [], error: null }),
+  ])
 
   // Surface failures instead of silently rendering without quizzes (see QUIZ-001)
   if (quizQuestionsError) console.error('[watch] quiz_questions query failed:', quizQuestionsError.message)
   if (quizSubmissionsError) console.error('[watch] quiz_submissions query failed:', quizSubmissionsError.message)
+
+  // Build chapter question count map
+  const chapterQuestionCounts: Record<number, number> = {}
+  for (const row of (chapterQRows ?? [])) {
+    if (row.chapter_id) {
+      chapterQuestionCounts[row.chapter_id] = (chapterQuestionCounts[row.chapter_id] ?? 0) + 1
+    }
+  }
+
+  // Fetch chapter quiz submissions separately (chapter_id filter)
+  const { data: chapterSubmissions } = chapterIds.length > 0
+    ? await supabase
+        .from('quiz_submissions')
+        .select('*')
+        .eq('user_id', user.id)
+        .in('chapter_id', chapterIds)
+    : { data: [] }
 
   const completedLessonIds = (progressRows || []).map(p => p.lesson_id as number)
   const initialIdx = Math.max(
@@ -102,6 +135,9 @@ export default async function WatchPage({
       initialLessonIndex={initialIdx}
       quizQuestions={(quizQuestions ?? []) as QuizQuestion_Public[]}
       quizSubmissions={(quizSubmissions ?? []) as QuizSubmission[]}
+      chapters={allChapters}
+      chapterQuestionCounts={chapterQuestionCounts}
+      chapterSubmissions={(chapterSubmissions ?? []) as QuizSubmission[]}
     />
   )
 }

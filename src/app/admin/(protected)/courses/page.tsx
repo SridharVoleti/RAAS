@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Plus, Pencil, Trash2, Eye, EyeOff } from 'lucide-react'
+import { Plus, Pencil, Trash2, Eye, EyeOff, Upload } from 'lucide-react'
 import ConfirmModal from '@/components/admin/ConfirmModal'
+import CourseImportModal from '@/components/admin/CourseImportModal'
 
 interface CourseRow {
   id: number; slug: string; emoji: string; title_en: string
@@ -17,6 +18,7 @@ export default function AdminCoursesPage() {
   const [deleteTarget, setDeleteTarget] = useState<CourseRow | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  const [showImport, setShowImport] = useState(false)
 
   useEffect(() => { loadCourses() }, [])
 
@@ -48,10 +50,18 @@ export default function AdminCoursesPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-brand-gold font-bold text-xl">Courses</h1>
-        <Link href="/admin/courses/new"
-          className="flex items-center gap-2 px-4 py-2 bg-brand-gold text-brand-bg text-sm font-semibold rounded-lg hover:bg-yellow-400 transition-colors">
-          <Plus className="w-4 h-4" /> New Course
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowImport(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-brand-border/50 text-brand-body text-sm font-medium rounded-lg hover:bg-brand-border transition-colors border border-brand-border"
+          >
+            <Upload className="w-4 h-4" /> Import CSV
+          </button>
+          <Link href="/admin/courses/new"
+            className="flex items-center gap-2 px-4 py-2 bg-brand-gold text-brand-bg text-sm font-semibold rounded-lg hover:bg-yellow-400 transition-colors">
+            <Plus className="w-4 h-4" /> New Course
+          </Link>
+        </div>
       </div>
 
       <div className="bg-brand-card border border-brand-border rounded-xl overflow-hidden">
@@ -136,6 +146,13 @@ export default function AdminCoursesPage() {
           </div>
         )}
       </div>
+
+      {showImport && (
+        <CourseImportModal
+          onClose={() => setShowImport(false)}
+          onImported={() => { setShowImport(false); loadCourses() }}
+        />
+      )}
 
       {deleteTarget && (
         <ConfirmModal

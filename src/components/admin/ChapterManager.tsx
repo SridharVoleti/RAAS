@@ -11,6 +11,14 @@ interface Props { courseId: number }
 
 const emptyForm = { title_en: '', title_te: '', order_index: undefined as number | undefined }
 
+// ── Course-level import result type ───────────────────────────────────────────
+interface CourseImportResult {
+  imported: number
+  skipped_duplicates: number
+  skipped_invalid_chapter: number
+  errors: string[]
+}
+
 // ── CSV helpers ────────────────────────────────────────────────────────────────
 
 function splitCSVLine(line: string): string[] {
@@ -90,6 +98,14 @@ export default function ChapterManager({ courseId }: Props) {
   const [error, setError] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
+  // Course-level quiz import
+  const [showCourseImport, setShowCourseImport] = useState(false)
+  const [courseImportFile, setCourseImportFile] = useState<File | null>(null)
+  const [courseImporting, setCourseImporting] = useState(false)
+  const [courseImportResult, setCourseImportResult] = useState<CourseImportResult | null>(null)
+  const [courseImportError, setCourseImportError] = useState('')
+  const courseFileRef = useRef<HTMLInputElement>(null)
+
   const inputCls = 'w-full px-2.5 py-1.5 bg-brand-bg border border-brand-border rounded-lg text-brand-body text-xs placeholder:text-brand-gold-muted/40 focus:outline-none focus:border-brand-gold transition-colors'
 
   useEffect(() => {
@@ -168,6 +184,49 @@ export default function ChapterManager({ courseId }: Props) {
     fetchChapters()
   }
 
+  async function downloadCourseTemplate() {
+    const res = await fetch(`/api/admin/courses/${courseId}/quiz/template`)
+    if (!res.ok) return
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `quiz-questions-course-${courseId}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  function handleCourseFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setCourseImportFile(file)
+    setCourseImportResult(null)
+    setCourseImportError('')
+  }
+
+  async function handleCourseImport() {
+    if (!courseImportFile) return
+    setCourseImporting(true)
+    setCourseImportError('')
+    setCourseImportResult(null)
+    const form = new FormData()
+    form.append('file', courseImportFile)
+    try {
+      const res = await fetch(`/api/admin/courses/${courseId}/quiz/import`, { method: 'POST', body: form })
+      const data = await res.json()
+      if (!res.ok) { setCourseImportError(data.error ?? 'Import failed'); return }
+      setCourseImportResult(data)
+      if (data.imported > 0) fetchChapters()
+    } catch {
+      setCourseImportError('Network error — please try again')
+    } finally {
+      setCourseImporting(false)
+      if (courseFileRef.current) courseFileRef.current.value = ''
+    }
+  }
+
   async function downloadTemplate(chapterId: number) {
     const res = await fetch(`/api/admin/chapters/${chapterId}/quiz/template`)
     if (!res.ok) return
@@ -224,11 +283,118 @@ export default function ChapterManager({ courseId }: Props) {
             Supported languages: {QUIZ_LANGUAGES.map(l => `${l.labelNative} (${l.code})`).join(', ')}
           </p>
         </div>
-        <button onClick={() => { setShowAdd(true); setError('') }}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-gold text-brand-bg text-xs font-semibold rounded-lg hover:bg-yellow-400 transition-colors">
-          <Plus className="w-3.5 h-3.5" /> Add Chapter
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setShowCourseImport(v => !v); setCourseImportResult(null); setCourseImportError(''); setCourseImportFile(null) }}
+            title="Import all chapters' quiz questions from one CSV"
+            className={`flex items-center gap-1.5 px-3 py-1.5 border text-xs font-medium rounded-lg transition-colors ${showCourseImport ? 'border-brand-gold text-brand-gold bg-brand-gold/10' : 'border-brand-border text-brand-gold-muted hover:border-brand-gold hover:text-brand-gold'}`}>
+            <Upload className="w-3.5 h-3.5" /> Import Questions
+          </button>
+          <button onClick={() => { setShowAdd(true); setError('') }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-gold text-brand-bg text-xs font-semibold rounded-lg hover:bg-yellow-400 transition-colors">
+            <Plus className="w-3.5 h-3.5" /> Add Chapter
+          </button>
+        </div>
       </div>
+
+      {/* ── Course-level quiz import panel ── */}
+      {showCourseImport && (
+        <div className="border-b border-brand-border bg-brand-bg/60 px-5 py-4 space-y-4">
+          <div className="flex items-center gap-2">
+            <Upload className="w-3.5 h-3.5 text-brand-gold" />
+            <span className="text-brand-gold text-xs font-semibold">Import quiz questions for all chapters</span>
+            <button onClick={() => setShowCourseImport(false)} className="ml-auto text-brand-gold-muted hover:text-brand-gold transition-colors">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Step 1 */}
+          <div className="bg-brand-bg border border-brand-border rounded-lg p-3 space-y-2">
+            <p className="text-brand-gold text-[11px] font-semibold">Step 1 — Download the template</p>
+            <p className="text-brand-gold-muted text-[10px] leading-relaxed">
+              The template includes your course&apos;s real chapter IDs. Add one question per row.
+              Set <code className="text-brand-gold bg-brand-card px-1 rounded">chapter_id</code> to match the chapter,
+              and <code className="text-brand-gold bg-brand-card px-1 rounded">correct_option</code> to <strong>a</strong>, <strong>b</strong>, <strong>c</strong>, or <strong>d</strong>.
+              Telugu fields are optional.
+            </p>
+            <p className="text-brand-gold-muted text-[10px]">
+              Duplicate check: questions with the same English text in the same chapter are skipped automatically.
+            </p>
+            <button onClick={downloadCourseTemplate}
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-brand-gold text-brand-gold text-xs rounded-lg hover:bg-brand-gold/10 transition-colors">
+              <Download className="w-3.5 h-3.5" /> Download template
+            </button>
+          </div>
+
+          {/* Step 2 */}
+          <div className="bg-brand-bg border border-brand-border rounded-lg p-3 space-y-2">
+            <p className="text-brand-gold text-[11px] font-semibold">Step 2 — Upload your completed CSV</p>
+            <input
+              ref={courseFileRef}
+              type="file"
+              accept=".csv,text/csv"
+              onChange={handleCourseFileChange}
+              className="block w-full text-xs text-brand-body file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-brand-gold file:text-brand-bg file:text-xs file:font-semibold file:cursor-pointer hover:file:bg-yellow-400 cursor-pointer"
+            />
+            {courseImportFile && !courseImportResult && (
+              <p className="text-brand-gold-muted text-[10px]">
+                Selected: <span className="text-brand-body">{courseImportFile.name}</span>
+              </p>
+            )}
+          </div>
+
+          {/* Error */}
+          {courseImportError && (
+            <div className="flex items-start gap-1.5 bg-brand-error/10 border border-brand-error/30 rounded-lg p-3">
+              <FileWarning className="w-3.5 h-3.5 text-brand-error flex-shrink-0 mt-0.5" />
+              <p className="text-brand-error text-[11px]">{courseImportError}</p>
+            </div>
+          )}
+
+          {/* Result */}
+          {courseImportResult && (
+            <div className={`rounded-lg p-3 border space-y-1 text-[11px] ${courseImportResult.imported > 0 ? 'bg-brand-success/10 border-brand-success/30' : 'bg-brand-border/20 border-brand-border'}`}>
+              {courseImportResult.imported > 0 && (
+                <p className="text-brand-success font-semibold">
+                  ✓ {courseImportResult.imported} question{courseImportResult.imported !== 1 ? 's' : ''} imported successfully.
+                </p>
+              )}
+              {courseImportResult.skipped_duplicates > 0 && (
+                <p className="text-brand-gold-muted">
+                  {courseImportResult.skipped_duplicates} skipped — already exist in their chapter (duplicates).
+                </p>
+              )}
+              {courseImportResult.skipped_invalid_chapter > 0 && (
+                <p className="text-brand-gold-muted">
+                  {courseImportResult.skipped_invalid_chapter} skipped — chapter_id not found in this course.
+                </p>
+              )}
+              {courseImportResult.errors.slice(0, 5).map((e, i) => (
+                <p key={i} className="text-brand-error pl-2">{e}</p>
+              ))}
+              {courseImportResult.errors.length > 5 && (
+                <p className="text-brand-error/70 pl-2">…and {courseImportResult.errors.length - 5} more validation errors</p>
+              )}
+              <button
+                onClick={() => { setCourseImportResult(null); setCourseImportFile(null); if (courseFileRef.current) courseFileRef.current.value = '' }}
+                className="mt-1 text-[10px] underline underline-offset-2 text-brand-gold-muted hover:text-brand-gold">
+                Import another file
+              </button>
+            </div>
+          )}
+
+          {/* Import button */}
+          {courseImportFile && !courseImportResult && (
+            <button
+              onClick={handleCourseImport}
+              disabled={courseImporting}
+              className="flex items-center gap-1.5 px-4 py-2 bg-brand-gold text-brand-bg text-xs font-semibold rounded-lg hover:bg-yellow-400 disabled:opacity-50 transition-colors">
+              <Upload className="w-3.5 h-3.5" />
+              {courseImporting ? 'Importing…' : 'Import Questions'}
+            </button>
+          )}
+        </div>
+      )}
 
       {error && (
         <div className="px-5 py-3 bg-brand-error/10 border-b border-brand-error/20 text-brand-error text-xs">{error}</div>
