@@ -8,7 +8,8 @@ import { createClient } from '@/lib/supabase/client'
 const NAV = [
   { label: 'Dashboard',   href: '/admin',                icon: LayoutDashboard, exact: true },
   { label: 'Courses',     href: '/admin/courses',        icon: BookOpen },
-  { label: 'Exam Bank',   href: '/admin/exam-questions', icon: ClipboardList },
+  { label: 'Exam Bank',   href: '/admin/exam-questions',                icon: ClipboardList },
+  { label: 'PL Exams',   href: '/admin/prior-learning-exam-questions',  icon: ClipboardList },
   { label: 'Payments',    href: '/admin/payments',       icon: CreditCard },
   { label: 'Students',    href: '/admin/students',       icon: Users },
   { label: 'Analytics',   href: '/admin/analytics',      icon: BarChart2 },
