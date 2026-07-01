@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import type { ExamQuestion_Public } from '@/types'
 
-const EXAM_LENGTH = 60
 const COOLDOWN_HOURS = 48
 
 export async function GET(
@@ -65,15 +64,16 @@ export async function GET(
 
   if (activeSession && activeSession.question_sequence.length > 0) {
     const adminSupabase = await createAdminClient()
-    const lastQId = activeSession.question_sequence[activeSession.question_sequence.length - 1]
+    const currentIdx = activeSession.questions_answered as number
+    const currentQId = activeSession.question_sequence[currentIdx]
     const { data: qRow } = await adminSupabase
       .from('exam_questions')
-      .select('id, course_id, difficulty, question_en, question_te, option_a_en, option_a_te, option_b_en, option_b_te, option_c_en, option_c_te, option_d_en, option_d_te, created_at')
-      .eq('id', lastQId)
+      .select('id, course_id, chapter_id, difficulty, question_en, question_te, option_a_en, option_a_te, option_b_en, option_b_te, option_c_en, option_c_te, option_d_en, option_d_te, created_at')
+      .eq('id', currentQId)
       .single()
 
     if (qRow) {
-      currentQuestion = { ...qRow, question_number: activeSession.question_sequence.length }
+      currentQuestion = { ...qRow, question_number: currentIdx + 1 }
     }
   }
 
@@ -90,7 +90,7 @@ export async function GET(
     activeSession:   activeSession ? {
       id:                  activeSession.id,
       questions_answered:  activeSession.questions_answered,
-      total_questions:     EXAM_LENGTH,
+      total_questions:     activeSession.question_sequence.length,
       current_difficulty:  activeSession.current_difficulty,
     } : null,
     currentQuestion,

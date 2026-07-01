@@ -4,7 +4,6 @@ import { parseBody, ExamAnswerSchema } from '@/lib/validation'
 import { logger } from '@/lib/logger'
 import type { ExamNextQuestion, ExamComplete, ExamQuestion_Public } from '@/types'
 
-const EXAM_LENGTH = 60
 const PASS_THRESHOLD = 0.70
 
 export async function POST(
@@ -36,9 +35,12 @@ export async function POST(
     return NextResponse.json({ error: 'Session not found or already submitted' }, { status: 404 })
   }
 
-  // Ensure question_id is the last in the sequence (prevents replay / skipping)
   const seq: number[] = session.question_sequence
-  if (seq[seq.length - 1] !== question_id) {
+  const examLength = seq.length
+  const currentIdx = session.questions_answered as number
+
+  // Validate the question being answered is the current one in the sequence
+  if (seq[currentIdx] !== question_id) {
     return NextResponse.json({ error: 'Unexpected question_id' }, { status: 400 })
   }
 
@@ -55,16 +57,10 @@ export async function POST(
 
   const isCorrect = answer === qRow.correct_option
   const newAnswers = { ...(session.answers as Record<string, string>), [String(question_id)]: answer }
-  const newAnswered = session.questions_answered + 1
+  const newAnswered = currentIdx + 1
 
-  // Adaptive difficulty adjustment
-  let nextDifficulty: number = session.current_difficulty
-  if (isCorrect) nextDifficulty = Math.min(3, session.current_difficulty + 1)
-  else           nextDifficulty = Math.max(1, session.current_difficulty - 1)
-
-  // Check if exam is complete
-  if (newAnswered >= EXAM_LENGTH) {
-    // Score all answers
+  // Exam complete
+  if (newAnswered >= examLength) {
     const { data: allQuestions } = await adminSupabase
       .from('exam_questions')
       .select('id, correct_option')
@@ -77,7 +73,7 @@ export async function POST(
       }
     }
 
-    const passed = score / EXAM_LENGTH >= PASS_THRESHOLD
+    const passed = score / examLength >= PASS_THRESHOLD
     const now = new Date().toISOString()
 
     await adminSupabase
@@ -85,7 +81,6 @@ export async function POST(
       .update({
         answers:            newAnswers,
         questions_answered: newAnswered,
-        current_difficulty: nextDifficulty,
         status:             'submitted',
         score,
         passed,
@@ -93,27 +88,29 @@ export async function POST(
       })
       .eq('id', session_id)
 
-    logger.info({ userId: user.id, courseId: courseIdNum, sessionId: session_id, score, passed }, 'exam.session.submitted')
+    logger.info({ userId: user.id, courseId: courseIdNum, sessionId: session_id, score, total: examLength, passed }, 'exam.session.submitted')
 
-    const result: ExamComplete = { done: true, score, total: EXAM_LENGTH, passed, session_id }
+    const result: ExamComplete = { done: true, score, total: examLength, passed, session_id }
     return NextResponse.json(result)
   }
 
-  // Pick next question at updated difficulty, excluding already-used IDs
-  const nextQ = await pickQuestion(adminSupabase, courseIdNum, nextDifficulty, seq)
-  if (!nextQ) {
-    return NextResponse.json({ error: 'No more questions available in the bank' }, { status: 503 })
-  }
+  // Fetch the next question from the pre-built sequence
+  const nextQId = seq[newAnswered]
+  const { data: nextQ } = await adminSupabase
+    .from('exam_questions')
+    .select('*')
+    .eq('id', nextQId)
+    .single()
 
-  const newSeq = [...seq, nextQ.id]
+  if (!nextQ) {
+    return NextResponse.json({ error: 'Next question not found in bank' }, { status: 500 })
+  }
 
   await adminSupabase
     .from('exam_sessions')
     .update({
       answers:            newAnswers,
-      question_sequence:  newSeq,
       questions_answered: newAnswered,
-      current_difficulty: nextDifficulty,
     })
     .eq('id', session_id)
 
@@ -121,36 +118,12 @@ export async function POST(
   const response: ExamNextQuestion = {
     question:        publicQuestion as ExamQuestion_Public,
     question_number: newAnswered + 1,
-    total_questions: EXAM_LENGTH,
+    total_questions: examLength,
     done:            false,
   }
+
+  // Note: isCorrect is available here if we ever want to add per-answer feedback
+  void isCorrect
+
   return NextResponse.json(response)
-}
-
-async function pickQuestion(
-  supabase: ReturnType<typeof createAdminClient>,
-  courseId: number,
-  difficulty: number,
-  usedIds: number[]
-) {
-  for (const diff of getCandidateDifficulties(difficulty)) {
-    let query = supabase
-      .from('exam_questions')
-      .select('*')
-      .eq('course_id', courseId)
-      .eq('difficulty', diff)
-      .not('id', 'in', `(${usedIds.join(',')})`)
-
-    const { data } = await query
-    if (data && data.length > 0) {
-      return data[Math.floor(Math.random() * data.length)]
-    }
-  }
-  return null
-}
-
-function getCandidateDifficulties(target: number): number[] {
-  if (target === 1) return [1, 2]
-  if (target === 3) return [3, 2]
-  return [2, 1, 3]
 }

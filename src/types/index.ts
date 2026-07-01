@@ -167,6 +167,7 @@ export interface QuizResult {
 export interface ExamQuestion {
   id: number
   course_id: number
+  chapter_id?: number
   difficulty: 1 | 2 | 3
   question_en: string
   question_te?: string

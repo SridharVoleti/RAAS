@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Plus, Pencil, Trash2, ChevronDown } from 'lucide-react'
-import type { Course, ExamQuestion } from '@/types'
+import type { Course, Chapter, ExamQuestion } from '@/types'
 
 type Difficulty = 1 | 2 | 3
 const DIFF_LABEL: Record<Difficulty, string> = { 1: 'Easy', 2: 'Medium', 3: 'Hard' }
@@ -14,6 +14,7 @@ const DIFF_COLOR: Record<Difficulty, string> = {
 
 const BLANK_FORM = {
   difficulty: 2 as Difficulty,
+  chapter_id: '' as string | number,
   question_en: '', question_te: '',
   option_a_en: '', option_a_te: '',
   option_b_en: '', option_b_te: '',
@@ -25,6 +26,7 @@ const BLANK_FORM = {
 export default function ExamQuestionsPage() {
   const [courses, setCourses] = useState<Course[]>([])
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null)
+  const [chapters, setChapters] = useState<Chapter[]>([])
   const [filterDiff, setFilterDiff] = useState<number | null>(null)
   const [questions, setQuestions] = useState<ExamQuestion[]>([])
   const [loading, setLoading] = useState(false)
@@ -34,14 +36,18 @@ export default function ExamQuestionsPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  // Load courses
   useEffect(() => {
     fetch('/api/admin/courses')
       .then(r => r.json())
-      .then(data => {
-        if (Array.isArray(data)) setCourses(data)
-      })
+      .then(data => { if (Array.isArray(data)) setCourses(data) })
   }, [])
+
+  useEffect(() => {
+    if (!selectedCourseId) { setChapters([]); return }
+    fetch(`/api/admin/chapters?courseId=${selectedCourseId}`)
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setChapters(data) })
+  }, [selectedCourseId])
 
   const loadQuestions = useCallback(async () => {
     if (!selectedCourseId) return
@@ -66,6 +72,7 @@ export default function ExamQuestionsPage() {
     setEditId(q.id)
     setForm({
       difficulty:     q.difficulty as Difficulty,
+      chapter_id:     q.chapter_id ?? '',
       question_en:    q.question_en,
       question_te:    q.question_te || '',
       option_a_en:    q.option_a_en,
@@ -82,14 +89,25 @@ export default function ExamQuestionsPage() {
     setShowForm(true)
   }
 
+  function formIsValid() {
+    const hasQuestion = form.question_en.trim() || form.question_te.trim()
+    const hasA = form.option_a_en.trim() || form.option_a_te.trim()
+    const hasB = form.option_b_en.trim() || form.option_b_te.trim()
+    const hasC = form.option_c_en.trim() || form.option_c_te.trim()
+    const hasD = form.option_d_en.trim() || form.option_d_te.trim()
+    return !!(hasQuestion && hasA && hasB && hasC && hasD)
+  }
+
   async function handleSave() {
     if (!selectedCourseId) return
     setSaving(true)
     setError('')
 
+    const { chapter_id: _rawChapterId, ...formRest } = form
     const payload = {
-      course_id: selectedCourseId,
-      ...form,
+      course_id:  selectedCourseId,
+      chapter_id: _rawChapterId !== '' ? Number(_rawChapterId) : undefined,
+      ...formRest,
     }
 
     const url = editId ? `/api/admin/exam-questions/${editId}` : '/api/admin/exam-questions'
@@ -122,6 +140,7 @@ export default function ExamQuestionsPage() {
     return acc
   }, {})
 
+  const chapterMap = new Map(chapters.map(c => [c.id, c.title_en || c.title_te || `Chapter ${c.id}`]))
   const selectedCourse = courses.find(c => c.id === selectedCourseId)
 
   return (
@@ -129,7 +148,7 @@ export default function ExamQuestionsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-brand-gold font-bold text-xl">Exam Question Bank</h1>
-          <p className="text-brand-gold-muted text-sm mt-1">Manage the adaptive exam question pool (target: 200–300 per course)</p>
+          <p className="text-brand-gold-muted text-sm mt-1">Manage exam questions — 5 random questions per chapter will be shown in the exam</p>
         </div>
         {selectedCourseId && (
           <button
@@ -152,17 +171,12 @@ export default function ExamQuestionsPage() {
             className="w-full bg-brand-bg border border-brand-border text-brand-body rounded-lg px-3 py-2 text-sm appearance-none pr-8"
           >
             <option value="">— Choose a course —</option>
-            {courses.filter(c => c.has_exam).map(c => (
-              <option key={c.id} value={c.id}>{c.emoji} {c.title_en}</option>
+            {courses.map(c => (
+              <option key={c.id} value={c.id}>{c.emoji} {c.title_en || c.title_te}</option>
             ))}
           </select>
           <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-gold-muted pointer-events-none" />
         </div>
-        {courses.filter(c => !c.has_exam).length > 0 && (
-          <p className="text-brand-gold-muted text-xs mt-2">
-            {courses.filter(c => !c.has_exam).length} course(s) have exam disabled. Enable via Course settings.
-          </p>
-        )}
       </div>
 
       {selectedCourseId && (
@@ -188,9 +202,11 @@ export default function ExamQuestionsPage() {
                 {DIFF_LABEL[d]} ({countsByDiff[d] ?? 0})
               </button>
             ))}
-            <span className="ml-auto text-brand-gold-muted text-xs">
-              Target: 200–300 questions
-            </span>
+            {chapters.length > 0 && (
+              <span className="ml-auto text-brand-gold-muted text-xs">
+                {chapters.length} chapter{chapters.length !== 1 ? 's' : ''} · 5 questions per chapter in exam
+              </span>
+            )}
           </div>
 
           {/* Question list */}
@@ -206,19 +222,27 @@ export default function ExamQuestionsPage() {
                 <div key={q.id} className="bg-brand-card border border-brand-border rounded-xl p-4 flex gap-4 items-start">
                   <span className="text-brand-gold-muted text-xs w-6 shrink-0 mt-0.5">{i + 1}.</span>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className={`text-xs font-semibold ${DIFF_COLOR[q.difficulty as Difficulty]}`}>
                         {DIFF_LABEL[q.difficulty as Difficulty]}
                       </span>
+                      {q.chapter_id && chapterMap.has(q.chapter_id) && (
+                        <span className="text-brand-gold-muted text-xs bg-brand-border/40 px-1.5 py-0.5 rounded">
+                          {chapterMap.get(q.chapter_id)}
+                        </span>
+                      )}
                       <span className="text-brand-gold-muted text-xs">#{q.id}</span>
                     </div>
-                    <p className="text-brand-body text-sm mb-2 line-clamp-2">{q.question_en}</p>
+                    <p className="text-brand-body text-sm mb-2 line-clamp-2">{q.question_en || q.question_te}</p>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
-                      {(['a', 'b', 'c', 'd'] as const).map(opt => (
-                        <span key={opt} className={`text-xs ${q.correct_option === opt ? 'text-brand-success font-semibold' : 'text-brand-gold-muted'}`}>
-                          {opt.toUpperCase()}. {q[`option_${opt}_en` as keyof ExamQuestion] as string}
-                        </span>
-                      ))}
+                      {(['a', 'b', 'c', 'd'] as const).map(opt => {
+                        const text = (q[`option_${opt}_en` as keyof ExamQuestion] as string) || (q[`option_${opt}_te` as keyof ExamQuestion] as string) || ''
+                        return (
+                          <span key={opt} className={`text-xs ${q.correct_option === opt ? 'text-brand-success font-semibold' : 'text-brand-gold-muted'}`}>
+                            {opt.toUpperCase()}. {text}
+                          </span>
+                        )
+                      })}
                     </div>
                   </div>
                   <div className="flex gap-1.5 shrink-0">
@@ -241,34 +265,52 @@ export default function ExamQuestionsPage() {
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-brand-card border border-brand-border rounded-2xl p-6 w-full max-w-2xl my-8">
             <h2 className="text-brand-gold font-bold text-lg mb-4">
-              {editId ? 'Edit Question' : 'Add Question'} — {selectedCourse?.title_en}
+              {editId ? 'Edit Question' : 'Add Question'} — {selectedCourse?.title_en || selectedCourse?.title_te}
             </h2>
 
             {error && <p className="text-brand-error text-sm mb-3">{error}</p>}
 
-            {/* Difficulty */}
-            <div className="mb-4">
-              <label className="block text-brand-gold-muted text-xs mb-1.5">Difficulty</label>
-              <div className="flex gap-2">
-                {([1, 2, 3] as Difficulty[]).map(d => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setForm(f => ({ ...f, difficulty: d }))}
-                    className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                      form.difficulty === d ? 'bg-brand-gold text-brand-bg border-brand-gold' : 'border-brand-border text-brand-gold-muted hover:text-brand-gold'
-                    }`}
+            {/* Chapter + Difficulty row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-brand-gold-muted text-xs mb-1.5">Chapter</label>
+                <div className="relative">
+                  <select
+                    value={form.chapter_id}
+                    onChange={e => setForm(f => ({ ...f, chapter_id: e.target.value }))}
+                    className="w-full bg-brand-bg border border-brand-border text-brand-body rounded-lg px-3 py-2 text-sm appearance-none pr-8"
                   >
-                    {DIFF_LABEL[d]}
-                  </button>
-                ))}
+                    <option value="">— No chapter —</option>
+                    {chapters.map(ch => (
+                      <option key={ch.id} value={ch.id}>{ch.title_en || ch.title_te}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-gold-muted pointer-events-none" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-brand-gold-muted text-xs mb-1.5">Difficulty</label>
+                <div className="flex gap-2">
+                  {([1, 2, 3] as Difficulty[]).map(d => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, difficulty: d }))}
+                      className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                        form.difficulty === d ? 'bg-brand-gold text-brand-bg border-brand-gold' : 'border-brand-border text-brand-gold-muted hover:text-brand-gold'
+                      }`}
+                    >
+                      {DIFF_LABEL[d]}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
             {/* Question */}
             <div className="grid grid-cols-1 gap-3 mb-4">
               <div>
-                <label className="block text-brand-gold-muted text-xs mb-1">Question (English) *</label>
+                <label className="block text-brand-gold-muted text-xs mb-1">Question (English)</label>
                 <textarea
                   rows={3}
                   value={form.question_en}
@@ -305,7 +347,7 @@ export default function ExamQuestionsPage() {
                   </div>
                   <input
                     type="text"
-                    placeholder={`English *`}
+                    placeholder="English"
                     value={form[`option_${opt}_en` as keyof typeof form] as string}
                     onChange={e => setForm(f => ({ ...f, [`option_${opt}_en`]: e.target.value }))}
                     className="w-full bg-brand-bg border border-brand-border text-brand-body rounded px-2 py-1.5 text-xs mb-1.5"
@@ -330,7 +372,7 @@ export default function ExamQuestionsPage() {
               </button>
               <button
                 onClick={handleSave}
-                disabled={saving || !form.question_en.trim() || !form.option_a_en.trim() || !form.option_b_en.trim() || !form.option_c_en.trim() || !form.option_d_en.trim()}
+                disabled={saving || !formIsValid()}
                 className="px-5 py-2 bg-brand-gold text-brand-bg font-semibold rounded-lg hover:bg-yellow-400 transition-colors text-sm disabled:opacity-50"
               >
                 {saving ? 'Saving…' : editId ? 'Update' : 'Add Question'}

@@ -14,15 +14,21 @@ export async function GET(req: Request) {
   const difficulty = searchParams.get('difficulty')
   const supabase = await createAdminClient()
 
+  const chapterId = searchParams.get('chapterId')
+
   let query = supabase
     .from('exam_questions')
     .select('*')
     .eq('course_id', courseId)
+    .order('chapter_id', { ascending: true, nullsFirst: false })
     .order('difficulty', { ascending: true })
     .order('id', { ascending: true })
 
   if (difficulty && ['1', '2', '3'].includes(difficulty)) {
     query = query.eq('difficulty', Number(difficulty))
+  }
+  if (chapterId) {
+    query = query.eq('chapter_id', Number(chapterId))
   }
 
   const { data, error } = await query
@@ -44,6 +50,7 @@ export async function POST(req: Request) {
     .from('exam_questions')
     .insert({
       course_id:      body.course_id,
+      chapter_id:     body.chapter_id ?? null,
       difficulty:     body.difficulty,
       question_en:    body.question_en,
       question_te:    body.question_te || null,

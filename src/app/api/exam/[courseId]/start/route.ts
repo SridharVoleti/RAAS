@@ -3,7 +3,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
 import type { ExamQuestion_Public, ExamNextQuestion } from '@/types'
 
-const EXAM_LENGTH = 60
+const QUESTIONS_PER_CHAPTER = 5
 const PASS_THRESHOLD = 0.70
 const COOLDOWN_HOURS = 48
 
@@ -20,18 +20,18 @@ export async function POST(
 
   const adminSupabase = await createAdminClient()
 
-  // Verify course exists and has_exam
+  // Verify course exists
   const { data: course } = await adminSupabase
     .from('courses')
-    .select('id, has_exam, title_en')
+    .select('id, title_en')
     .eq('id', courseIdNum)
     .single()
 
-  if (!course?.has_exam) {
-    return NextResponse.json({ error: 'This course does not have an exam' }, { status: 404 })
+  if (!course) {
+    return NextResponse.json({ error: 'Course not found' }, { status: 404 })
   }
 
-  // Verify enrollment (full course or exam_only)
+  // Verify enrollment
   const { data: enrollment } = await supabase
     .from('enrollments')
     .select('is_active, exam_only')
@@ -43,7 +43,7 @@ export async function POST(
     return NextResponse.json({ error: 'Not enrolled in this course' }, { status: 403 })
   }
 
-  // Check 48h cooldown: any failed session in last 48h
+  // Check 48h cooldown
   const cooldownCutoff = new Date(Date.now() - COOLDOWN_HOURS * 60 * 60 * 1000).toISOString()
   const { data: recentFailed } = await supabase
     .from('exam_sessions')
@@ -76,19 +76,54 @@ export async function POST(
     .eq('course_id', courseIdNum)
     .eq('status', 'in_progress')
 
-  // Verify enough questions exist
-  const { count: questionCount } = await adminSupabase
-    .from('exam_questions')
-    .select('*', { count: 'exact', head: true })
-    .eq('course_id', courseIdNum)
+  // Build question sequence: 5 random per chapter (in chapter order)
+  const [{ data: allQRows }, { data: orderedChapters }] = await Promise.all([
+    adminSupabase
+      .from('exam_questions')
+      .select('id, chapter_id')
+      .eq('course_id', courseIdNum),
+    adminSupabase
+      .from('chapters')
+      .select('id')
+      .eq('course_id', courseIdNum)
+      .order('order_index'),
+  ])
 
-  if (!questionCount || questionCount < EXAM_LENGTH) {
-    return NextResponse.json({
-      error: `Exam bank has only ${questionCount ?? 0} questions. ${EXAM_LENGTH} required.`
-    }, { status: 503 })
+  if (!allQRows || allQRows.length === 0) {
+    return NextResponse.json({ error: 'No exam questions available for this course yet' }, { status: 503 })
   }
 
-  // Create new session
+  // Group question IDs by chapter_id
+  const byChapter = new Map<string, number[]>()
+  for (const q of allQRows) {
+    const key = String(q.chapter_id ?? 'none')
+    const arr = byChapter.get(key) ?? []
+    arr.push(q.id)
+    byChapter.set(key, arr)
+  }
+
+  function shufflePick(pool: number[], n: number): number[] {
+    const shuffled = pool.slice().sort(() => Math.random() - 0.5)
+    return shuffled.slice(0, n)
+  }
+
+  const fullSequence: number[] = []
+
+  // Add questions from each chapter in course order
+  for (const ch of (orderedChapters ?? [])) {
+    const pool = byChapter.get(String(ch.id)) ?? []
+    if (pool.length > 0) fullSequence.push(...shufflePick(pool, QUESTIONS_PER_CHAPTER))
+  }
+
+  // Include questions with no chapter at the end
+  const nonePool = byChapter.get('none') ?? []
+  if (nonePool.length > 0) fullSequence.push(...shufflePick(nonePool, QUESTIONS_PER_CHAPTER))
+
+  if (fullSequence.length === 0) {
+    return NextResponse.json({ error: 'No exam questions available for this course yet' }, { status: 503 })
+  }
+
+  // Create session with the full pre-built sequence
   const sessionType = enrollment.exam_only ? 'exam_only' : 'course'
   const { data: session, error: sessionError } = await supabase
     .from('exam_sessions')
@@ -97,7 +132,7 @@ export async function POST(
       course_id:          courseIdNum,
       session_type:       sessionType,
       status:             'in_progress',
-      question_sequence:  [],
+      question_sequence:  fullSequence,
       answers:            {},
       current_difficulty: 2,
       questions_answered: 0,
@@ -110,59 +145,26 @@ export async function POST(
     return NextResponse.json({ error: 'Failed to create exam session' }, { status: 500 })
   }
 
-  // Pick first question at difficulty 2 (medium)
-  const firstQuestion = await pickQuestion(adminSupabase, courseIdNum, 2, [])
+  // Fetch first question
+  const { data: firstQuestion } = await adminSupabase
+    .from('exam_questions')
+    .select('*')
+    .eq('id', fullSequence[0])
+    .single()
+
   if (!firstQuestion) {
-    return NextResponse.json({ error: 'Could not select a question' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not load first question' }, { status: 500 })
   }
 
-  // Update session with first question in sequence
-  await adminSupabase
-    .from('exam_sessions')
-    .update({ question_sequence: [firstQuestion.id] })
-    .eq('id', session.id)
-
-  logger.info({ userId: user.id, courseId: courseIdNum, sessionId: session.id }, 'exam.session.started')
+  logger.info({ userId: user.id, courseId: courseIdNum, sessionId: session.id, total: fullSequence.length }, 'exam.session.started')
 
   const { correct_option: _omit, ...publicQuestion } = firstQuestion
   const response: ExamNextQuestion = {
-    question:         publicQuestion as ExamQuestion_Public,
-    question_number:  1,
-    total_questions:  EXAM_LENGTH,
-    done:             false,
+    question:        publicQuestion as ExamQuestion_Public,
+    question_number: 1,
+    total_questions: fullSequence.length,
+    done:            false,
   }
 
   return NextResponse.json({ session_id: session.id, ...response })
-}
-
-async function pickQuestion(
-  supabase: ReturnType<typeof createAdminClient>,
-  courseId: number,
-  difficulty: number,
-  usedIds: number[]
-) {
-  // Try exact difficulty first, then adjacent if unavailable
-  for (const diff of getCandidateDifficulties(difficulty)) {
-    let query = supabase
-      .from('exam_questions')
-      .select('*')
-      .eq('course_id', courseId)
-      .eq('difficulty', diff)
-
-    if (usedIds.length > 0) {
-      query = query.not('id', 'in', `(${usedIds.join(',')})`)
-    }
-
-    const { data } = await query
-    if (data && data.length > 0) {
-      return data[Math.floor(Math.random() * data.length)]
-    }
-  }
-  return null
-}
-
-function getCandidateDifficulties(target: number): number[] {
-  if (target === 1) return [1, 2]
-  if (target === 3) return [3, 2]
-  return [2, 1, 3]
 }
