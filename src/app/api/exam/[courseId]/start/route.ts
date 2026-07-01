@@ -76,27 +76,20 @@ export async function POST(
     .eq('course_id', courseIdNum)
     .eq('status', 'in_progress')
 
-  // Build question sequence: 5 random per chapter (in chapter order)
-  const [{ data: allQRows }, { data: orderedChapters }] = await Promise.all([
-    adminSupabase
-      .from('exam_questions')
-      .select('id, chapter_id')
-      .eq('course_id', courseIdNum),
-    adminSupabase
-      .from('chapters')
-      .select('id')
-      .eq('course_id', courseIdNum)
-      .order('order_index'),
-  ])
+  // Build question sequence: 5 random per chapter_name (alphabetical order)
+  const { data: allQRows } = await adminSupabase
+    .from('exam_questions')
+    .select('id, chapter_name')
+    .eq('course_id', courseIdNum)
 
   if (!allQRows || allQRows.length === 0) {
     return NextResponse.json({ error: 'No exam questions available for this course yet' }, { status: 503 })
   }
 
-  // Group question IDs by chapter_id
+  // Group question IDs by chapter_name (null/blank → 'Uncategorized')
   const byChapter = new Map<string, number[]>()
   for (const q of allQRows) {
-    const key = String(q.chapter_id ?? 'none')
+    const key = q.chapter_name?.trim() || ''
     const arr = byChapter.get(key) ?? []
     arr.push(q.id)
     byChapter.set(key, arr)
@@ -109,15 +102,13 @@ export async function POST(
 
   const fullSequence: number[] = []
 
-  // Add questions from each chapter in course order
-  for (const ch of (orderedChapters ?? [])) {
-    const pool = byChapter.get(String(ch.id)) ?? []
-    if (pool.length > 0) fullSequence.push(...shufflePick(pool, QUESTIONS_PER_CHAPTER))
+  // Named chapters first (sorted alphabetically), then uncategorized
+  const namedChapters = [...byChapter.keys()].filter(k => k !== '').sort()
+  for (const name of namedChapters) {
+    fullSequence.push(...shufflePick(byChapter.get(name)!, QUESTIONS_PER_CHAPTER))
   }
-
-  // Include questions with no chapter at the end
-  const nonePool = byChapter.get('none') ?? []
-  if (nonePool.length > 0) fullSequence.push(...shufflePick(nonePool, QUESTIONS_PER_CHAPTER))
+  const noChapter = byChapter.get('') ?? []
+  if (noChapter.length > 0) fullSequence.push(...shufflePick(noChapter, QUESTIONS_PER_CHAPTER))
 
   if (fullSequence.length === 0) {
     return NextResponse.json({ error: 'No exam questions available for this course yet' }, { status: 503 })

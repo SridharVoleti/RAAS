@@ -12,23 +12,22 @@ export async function GET(req: Request) {
   if (!courseId) return NextResponse.json({ error: 'courseId required' }, { status: 400 })
 
   const difficulty = searchParams.get('difficulty')
+  const chapterName = searchParams.get('chapterName')
   const supabase = await createAdminClient()
-
-  const chapterId = searchParams.get('chapterId')
 
   let query = supabase
     .from('exam_questions')
     .select('*')
     .eq('course_id', courseId)
-    .order('chapter_id', { ascending: true, nullsFirst: false })
+    .order('chapter_name', { ascending: true, nullsFirst: false })
     .order('difficulty', { ascending: true })
     .order('id', { ascending: true })
 
   if (difficulty && ['1', '2', '3'].includes(difficulty)) {
     query = query.eq('difficulty', Number(difficulty))
   }
-  if (chapterId) {
-    query = query.eq('chapter_id', Number(chapterId))
+  if (chapterName) {
+    query = query.eq('chapter_name', chapterName)
   }
 
   const { data, error } = await query
@@ -49,19 +48,19 @@ export async function POST(req: Request) {
   const { data, error } = await supabase
     .from('exam_questions')
     .insert({
-      course_id:      body.course_id,
-      chapter_id:     body.chapter_id ?? null,
-      difficulty:     body.difficulty,
-      question_en:    body.question_en,
-      question_te:    body.question_te || null,
-      option_a_en:    body.option_a_en,
-      option_a_te:    body.option_a_te || null,
-      option_b_en:    body.option_b_en,
-      option_b_te:    body.option_b_te || null,
-      option_c_en:    body.option_c_en,
-      option_c_te:    body.option_c_te || null,
-      option_d_en:    body.option_d_en,
-      option_d_te:    body.option_d_te || null,
+      course_id:    body.course_id,
+      chapter_name: body.chapter_name?.trim() || null,
+      difficulty:   body.difficulty,
+      question_en:  body.question_en,
+      question_te:  body.question_te || null,
+      option_a_en:  body.option_a_en,
+      option_a_te:  body.option_a_te || null,
+      option_b_en:  body.option_b_en,
+      option_b_te:  body.option_b_te || null,
+      option_c_en:  body.option_c_en,
+      option_c_te:  body.option_c_te || null,
+      option_d_en:  body.option_d_en,
+      option_d_te:  body.option_d_te || null,
       correct_option: body.correct_option,
     })
     .select()

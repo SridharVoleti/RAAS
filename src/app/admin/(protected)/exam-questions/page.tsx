@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Plus, Pencil, Trash2, ChevronDown } from 'lucide-react'
-import type { Course, Chapter, ExamQuestion } from '@/types'
+import type { Course, ExamQuestion } from '@/types'
 
 type Difficulty = 1 | 2 | 3
 const DIFF_LABEL: Record<Difficulty, string> = { 1: 'Easy', 2: 'Medium', 3: 'Hard' }
@@ -13,8 +13,8 @@ const DIFF_COLOR: Record<Difficulty, string> = {
 }
 
 const BLANK_FORM = {
-  difficulty: 2 as Difficulty,
-  chapter_id: '' as string | number,
+  difficulty:  2 as Difficulty,
+  chapter_name: '',
   question_en: '', question_te: '',
   option_a_en: '', option_a_te: '',
   option_b_en: '', option_b_te: '',
@@ -26,7 +26,6 @@ const BLANK_FORM = {
 export default function ExamQuestionsPage() {
   const [courses, setCourses] = useState<Course[]>([])
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null)
-  const [chapters, setChapters] = useState<Chapter[]>([])
   const [filterDiff, setFilterDiff] = useState<number | null>(null)
   const [questions, setQuestions] = useState<ExamQuestion[]>([])
   const [loading, setLoading] = useState(false)
@@ -41,13 +40,6 @@ export default function ExamQuestionsPage() {
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setCourses(data) })
   }, [])
-
-  useEffect(() => {
-    if (!selectedCourseId) { setChapters([]); return }
-    fetch(`/api/admin/chapters?courseId=${selectedCourseId}`)
-      .then(r => r.json())
-      .then(data => { if (Array.isArray(data)) setChapters(data) })
-  }, [selectedCourseId])
 
   const loadQuestions = useCallback(async () => {
     if (!selectedCourseId) return
@@ -71,18 +63,18 @@ export default function ExamQuestionsPage() {
   function openEdit(q: ExamQuestion) {
     setEditId(q.id)
     setForm({
-      difficulty:     q.difficulty as Difficulty,
-      chapter_id:     q.chapter_id ?? '',
-      question_en:    q.question_en,
-      question_te:    q.question_te || '',
-      option_a_en:    q.option_a_en,
-      option_a_te:    q.option_a_te || '',
-      option_b_en:    q.option_b_en,
-      option_b_te:    q.option_b_te || '',
-      option_c_en:    q.option_c_en,
-      option_c_te:    q.option_c_te || '',
-      option_d_en:    q.option_d_en,
-      option_d_te:    q.option_d_te || '',
+      difficulty:   q.difficulty as Difficulty,
+      chapter_name: q.chapter_name || '',
+      question_en:  q.question_en,
+      question_te:  q.question_te || '',
+      option_a_en:  q.option_a_en,
+      option_a_te:  q.option_a_te || '',
+      option_b_en:  q.option_b_en,
+      option_b_te:  q.option_b_te || '',
+      option_c_en:  q.option_c_en,
+      option_c_te:  q.option_c_te || '',
+      option_d_en:  q.option_d_en,
+      option_d_te:  q.option_d_te || '',
       correct_option: q.correct_option,
     })
     setError('')
@@ -103,11 +95,21 @@ export default function ExamQuestionsPage() {
     setSaving(true)
     setError('')
 
-    const { chapter_id: _rawChapterId, ...formRest } = form
     const payload = {
-      course_id:  selectedCourseId,
-      chapter_id: _rawChapterId !== '' ? Number(_rawChapterId) : undefined,
-      ...formRest,
+      course_id:    selectedCourseId,
+      chapter_name: form.chapter_name.trim() || undefined,
+      difficulty:   form.difficulty,
+      question_en:  form.question_en,
+      question_te:  form.question_te,
+      option_a_en:  form.option_a_en,
+      option_a_te:  form.option_a_te,
+      option_b_en:  form.option_b_en,
+      option_b_te:  form.option_b_te,
+      option_c_en:  form.option_c_en,
+      option_c_te:  form.option_c_te,
+      option_d_en:  form.option_d_en,
+      option_d_te:  form.option_d_te,
+      correct_option: form.correct_option,
     }
 
     const url = editId ? `/api/admin/exam-questions/${editId}` : '/api/admin/exam-questions'
@@ -140,15 +142,18 @@ export default function ExamQuestionsPage() {
     return acc
   }, {})
 
-  const chapterMap = new Map(chapters.map(c => [c.id, c.title_en || c.title_te || `Chapter ${c.id}`]))
+  // Unique chapter names in this course's questions (for info display)
+  const chapterNames = [...new Set(questions.map(q => q.chapter_name).filter(Boolean))] as string[]
+
   const selectedCourse = courses.find(c => c.id === selectedCourseId)
+  const inputCls = 'w-full bg-brand-bg border border-brand-border text-brand-body rounded-lg px-3 py-2 text-sm'
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-brand-gold font-bold text-xl">Exam Question Bank</h1>
-          <p className="text-brand-gold-muted text-sm mt-1">Manage exam questions — 5 random questions per chapter will be shown in the exam</p>
+          <p className="text-brand-gold-muted text-sm mt-1">5 random questions per chapter name are shown in the exam</p>
         </div>
         {selectedCourseId && (
           <button
@@ -177,11 +182,16 @@ export default function ExamQuestionsPage() {
           </select>
           <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-gold-muted pointer-events-none" />
         </div>
+        {chapterNames.length > 0 && (
+          <p className="text-brand-gold-muted text-xs mt-2">
+            Chapters in bank: {chapterNames.join(' · ')}
+          </p>
+        )}
       </div>
 
       {selectedCourseId && (
         <>
-          {/* Stats + filter */}
+          {/* Difficulty filter */}
           <div className="flex flex-wrap gap-3 items-center">
             <button
               onClick={() => setFilterDiff(null)}
@@ -202,11 +212,6 @@ export default function ExamQuestionsPage() {
                 {DIFF_LABEL[d]} ({countsByDiff[d] ?? 0})
               </button>
             ))}
-            {chapters.length > 0 && (
-              <span className="ml-auto text-brand-gold-muted text-xs">
-                {chapters.length} chapter{chapters.length !== 1 ? 's' : ''} · 5 questions per chapter in exam
-              </span>
-            )}
           </div>
 
           {/* Question list */}
@@ -226,9 +231,9 @@ export default function ExamQuestionsPage() {
                       <span className={`text-xs font-semibold ${DIFF_COLOR[q.difficulty as Difficulty]}`}>
                         {DIFF_LABEL[q.difficulty as Difficulty]}
                       </span>
-                      {q.chapter_id && chapterMap.has(q.chapter_id) && (
+                      {q.chapter_name && (
                         <span className="text-brand-gold-muted text-xs bg-brand-border/40 px-1.5 py-0.5 rounded">
-                          {chapterMap.get(q.chapter_id)}
+                          {q.chapter_name}
                         </span>
                       )}
                       <span className="text-brand-gold-muted text-xs">#{q.id}</span>
@@ -270,23 +275,18 @@ export default function ExamQuestionsPage() {
 
             {error && <p className="text-brand-error text-sm mb-3">{error}</p>}
 
-            {/* Chapter + Difficulty row */}
+            {/* Chapter name + Difficulty */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-brand-gold-muted text-xs mb-1.5">Chapter</label>
-                <div className="relative">
-                  <select
-                    value={form.chapter_id}
-                    onChange={e => setForm(f => ({ ...f, chapter_id: e.target.value }))}
-                    className="w-full bg-brand-bg border border-brand-border text-brand-body rounded-lg px-3 py-2 text-sm appearance-none pr-8"
-                  >
-                    <option value="">— No chapter —</option>
-                    {chapters.map(ch => (
-                      <option key={ch.id} value={ch.id}>{ch.title_en || ch.title_te}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-gold-muted pointer-events-none" />
-                </div>
+                <label className="block text-brand-gold-muted text-xs mb-1.5">Chapter Name (free text)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Introduction, Bhagavad Gita Ch.1"
+                  value={form.chapter_name}
+                  onChange={e => setForm(f => ({ ...f, chapter_name: e.target.value }))}
+                  className={inputCls}
+                />
+                <p className="text-brand-gold-muted text-[10px] mt-1">Must match exactly across questions of the same chapter</p>
               </div>
               <div>
                 <label className="block text-brand-gold-muted text-xs mb-1.5">Difficulty</label>
@@ -315,7 +315,7 @@ export default function ExamQuestionsPage() {
                   rows={3}
                   value={form.question_en}
                   onChange={e => setForm(f => ({ ...f, question_en: e.target.value }))}
-                  className="w-full bg-brand-bg border border-brand-border text-brand-body rounded-lg px-3 py-2 text-sm resize-none"
+                  className={`${inputCls} resize-none`}
                 />
               </div>
               <div>
@@ -324,7 +324,7 @@ export default function ExamQuestionsPage() {
                   rows={2}
                   value={form.question_te}
                   onChange={e => setForm(f => ({ ...f, question_te: e.target.value }))}
-                  className="w-full bg-brand-bg border border-brand-border text-brand-body rounded-lg px-3 py-2 text-sm resize-none"
+                  className={`${inputCls} resize-none`}
                 />
               </div>
             </div>
