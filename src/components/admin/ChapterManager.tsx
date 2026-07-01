@@ -59,12 +59,17 @@ function parseCSV(text: string): Record<string, string>[] {
 }
 
 function validateRows(rows: Record<string, string>[]): string[] {
-  const pLang = QUIZ_LANGUAGES[0].code
   const errors: string[] = []
   rows.forEach((row, i) => {
-    if (!row[`question_${pLang}`]) errors.push(`Row ${i + 1}: question_${pLang} required`)
-    else if (!row[`option_a_${pLang}`] || !row[`option_b_${pLang}`] || !row[`option_c_${pLang}`] || !row[`option_d_${pLang}`])
-      errors.push(`Row ${i + 1}: all four option_[a-d]_${pLang} required`)
+    const hasCompleteLang = QUIZ_LANGUAGES.some(lang =>
+      row[`question_${lang.code}`]?.trim() &&
+      row[`option_a_${lang.code}`]?.trim() &&
+      row[`option_b_${lang.code}`]?.trim() &&
+      row[`option_c_${lang.code}`]?.trim() &&
+      row[`option_d_${lang.code}`]?.trim()
+    )
+    if (!hasCompleteLang)
+      errors.push(`Row ${i + 1}: at least one complete language set (question + all 4 options) required`)
     else if (!['a', 'b', 'c', 'd'].includes(row['correct_option']?.toLowerCase()))
       errors.push(`Row ${i + 1}: correct_option must be a, b, c, or d`)
   })
@@ -132,7 +137,7 @@ export default function ChapterManager({ courseId }: Props) {
   }
 
   async function handleAdd() {
-    if (!addForm.title_en.trim()) { setError('English title is required.'); return }
+    if (!addForm.title_en?.trim() && !addForm.title_te?.trim()) { setError('At least one language title is required.'); return }
     setError('')
     setSaving(true)
     const res = await fetch(`/api/admin/chapters?courseId=${courseId}`, {
@@ -145,7 +150,7 @@ export default function ChapterManager({ courseId }: Props) {
   }
 
   async function handleEditSave(chapter: Chapter) {
-    if (!editForm.title_en?.trim()) { setError('English title is required.'); return }
+    if (!editForm.title_en?.trim() && !editForm.title_te?.trim()) { setError('At least one language title is required.'); return }
     setError('')
     setSaving(true)
     const res = await fetch(`/api/admin/chapters/${chapter.id}`, {
@@ -420,7 +425,7 @@ export default function ChapterManager({ courseId }: Props) {
                 <div className="p-4 bg-brand-bg/60 space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
-                      <label className="text-brand-gold-muted text-[10px] mb-0.5 block">Title (English) *</label>
+                      <label className="text-brand-gold-muted text-[10px] mb-0.5 block">Title (English)</label>
                       <input value={editForm.title_en ?? ''} onChange={e => setEditForm(f => ({ ...f, title_en: e.target.value }))} className={inputCls} />
                     </div>
                     <div>
@@ -630,7 +635,7 @@ export default function ChapterManager({ courseId }: Props) {
               <h4 className="text-brand-gold text-xs font-semibold">New Chapter</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
-                  <label className="text-brand-gold-muted text-[10px] mb-0.5 block">Title (English) *</label>
+                  <label className="text-brand-gold-muted text-[10px] mb-0.5 block">Title (English)</label>
                   <input value={addForm.title_en} onChange={e => setAddForm(f => ({ ...f, title_en: e.target.value }))} className={inputCls} placeholder="e.g. Chapter 1: Introduction" />
                 </div>
                 <div>

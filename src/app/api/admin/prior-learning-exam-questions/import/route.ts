@@ -7,17 +7,26 @@ import { logger } from '@/lib/logger'
 const RowSchema = z.object({
   category_key:   z.string().min(1),
   difficulty:     z.union([z.literal(1), z.literal(2), z.literal(3)]),
-  question_en:    z.string().min(2).max(2000),
+  question_en:    z.string().max(2000).optional().default(''),
   question_te:    z.string().max(2000).optional().default(''),
-  option_a_en:    z.string().min(1).max(500),
+  option_a_en:    z.string().max(500).optional().default(''),
   option_a_te:    z.string().max(500).optional().default(''),
-  option_b_en:    z.string().min(1).max(500),
+  option_b_en:    z.string().max(500).optional().default(''),
   option_b_te:    z.string().max(500).optional().default(''),
-  option_c_en:    z.string().min(1).max(500),
+  option_c_en:    z.string().max(500).optional().default(''),
   option_c_te:    z.string().max(500).optional().default(''),
-  option_d_en:    z.string().min(1).max(500),
+  option_d_en:    z.string().max(500).optional().default(''),
   option_d_te:    z.string().max(500).optional().default(''),
   correct_option: z.enum(['a', 'b', 'c', 'd']),
+}).superRefine((d, ctx) => {
+  if (!d.question_en?.trim() && !d.question_te?.trim())
+    ctx.addIssue({ code: 'custom', message: 'At least one language question is required', path: ['question_en'] })
+  for (const opt of ['a', 'b', 'c', 'd'] as const) {
+    const en = d[`option_${opt}_en` as keyof typeof d] as string
+    const te = d[`option_${opt}_te` as keyof typeof d] as string
+    if (!en?.trim() && !te?.trim())
+      ctx.addIssue({ code: 'custom', message: `At least one language text for option ${opt} is required`, path: [`option_${opt}_en`] })
+  }
 })
 
 const ImportSchema = z.object({

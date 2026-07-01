@@ -156,12 +156,14 @@ export async function POST(req: Request) {
   const first = rows[0]
 
   const slug         = first.slug
-  const title_en     = first.title_en
-  const description_en = first.description_en
+  const title_en     = first.title_en?.trim()
+  const title_te     = first.title_te?.trim()
+  const description_en = first.description_en?.trim()
+  const description_te = first.description_te?.trim()
 
-  if (!slug || !title_en || !description_en) {
+  if (!slug || (!title_en && !title_te) || (!description_en && !description_te)) {
     return NextResponse.json(
-      { error: 'First row must include slug, title_en, and description_en' },
+      { error: 'First row must include slug and at least one language title and description (title_en or title_te, description_en or description_te)' },
       { status: 400 }
     )
   }
@@ -205,12 +207,12 @@ export async function POST(req: Request) {
 
   // ── Lessons from all rows ─────────────────────────────────────────────────
   const lessonRows = rows.filter(
-    r => r.lesson_title_en?.trim() && r.youtube_video_id?.trim()
+    r => (r.lesson_title_en?.trim() || r.lesson_title_te?.trim()) && r.youtube_video_id?.trim()
   )
 
   if (lessonRows.length === 0) {
     return NextResponse.json(
-      { error: 'No lesson rows found — each lesson row needs lesson_title_en and youtube_video_id' },
+      { error: 'No lesson rows found — each lesson row needs lesson_title_en or lesson_title_te, and youtube_video_id' },
       { status: 400 }
     )
   }
@@ -277,7 +279,7 @@ export async function POST(req: Request) {
       course_id:        course.id,
       chapter_id:       null,
       section_title:    r.section_title || null,
-      title_en:         r.lesson_title_en.trim(),
+      title_en:         r.lesson_title_en?.trim() || '',
       title_te:         r.lesson_title_te?.trim() || null,
       youtube_video_id: videoId,
       duration:         r.lesson_duration?.trim() || null,

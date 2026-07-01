@@ -63,13 +63,10 @@ export default function CourseForm({ course }: Props) {
   async function handleSave(publish: boolean) {
     console.log('[CourseForm] handleSave called', { publish, isEdit, slug: form.slug })
     setError('')
-    if (!form.title_en.trim() || !form.slug.trim() || !form.description_en.trim()) {
-      console.warn('[CourseForm] Validation failed — missing required fields', {
-        title_en: !!form.title_en.trim(),
-        slug: !!form.slug.trim(),
-        description_en: !!form.description_en.trim(),
-      })
-      showError('English title, slug, and description are required.')
+    const hasTitle = form.title_en.trim() || form.title_te.trim()
+    const hasDesc  = form.description_en.trim() || form.description_te.trim()
+    if (!form.slug.trim() || !hasTitle || !hasDesc) {
+      showError('Slug is required. At least one language title and one language description are required.')
       return
     }
     setSaving(true)
@@ -150,7 +147,7 @@ export default function CourseForm({ course }: Props) {
           </div>
         </div>
         <div>
-          <label className={labelCls}>Slug (URL-safe, auto-generated)</label>
+          <label className={labelCls}>Slug (URL-safe, required — auto-generated from English title)</label>
           <input value={form.slug} onChange={e => set('slug', toSlug(e.target.value))}
             className={inputCls} placeholder="bhagavad-gita-essentials" />
         </div>
@@ -158,10 +155,10 @@ export default function CourseForm({ course }: Props) {
 
       {/* Content */}
       <div className={sectionCls}>
-        <h3 className="text-brand-gold text-sm font-semibold">Content (Bilingual)</h3>
+        <h3 className="text-brand-gold text-sm font-semibold">Content <span className="text-brand-gold-muted font-normal text-xs">(at least one language required)</span></h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className={labelCls}>Title — English *</label>
+            <label className={labelCls}>Title — English</label>
             <input value={form.title_en} onChange={e => set('title_en', e.target.value)}
               className={inputCls} placeholder="Bhagavad Gita Essentials" />
           </div>
@@ -171,7 +168,7 @@ export default function CourseForm({ course }: Props) {
               className={inputCls} placeholder="భగవద్గీత ముఖ్య అంశాలు" />
           </div>
           <div>
-            <label className={labelCls}>Description — English *</label>
+            <label className={labelCls}>Description — English</label>
             <textarea value={form.description_en} onChange={e => set('description_en', e.target.value)}
               rows={4} className={inputCls} placeholder="Course description in English…" />
           </div>

@@ -19,7 +19,7 @@ export const QUIZ_LANGUAGES: readonly QuizLanguage[] = [
   { code: 'te', label: 'Telugu',  labelNative: 'తెలుగు'  },
 ]
 
-/** The first language in the list is required; others are optional. */
+/** Kept for legacy references — no language is strictly primary; at least one must be filled. */
 export const PRIMARY_QUIZ_LANG = QUIZ_LANGUAGES[0]
 
 /** CSV column headers for all supported languages. */
@@ -57,14 +57,18 @@ export function csvRowToDbRecord(
   return record
 }
 
-/** Validate a CSV row; returns an error string or null. */
+/** Validate a CSV row; returns an error string or null.
+ *  At least one language must supply the question and all four options. */
 export function validateCsvRow(row: Record<string, string>, rowNum: number): string | null {
-  const pLang = PRIMARY_QUIZ_LANG.code
-  if (!row[`question_${pLang}`]?.trim())  return `Row ${rowNum}: question_${pLang} is required`
-  if (!row[`option_a_${pLang}`]?.trim())  return `Row ${rowNum}: option_a_${pLang} is required`
-  if (!row[`option_b_${pLang}`]?.trim())  return `Row ${rowNum}: option_b_${pLang} is required`
-  if (!row[`option_c_${pLang}`]?.trim())  return `Row ${rowNum}: option_c_${pLang} is required`
-  if (!row[`option_d_${pLang}`]?.trim())  return `Row ${rowNum}: option_d_${pLang} is required`
+  const hasCompleteLang = QUIZ_LANGUAGES.some(lang =>
+    row[`question_${lang.code}`]?.trim() &&
+    row[`option_a_${lang.code}`]?.trim() &&
+    row[`option_b_${lang.code}`]?.trim() &&
+    row[`option_c_${lang.code}`]?.trim() &&
+    row[`option_d_${lang.code}`]?.trim()
+  )
+  if (!hasCompleteLang)
+    return `Row ${rowNum}: at least one complete language set (question + all 4 options) is required`
   if (!['a', 'b', 'c', 'd'].includes(row['correct_option']?.trim().toLowerCase()))
     return `Row ${rowNum}: correct_option must be a, b, c, or d`
   return null

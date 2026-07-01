@@ -107,19 +107,20 @@ export async function POST(
     if (!isNaN(cid) && cid > 0) referencedChapterIds.add(cid)
   }
 
-  // Fetch existing question_en values for all referenced chapters (for dedup)
+  // Fetch existing questions for all referenced chapters (for dedup, using first non-empty language)
   const { data: existingQuestions } = referencedChapterIds.size > 0
     ? await supabase
         .from('quiz_questions')
-        .select('chapter_id, question_en')
+        .select('chapter_id, question_en, question_te')
         .in('chapter_id', [...referencedChapterIds])
     : { data: [] }
 
-  // Build a dedup key set: "chapterId:normalised_question_en"
+  // Build a dedup key set: "chapterId:normalised_question" (first non-empty language)
   const existingKeys = new Set<string>()
   for (const q of (existingQuestions ?? [])) {
-    if (q.chapter_id && q.question_en) {
-      existingKeys.add(`${q.chapter_id}:${q.question_en.trim().toLowerCase()}`)
+    const text = (q.question_en || q.question_te || '').trim().toLowerCase()
+    if (q.chapter_id && text) {
+      existingKeys.add(`${q.chapter_id}:${text}`)
     }
   }
 
@@ -141,14 +142,12 @@ export async function POST(
   const errors: string[] = []
   let skippedDuplicates = 0
   let skippedInvalidChapter = 0
-  const primaryLang = QUIZ_LANGUAGES[0].code
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]
     const rowNum = i + 1
 
     const chapterId = Number(row['chapter_id'])
-    const questionEn = row[`question_${primaryLang}`]?.trim()
     const correct = row['correct_option']?.trim().toLowerCase()
 
     // Validate chapter belongs to this course
@@ -158,11 +157,16 @@ export async function POST(
       continue
     }
 
-    // Validate required fields
-    if (!questionEn) { errors.push(`Row ${rowNum}: question_${primaryLang} is required`); continue }
-    if (!row[`option_a_${primaryLang}`]?.trim() || !row[`option_b_${primaryLang}`]?.trim() ||
-        !row[`option_c_${primaryLang}`]?.trim() || !row[`option_d_${primaryLang}`]?.trim()) {
-      errors.push(`Row ${rowNum}: all four option_[a-d]_${primaryLang} fields are required`)
+    // At least one language must supply question and all four options
+    const hasCompleteLang = QUIZ_LANGUAGES.some(lang =>
+      row[`question_${lang.code}`]?.trim() &&
+      row[`option_a_${lang.code}`]?.trim() &&
+      row[`option_b_${lang.code}`]?.trim() &&
+      row[`option_c_${lang.code}`]?.trim() &&
+      row[`option_d_${lang.code}`]?.trim()
+    )
+    if (!hasCompleteLang) {
+      errors.push(`Row ${rowNum}: at least one complete language set (question + all 4 options) is required`)
       continue
     }
     if (!['a', 'b', 'c', 'd'].includes(correct)) {
@@ -170,8 +174,9 @@ export async function POST(
       continue
     }
 
-    // Duplicate check
-    const dedupKey = `${chapterId}:${questionEn.toLowerCase()}`
+    // Duplicate check using first non-empty language question
+    const questionText = (row['question_en']?.trim() || row['question_te']?.trim() || '').toLowerCase()
+    const dedupKey = `${chapterId}:${questionText}`
     if (existingKeys.has(dedupKey)) {
       skippedDuplicates++
       continue

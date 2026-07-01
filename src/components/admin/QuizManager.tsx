@@ -74,9 +74,14 @@ export default function QuizManager({ lessonId, chapterId, lessons = [] }: Props
   }
 
   function validateForm(f: QForm): string {
-    if (!f.question_en.trim()) return 'Question (English) is required.'
-    if (!f.option_a_en.trim() || !f.option_b_en.trim() || !f.option_c_en.trim() || !f.option_d_en.trim())
-      return 'All four option texts (English) are required.'
+    if (!f.question_en.trim() && !f.question_te.trim())
+      return 'Question text is required in at least one language.'
+    for (const opt of OPTIONS) {
+      const en = f[`option_${opt}_en` as keyof QForm] as string
+      const te = f[`option_${opt}_te` as keyof QForm] as string
+      if (!en.trim() && !te.trim())
+        return `Option ${opt.toUpperCase()} text is required in at least one language.`
+    }
     return ''
   }
 
@@ -155,7 +160,7 @@ export default function QuizManager({ lessonId, chapterId, lessons = [] }: Props
       <div className="p-4 bg-brand-bg/60 space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div className="sm:col-span-2">
-            <label className="text-brand-gold-muted text-[10px] mb-0.5 block">Question (English) *</label>
+            <label className="text-brand-gold-muted text-[10px] mb-0.5 block">Question (English)</label>
             <textarea rows={2} value={form.question_en} onChange={e => setForm(f => ({ ...f, question_en: e.target.value }))} className={inputCls + ' resize-none'} placeholder="Type the question in English" />
           </div>
           <div className="sm:col-span-2">
@@ -179,7 +184,7 @@ export default function QuizManager({ lessonId, chapterId, lessons = [] }: Props
               )}
             </div>
             <div>
-              <label className="text-brand-gold-muted text-[10px] mb-0.5 block">Option {opt.toUpperCase()} (English) *</label>
+              <label className="text-brand-gold-muted text-[10px] mb-0.5 block">Option {opt.toUpperCase()} (English)</label>
               <input value={form[`option_${opt}_en` as keyof QForm] as string}
                 onChange={e => setForm(f => ({ ...f, [`option_${opt}_en`]: e.target.value }))}
                 className={inputCls} placeholder={`Option ${opt.toUpperCase()} in English`} />
@@ -252,7 +257,7 @@ export default function QuizManager({ lessonId, chapterId, lessons = [] }: Props
               ) : (
                 <div className="grid grid-cols-[28px_1fr_60px_140px_80px] gap-2 px-4 py-3 items-center hover:bg-brand-bg/40 transition-colors">
                   <span className="text-brand-gold-muted text-xs font-mono">{idx + 1}</span>
-                  <p className="text-brand-body text-xs truncate">{q.question_en}</p>
+                  <p className="text-brand-body text-xs truncate">{q.question_en || q.question_te}</p>
                   <span className="text-brand-gold text-xs font-semibold uppercase text-center">{q.correct_option}</span>
                   {sortedLessons.length > 1 ? (
                     <select
@@ -315,7 +320,7 @@ export default function QuizManager({ lessonId, chapterId, lessons = [] }: Props
       {deleteTarget && (
         <ConfirmModal
           title="Delete Question"
-          message={`Delete this question? "${deleteTarget.question_en.slice(0, 80)}${deleteTarget.question_en.length > 80 ? '…' : ''}" This cannot be undone.`}
+          message={(() => { const q = deleteTarget.question_en || deleteTarget.question_te || ''; return `Delete this question? "${q.slice(0, 80)}${q.length > 80 ? '…' : ''}" This cannot be undone.` })()}
           confirmLabel="Delete"
           destructive
           loading={saving}

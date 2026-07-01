@@ -51,8 +51,8 @@ export default function LessonManager({ courseId }: Props) {
 
   async function handleAdd() {
     setError('')
-    if (!addForm.title_en.trim() || !addForm.youtube_video_id.trim()) {
-      setError('English title and YouTube Video ID are required.')
+    if ((!addForm.title_en.trim() && !addForm.title_te.trim()) || !addForm.youtube_video_id.trim()) {
+      setError('At least one language title and YouTube Video ID are required.')
       return
     }
     setSaving(true)
@@ -166,7 +166,7 @@ export default function LessonManager({ courseId }: Props) {
                       <input value={editForm.youtube_video_id ?? ''} onChange={e => setEditForm(f => ({ ...f, youtube_video_id: e.target.value }))} className={inputCls} placeholder="dQw4w9WgXcQ or full URL" />
                     </div>
                     <div>
-                      <label className="text-brand-gold-muted text-[10px] mb-0.5 block">Title (English) *</label>
+                      <label className="text-brand-gold-muted text-[10px] mb-0.5 block">Title (English)</label>
                       <input value={editForm.title_en ?? ''} onChange={e => setEditForm(f => ({ ...f, title_en: e.target.value }))} className={inputCls} />
                     </div>
                     <div>
@@ -259,7 +259,7 @@ export default function LessonManager({ courseId }: Props) {
                   <input value={addForm.youtube_video_id} onChange={e => setAddForm(f => ({ ...f, youtube_video_id: e.target.value }))} className={inputCls} placeholder="Paste URL or just the ID" />
                 </div>
                 <div>
-                  <label className="text-brand-gold-muted text-[10px] mb-0.5 block">Title (English) *</label>
+                  <label className="text-brand-gold-muted text-[10px] mb-0.5 block">Title (English)</label>
                   <input value={addForm.title_en} onChange={e => setAddForm(f => ({ ...f, title_en: e.target.value }))} className={inputCls} />
                 </div>
                 <div>

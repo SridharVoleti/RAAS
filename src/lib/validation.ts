@@ -61,12 +61,12 @@ const CourseBaseSchema = z.object({
   slug:           z.string().min(2).max(100).regex(/^[a-z0-9-]+$/, 'Slug must be lowercase alphanumeric with hyphens'),
   emoji:          z.string().max(10).optional(),
   bg_color:       z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex colour').optional(),
-  title_en:       z.string().min(2).max(200),
-  title_te:       z.string().max(200),
-  description_en: z.string().min(10).max(5000),
-  description_te: z.string().max(5000),
-  instructor_en:  z.string().max(100),
-  instructor_te:  z.string().max(100),
+  title_en:       z.string().max(200).optional().default(''),
+  title_te:       z.string().max(200).optional().default(''),
+  description_en: z.string().max(5000).optional().default(''),
+  description_te: z.string().max(5000).optional().default(''),
+  instructor_en:  z.string().max(100).optional().default(''),
+  instructor_te:  z.string().max(100).optional().default(''),
   category:       z.string().min(1).max(100),
   level:          z.enum(['Beginner', 'Intermediate', 'Advanced']),
   badge:          z.string().max(50).nullable().optional(),
@@ -80,6 +80,10 @@ const CourseBaseSchema = z.object({
 })
 
 export const CreateCourseSchema = CourseBaseSchema
+  .refine(d => d.title_en?.trim() || d.title_te?.trim(),
+    { message: 'At least one language title (English or Telugu) is required', path: ['title_en'] })
+  .refine(d => d.description_en?.trim() || d.description_te?.trim(),
+    { message: 'At least one language description is required', path: ['description_en'] })
 export const UpdateCourseSchema = CourseBaseSchema.partial()
 
 // ── Lessons ───────────────────────────────────────────────────────────────────
@@ -87,7 +91,7 @@ export const UpdateCourseSchema = CourseBaseSchema.partial()
 const LessonBaseSchema = z.object({
   chapter_id:       z.number().int().positive().nullable().optional(),
   section_title:    z.string().max(100).nullable().optional(),
-  title_en:         z.string().min(2).max(200),
+  title_en:         z.string().max(200).optional().default(''),
   title_te:         z.string().max(200).nullable().optional(),
   youtube_video_id: z.string().min(5).max(20).regex(/^[a-zA-Z0-9_-]+$/, 'Must be a valid YouTube video ID'),
   duration:         z.string().max(20).nullable().optional(),
@@ -96,6 +100,8 @@ const LessonBaseSchema = z.object({
 })
 
 export const CreateLessonSchema = LessonBaseSchema
+  .refine(d => d.title_en?.trim() || d.title_te?.trim(),
+    { message: 'At least one language title (English or Telugu) is required', path: ['title_en'] })
 export const UpdateLessonSchema = LessonBaseSchema.extend({
   order_index: z.number().int().positive(),
 })
@@ -103,32 +109,48 @@ export const UpdateLessonSchema = LessonBaseSchema.extend({
 // ── Chapters ──────────────────────────────────────────────────
 
 const ChapterBaseSchema = z.object({
-  title_en:    z.string().min(2).max(200),
-  title_te:    z.string().max(200).optional(),
+  title_en:    z.string().max(200).optional().default(''),
+  title_te:    z.string().max(200).optional().default(''),
   order_index: z.number().int().nonnegative().optional(),
 })
 
 export const CreateChapterSchema = ChapterBaseSchema
+  .refine(d => d.title_en?.trim() || d.title_te?.trim(),
+    { message: 'At least one language title (English or Telugu) is required', path: ['title_en'] })
 export const UpdateChapterSchema = ChapterBaseSchema.partial()
 
 // ── Quiz ─────────────────────────────────────────────────────────────────────
 
 const QuizQuestionBaseSchema = z.object({
-  question_en:    z.string().min(2).max(1000),
-  question_te:    z.string().max(1000).optional(),
-  option_a_en:    z.string().min(1).max(500),
-  option_a_te:    z.string().max(500).optional(),
-  option_b_en:    z.string().min(1).max(500),
-  option_b_te:    z.string().max(500).optional(),
-  option_c_en:    z.string().min(1).max(500),
-  option_c_te:    z.string().max(500).optional(),
-  option_d_en:    z.string().min(1).max(500),
-  option_d_te:    z.string().max(500).optional(),
+  question_en:    z.string().max(1000).optional().default(''),
+  question_te:    z.string().max(1000).optional().default(''),
+  option_a_en:    z.string().max(500).optional().default(''),
+  option_a_te:    z.string().max(500).optional().default(''),
+  option_b_en:    z.string().max(500).optional().default(''),
+  option_b_te:    z.string().max(500).optional().default(''),
+  option_c_en:    z.string().max(500).optional().default(''),
+  option_c_te:    z.string().max(500).optional().default(''),
+  option_d_en:    z.string().max(500).optional().default(''),
+  option_d_te:    z.string().max(500).optional().default(''),
   correct_option: z.enum(['a', 'b', 'c', 'd']),
   order_index:    z.number().int().nonnegative().optional(),
 })
 
-export const CreateQuizQuestionSchema = QuizQuestionBaseSchema
+function refineQuizBilingual(
+  d: z.infer<typeof QuizQuestionBaseSchema>,
+  ctx: z.RefinementCtx
+) {
+  if (!d.question_en?.trim() && !d.question_te?.trim())
+    ctx.addIssue({ code: 'custom', message: 'At least one language question is required', path: ['question_en'] })
+  for (const opt of ['a', 'b', 'c', 'd'] as const) {
+    const en = d[`option_${opt}_en` as keyof typeof d] as string | undefined
+    const te = d[`option_${opt}_te` as keyof typeof d] as string | undefined
+    if (!en?.trim() && !te?.trim())
+      ctx.addIssue({ code: 'custom', message: `At least one language text for option ${opt} is required`, path: [`option_${opt}_en`] })
+  }
+}
+
+export const CreateQuizQuestionSchema = QuizQuestionBaseSchema.superRefine(refineQuizBilingual)
 export const UpdateQuizQuestionSchema = QuizQuestionBaseSchema.partial().extend({
   correct_option: z.enum(['a', 'b', 'c', 'd']),
   lesson_id:      z.number().int().positive().optional(),
@@ -144,20 +166,34 @@ export const QuizSubmitSchema = z.object({
 const ExamQuestionBaseSchema = z.object({
   course_id:      z.number().int().positive(),
   difficulty:     z.union([z.literal(1), z.literal(2), z.literal(3)]),
-  question_en:    z.string().min(2).max(2000),
-  question_te:    z.string().max(2000).optional(),
-  option_a_en:    z.string().min(1).max(500),
-  option_a_te:    z.string().max(500).optional(),
-  option_b_en:    z.string().min(1).max(500),
-  option_b_te:    z.string().max(500).optional(),
-  option_c_en:    z.string().min(1).max(500),
-  option_c_te:    z.string().max(500).optional(),
-  option_d_en:    z.string().min(1).max(500),
-  option_d_te:    z.string().max(500).optional(),
+  question_en:    z.string().max(2000).optional().default(''),
+  question_te:    z.string().max(2000).optional().default(''),
+  option_a_en:    z.string().max(500).optional().default(''),
+  option_a_te:    z.string().max(500).optional().default(''),
+  option_b_en:    z.string().max(500).optional().default(''),
+  option_b_te:    z.string().max(500).optional().default(''),
+  option_c_en:    z.string().max(500).optional().default(''),
+  option_c_te:    z.string().max(500).optional().default(''),
+  option_d_en:    z.string().max(500).optional().default(''),
+  option_d_te:    z.string().max(500).optional().default(''),
   correct_option: z.enum(['a', 'b', 'c', 'd']),
 })
 
-export const CreateExamQuestionSchema = ExamQuestionBaseSchema
+function refineExamBilingual(
+  d: z.infer<typeof ExamQuestionBaseSchema>,
+  ctx: z.RefinementCtx
+) {
+  if (!d.question_en?.trim() && !d.question_te?.trim())
+    ctx.addIssue({ code: 'custom', message: 'At least one language question is required', path: ['question_en'] })
+  for (const opt of ['a', 'b', 'c', 'd'] as const) {
+    const en = d[`option_${opt}_en` as keyof typeof d] as string | undefined
+    const te = d[`option_${opt}_te` as keyof typeof d] as string | undefined
+    if (!en?.trim() && !te?.trim())
+      ctx.addIssue({ code: 'custom', message: `At least one language text for option ${opt} is required`, path: [`option_${opt}_en`] })
+  }
+}
+
+export const CreateExamQuestionSchema = ExamQuestionBaseSchema.superRefine(refineExamBilingual)
 export const UpdateExamQuestionSchema = ExamQuestionBaseSchema.partial().extend({
   correct_option: z.enum(['a', 'b', 'c', 'd']).optional(),
 })
