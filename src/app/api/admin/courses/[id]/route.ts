@@ -38,6 +38,7 @@ export async function PUT(
       is_free:        body.is_free,
       price:          body.is_free ? 0 : Number(body.price ?? 0),
       has_quiz:       body.has_quiz,
+      is_published:   body.is_published,
       order_index:    body.order_index !== undefined ? Number(body.order_index) : undefined,
     })
     .eq('id', Number(id))
