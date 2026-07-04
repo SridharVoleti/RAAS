@@ -37,10 +37,10 @@ export async function GET(
     return NextResponse.json({ error: 'Not enrolled' }, { status: 403 })
   }
 
-  // Pick N random questions — correct_option excluded from response
+  // Pick N random questions from the exam bank for this chapter
   const { data: questions, error } = await adminSupabase
-    .from('quiz_questions')
-    .select('id, chapter_id, question_en, question_te, option_a_en, option_a_te, option_b_en, option_b_te, option_c_en, option_c_te, option_d_en, option_d_te, order_index')
+    .from('exam_questions')
+    .select('id, chapter_id, question_en, question_te, option_a_en, option_a_te, option_b_en, option_b_te, option_c_en, option_c_te, option_d_en, option_d_te')
     .eq('chapter_id', chapterIdNum)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -54,7 +54,10 @@ export async function GET(
     const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
   }
-  const selected = shuffled.slice(0, QUIZ_QUESTIONS_PER_ATTEMPT) as QuizQuestion_Public[]
+  const selected = shuffled.slice(0, QUIZ_QUESTIONS_PER_ATTEMPT).map(q => ({
+    ...q,
+    order_index: 0,
+  })) as QuizQuestion_Public[]
 
   return NextResponse.json({ questions: selected, total_in_pool: questions.length })
 }

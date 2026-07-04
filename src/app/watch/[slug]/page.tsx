@@ -94,7 +94,7 @@ export default async function WatchPage({
       : Promise.resolve({ data: [], error: null }),
     chapterIds.length > 0
       ? adminSupabase
-          .from('quiz_questions')
+          .from('exam_questions')
           .select('chapter_id')
           .in('chapter_id', chapterIds)
       : Promise.resolve({ data: [], error: null }),

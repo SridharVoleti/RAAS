@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Plus, Pencil, Trash2, ChevronDown } from 'lucide-react'
-import type { Course, ExamQuestion } from '@/types'
+import type { Chapter, Course, ExamQuestion } from '@/types'
 
 type Difficulty = 1 | 2 | 3
 const DIFF_LABEL: Record<Difficulty, string> = { 1: 'Easy', 2: 'Medium', 3: 'Hard' }
@@ -13,7 +13,8 @@ const DIFF_COLOR: Record<Difficulty, string> = {
 }
 
 const BLANK_FORM = {
-  difficulty:  2 as Difficulty,
+  difficulty:   2 as Difficulty,
+  chapter_id:   undefined as number | undefined,
   chapter_name: '',
   question_en: '', question_te: '',
   option_a_en: '', option_a_te: '',
@@ -26,6 +27,7 @@ const BLANK_FORM = {
 export default function ExamQuestionsPage() {
   const [courses, setCourses] = useState<Course[]>([])
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null)
+  const [chapters, setChapters] = useState<Chapter[]>([])
   const [filterDiff, setFilterDiff] = useState<number | null>(null)
   const [questions, setQuestions] = useState<ExamQuestion[]>([])
   const [loading, setLoading] = useState(false)
@@ -53,6 +55,14 @@ export default function ExamQuestionsPage() {
 
   useEffect(() => { loadQuestions() }, [loadQuestions])
 
+  useEffect(() => {
+    if (!selectedCourseId) { setChapters([]); return }
+    fetch(`/api/admin/chapters?courseId=${selectedCourseId}`)
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setChapters(data) })
+      .catch(() => {})
+  }, [selectedCourseId])
+
   function openAdd() {
     setEditId(null)
     setForm({ ...BLANK_FORM })
@@ -64,6 +74,7 @@ export default function ExamQuestionsPage() {
     setEditId(q.id)
     setForm({
       difficulty:   q.difficulty as Difficulty,
+      chapter_id:   q.chapter_id,
       chapter_name: q.chapter_name || '',
       question_en:  q.question_en,
       question_te:  q.question_te || '',
@@ -97,6 +108,7 @@ export default function ExamQuestionsPage() {
 
     const payload = {
       course_id:    selectedCourseId,
+      chapter_id:   form.chapter_id,
       chapter_name: form.chapter_name.trim() || undefined,
       difficulty:   form.difficulty,
       question_en:  form.question_en,
@@ -278,15 +290,28 @@ export default function ExamQuestionsPage() {
             {/* Chapter name + Difficulty */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-brand-gold-muted text-xs mb-1.5">Chapter Name (free text)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Introduction, Bhagavad Gita Ch.1"
-                  value={form.chapter_name}
-                  onChange={e => setForm(f => ({ ...f, chapter_name: e.target.value }))}
-                  className={inputCls}
-                />
-                <p className="text-brand-gold-muted text-[10px] mt-1">Must match exactly across questions of the same chapter</p>
+                <label className="block text-brand-gold-muted text-xs mb-1.5">Chapter</label>
+                <div className="relative">
+                  <select
+                    value={form.chapter_id ?? ''}
+                    onChange={e => {
+                      const id = e.target.value ? Number(e.target.value) : undefined
+                      const ch = chapters.find(c => c.id === id)
+                      const name = ch ? (ch.title_en || ch.title_te || '') : ''
+                      setForm(f => ({ ...f, chapter_id: id, chapter_name: name }))
+                    }}
+                    className={`${inputCls} appearance-none pr-8`}
+                  >
+                    <option value="">— No chapter —</option>
+                    {chapters.map(c => (
+                      <option key={c.id} value={c.id}>{c.order_index}. {c.title_en || c.title_te}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-gold-muted pointer-events-none" />
+                </div>
+                {chapters.length === 0 && (
+                  <p className="text-brand-gold-muted text-[10px] mt-1">Add chapters to this course first</p>
+                )}
               </div>
               <div>
                 <label className="block text-brand-gold-muted text-xs mb-1.5">Difficulty</label>

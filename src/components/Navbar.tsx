@@ -14,7 +14,6 @@ export default function Navbar() {
   const { lang, setLang, t } = useLang()
   const router = useRouter()
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [hasPriorLearning, setHasPriorLearning] = useState(false)
   const [showVerifyBanner, setShowVerifyBanner] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -22,12 +21,8 @@ export default function Navbar() {
     const supabase = createClient()
 
     async function loadProfile(userId: string) {
-      const [{ data }, { count }] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
-        supabase.from('prior_learning_declarations').select('id', { count: 'exact', head: true }).eq('user_id', userId),
-      ])
+      const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
       setProfile(data)
-      setHasPriorLearning((count ?? 0) > 0)
     }
 
     function checkVerification(user: { email?: string; user_metadata?: Record<string, unknown> } | null) {
@@ -50,7 +45,6 @@ export default function Navbar() {
         checkVerification(session.user)
       } else {
         setProfile(null)
-        setHasPriorLearning(false)
         setShowVerifyBanner(false)
       }
     })
@@ -125,11 +119,6 @@ export default function Navbar() {
                 <Link href="/my-courses" className="text-brand-gold-secondary hover:text-brand-gold transition-colors text-sm font-medium">
                   {t.nav.myCourses}
                 </Link>
-                {hasPriorLearning && (
-                  <Link href="/exams" className="text-brand-gold-secondary hover:text-brand-gold transition-colors text-sm font-medium">
-                    {lang === 'te' ? 'పరీక్షలు' : 'Exams'}
-                  </Link>
-                )}
                 <Link href="/donate" className="text-brand-gold-secondary hover:text-brand-gold transition-colors text-sm font-medium">
                   {t.nav.donate}
                 </Link>

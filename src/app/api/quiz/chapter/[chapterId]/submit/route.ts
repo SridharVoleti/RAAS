@@ -40,10 +40,10 @@ export async function POST(
     return NextResponse.json({ error: 'Not enrolled' }, { status: 403 })
   }
 
-  // Fetch correct answers for the submitted question IDs only
+  // Fetch correct answers from exam_questions
   const questionIds = Object.keys(answers).map(Number)
   const { data: questions, error } = await adminSupabase
-    .from('quiz_questions')
+    .from('exam_questions')
     .select('id, correct_option')
     .eq('chapter_id', chapterIdNum)
     .in('id', questionIds)

@@ -18,6 +18,7 @@ export async function PATCH(
   const supabase = await createAdminClient()
 
   const update: Record<string, unknown> = {}
+  if (body.chapter_id     !== undefined) update.chapter_id     = body.chapter_id ?? null
   if (body.chapter_name   !== undefined) update.chapter_name   = body.chapter_name?.trim() || null
   if (body.difficulty     !== undefined) update.difficulty     = body.difficulty
   if (body.question_en    !== undefined) update.question_en    = body.question_en

@@ -49,6 +49,7 @@ export async function POST(req: Request) {
     .from('exam_questions')
     .insert({
       course_id:    body.course_id,
+      chapter_id:   body.chapter_id ?? null,
       chapter_name: body.chapter_name?.trim() || null,
       difficulty:   body.difficulty,
       question_en:  body.question_en,

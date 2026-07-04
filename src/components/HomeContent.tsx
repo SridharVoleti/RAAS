@@ -8,8 +8,6 @@ import CourseCard from '@/components/CourseCard'
 import CourseDetailOverlay from '@/components/CourseDetailOverlay'
 import WelcomeVideoDialog from '@/components/WelcomeVideoDialog'
 import { createClient } from '@/lib/supabase/client'
-import PriorLearningDialog from '@/components/PriorLearningDialog'
-import { RAMANUJA_GRANTHA_CONFIG } from '@/lib/priorLearningConfigs'
 import type { Course, Testimonial, TextWidget } from '@/types'
 import type { HomeStats } from '@/lib/homeData'
 
@@ -38,34 +36,15 @@ export default function HomeContent({ courses, stats, testimonials, widgets }: P
   }, [searchParams, router])
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
-  const [hasDeclaredPriorLearning, setHasDeclaredPriorLearning] = useState<boolean | null>(null)
-  const [priorLearningOpen, setPriorLearningOpen] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setIsLoggedIn(!!session)
-      if (session) checkPriorLearning()
-    })
+    supabase.auth.getSession().then(({ data: { session } }) => { setIsLoggedIn(!!session) })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsLoggedIn(!!session)
-      if (session) checkPriorLearning()
-      else setHasDeclaredPriorLearning(null)
     })
     return () => subscription.unsubscribe()
   }, [])
-
-  async function checkPriorLearning() {
-    try {
-      const res = await fetch(`/api/prior-learning?category=${RAMANUJA_GRANTHA_CONFIG.categoryKey}`)
-      if (res.ok) {
-        const json = await res.json()
-        setHasDeclaredPriorLearning(!!json.declaration)
-      }
-    } catch {
-      setHasDeclaredPriorLearning(false)
-    }
-  }
 
   const topCourses = [...courses].sort((a, b) => b.student_count - a.student_count).slice(0, 6)
   const raasCount = courses.filter(c => c.path_id === 1).length
@@ -125,34 +104,6 @@ export default function HomeContent({ courses, stats, testimonials, widgets }: P
           </div>
         </div>
       )}
-
-      {/* Prior learning nudge — shown to logged-in users who haven't declared yet */}
-      {isLoggedIn === true && hasDeclaredPriorLearning === false && (
-        <div className="max-w-xl mx-auto px-4 pt-8 pb-0">
-          <div className="relative flex flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-xl border border-brand-gold/30 bg-brand-gold/5 px-5 py-3 text-center overflow-hidden">
-            <span className="absolute left-3 top-2 text-brand-gold text-xs animate-[twinkle_1.6s_ease-in-out_infinite]">✦</span>
-            <span className="absolute right-5 bottom-2 text-brand-gold text-[10px] animate-[twinkle_2.1s_ease-in-out_0.4s_infinite]">✦</span>
-            <p className="text-brand-gold-muted text-sm">
-              {lang === 'te'
-                ? 'రామానుజ గ్రంథం ఇప్పటికే నేర్చుకున్నారా?'
-                : 'Already learnt a Ramanuja Grantha?'}
-            </p>
-            <button
-              onClick={() => setPriorLearningOpen(true)}
-              className="text-brand-gold text-sm font-semibold underline underline-offset-2 hover:text-yellow-300 transition-colors whitespace-nowrap"
-            >
-              {lang === 'te' ? 'ఇక్కడ నమోదు చేయండి' : 'Declare here'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      <PriorLearningDialog
-        config={RAMANUJA_GRANTHA_CONFIG}
-        isOpen={priorLearningOpen}
-        onClose={() => setPriorLearningOpen(false)}
-        onDeclared={() => { setPriorLearningOpen(false); setHasDeclaredPriorLearning(true) }}
-      />
 
       {/* Learning Paths */}
       <section className="max-w-7xl mx-auto px-4 py-10">

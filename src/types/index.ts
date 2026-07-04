@@ -167,6 +167,7 @@ export interface QuizResult {
 export interface ExamQuestion {
   id: number
   course_id: number
+  chapter_id?: number
   chapter_name?: string
   difficulty: 1 | 2 | 3
   question_en: string
@@ -227,41 +228,6 @@ export interface TextWidget {
   created_at: string
 }
 
-export interface PriorLearningExamQuestion {
-  id: number
-  category_key: string
-  difficulty: 1 | 2 | 3
-  question_en: string
-  question_te?: string
-  option_a_en: string
-  option_a_te?: string
-  option_b_en: string
-  option_b_te?: string
-  option_c_en: string
-  option_c_te?: string
-  option_d_en: string
-  option_d_te?: string
-  correct_option: 'a' | 'b' | 'c' | 'd'
-  is_active: boolean
-  created_at: string
-}
-
-export type PriorLearningExamQuestion_Public = Omit<PriorLearningExamQuestion, 'correct_option'>
-
-export interface PriorLearningExamSession {
-  id: string
-  user_id: string
-  category_key: string
-  status: 'in_progress' | 'submitted' | 'expired'
-  question_ids: number[]
-  answers: Record<string, 'a' | 'b' | 'c' | 'd'>
-  score: number | null
-  total: number | null
-  passed: boolean | null
-  started_at: string
-  expires_at: string
-  submitted_at: string | null
-}
 
 export interface CourseWithProgress extends Course {
   progress_pct: number
