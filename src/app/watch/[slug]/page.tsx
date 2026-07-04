@@ -24,21 +24,21 @@ export default async function WatchPage({
   // Fetch course + enrollment in parallel
   const adminSupabase = await createAdminClient()
 
-  const [{ data: course }, { data: enrollment }] = await Promise.all([
-    adminSupabase
-      .from('courses')
-      .select('*')
-      .eq('slug', slug)
-      .eq('is_published', true)
-      .single(),
-    supabase
-      .from('enrollments')
-      .select('id, is_active')
-      .eq('user_id', user.id)
-      .maybeSingle(),
-  ])
+  const { data: course } = await adminSupabase
+    .from('courses')
+    .select('*')
+    .eq('slug', slug)
+    .eq('is_published', true)
+    .single()
 
   if (!course) redirect('/explore')
+
+  const { data: enrollment } = await supabase
+    .from('enrollments')
+    .select('id, is_active')
+    .eq('user_id', user.id)
+    .eq('course_id', course.id)
+    .maybeSingle()
 
   // Check enrollment status
   if (!enrollment) {
