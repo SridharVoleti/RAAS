@@ -33,6 +33,16 @@ type YTPlayer = {
 }
 
 const QUIZ_PASS_PCT = 80
+const CHAPTER_QUIZ_PASS_SCORE = 3
+
+// Chapter quizzes are always 5 questions — message text is tuned for that.
+function getChapterQuizMessage(score: number, lang: string): string | undefined {
+  if (lang !== 'te') return undefined
+  if (score >= 5) return 'అద్భుతం! మీరు అన్ని ప్రశ్నలకి సరైన సమాధానము చెప్పారు.'
+  if (score === 4) return 'చాలా బాగుంది! మీరు 4గింటికి సరైన సమాధానము ఇచ్చారు.'
+  if (score === 3) return 'బాగుంది! మీరు 5 దింట 3కి సమాధానం సరిగ్గా ఇచ్చారు.'
+  return 'మీరు పాఠం మళ్ళీ బాగా విని, చదివి పరీక్ష మళ్ళీ ప్రయత్నించండి.'
+}
 
 interface Props {
   course: Course
@@ -86,7 +96,7 @@ export default function WatchClient({
   ))
   const [passedChapterQuizIds, setPassedChapterQuizIds] = useState<Set<number>>(() => new Set(
     chapterSubmissions
-      .filter(s => s.chapter_id !== undefined && s.total_questions > 0 && (s.score / s.total_questions) * 100 >= QUIZ_PASS_PCT)
+      .filter(s => s.chapter_id !== undefined && s.score >= CHAPTER_QUIZ_PASS_SCORE)
       .map(s => s.chapter_id as number)
   ))
   const [activeTab, setActiveTab] = useState<TabType>('lessons')
@@ -661,7 +671,7 @@ function ChapterQuizPlayer({ chapterId, chapterTitle, bestSubmission, alreadyPas
       const data: QuizResult = await res.json()
       setResult(data)
       setPhase('result')
-      if (data.total > 0 && (data.score / data.total) * 100 >= QUIZ_PASS_PCT) onPassed(chapterId)
+      if (data.score >= CHAPTER_QUIZ_PASS_SCORE) onPassed(chapterId)
     } finally {
       setSubmitting(false)
     }
@@ -686,7 +696,8 @@ function ChapterQuizPlayer({ chapterId, chapterTitle, bestSubmission, alreadyPas
   const score = result?.score ?? bestSubmission?.score ?? 0
   const total = result?.total ?? bestSubmission?.total_questions ?? questions.length
   const pct = total > 0 ? Math.round((score / total) * 100) : 0
-  const passed = pct >= QUIZ_PASS_PCT
+  const passed = score >= CHAPTER_QUIZ_PASS_SCORE
+  const scoreMessage = getChapterQuizMessage(score, lang)
 
   if (phase === 'loading') {
     return (
@@ -735,6 +746,7 @@ function ChapterQuizPlayer({ chapterId, chapterTitle, bestSubmission, alreadyPas
       total={total}
       pct={pct}
       passed={passed}
+      scoreMessage={scoreMessage}
       selected={selected}
       submitting={submitting}
       error={submitError}
@@ -754,7 +766,7 @@ function ChapterQuizPlayer({ chapterId, chapterTitle, bestSubmission, alreadyPas
 // ── Shared quiz shell UI ──────────────────────────────────────────────────────
 function QuizShell({
   header, headerIcon, phase, qIdx, questions, answers, result,
-  score, total, pct, passed, selected, submitting, error,
+  score, total, pct, passed, scoreMessage, selected, submitting, error,
   tQuiz, lang: _lang, getQuestion, getOptionText, inputNamePrefix,
   onAnswerSelect, onNext, onRetry, onNextLesson,
 }: {
@@ -766,6 +778,7 @@ function QuizShell({
   answers: Record<number, 'a' | 'b' | 'c' | 'd'>
   result: QuizResult | null
   score: number; total: number; pct: number; passed: boolean
+  scoreMessage?: string
   selected: 'a' | 'b' | 'c' | 'd' | undefined
   submitting: boolean
   error: string
@@ -810,7 +823,7 @@ function QuizShell({
               <>
                 <p className="flex items-center justify-center gap-1.5 text-brand-success text-sm font-semibold mt-4">
                   <CheckCircle2 className="w-4 h-4" />
-                  {tQuiz.quizPassed}
+                  {scoreMessage ?? tQuiz.quizPassed}
                 </p>
                 <div className="flex items-center justify-center gap-3 mt-4 flex-wrap">
                   {onNextLesson && (
@@ -826,8 +839,8 @@ function QuizShell({
               </>
             ) : (
               <>
-                <p className="text-brand-error text-sm font-semibold mt-4">{tQuiz.quizFailed}</p>
-                <p className="text-brand-gold-muted text-xs mt-1">{tQuiz.needToPass}</p>
+                <p className="text-brand-error text-sm font-semibold mt-4">{scoreMessage ?? tQuiz.quizFailed}</p>
+                {!scoreMessage && <p className="text-brand-gold-muted text-xs mt-1">{tQuiz.needToPass}</p>}
                 <button onClick={onRetry} className="mt-4 px-5 py-2 bg-brand-gold text-brand-bg text-sm font-semibold rounded-lg hover:bg-yellow-400 transition-colors">
                   {tQuiz.retry}
                 </button>
