@@ -169,7 +169,6 @@ export interface ExamQuestion {
   course_id: number
   chapter_id?: number
   chapter_name?: string
-  difficulty: 1 | 2 | 3
   question_en: string
   question_te?: string
   option_a_en: string

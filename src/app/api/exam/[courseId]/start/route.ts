@@ -100,15 +100,22 @@ export async function POST(
     return shuffled.slice(0, n)
   }
 
+  // Exam-only students get equal weightage across chapters (capped to smallest pool).
+  // Regular course students always get exactly QUESTIONS_PER_CHAPTER per chapter.
+  const allPoolSizes = [...byChapter.values()].map(arr => arr.length)
+  const perChapter = enrollment.exam_only
+    ? Math.min(QUESTIONS_PER_CHAPTER, ...allPoolSizes)
+    : QUESTIONS_PER_CHAPTER
+
   const fullSequence: number[] = []
 
   // Named chapters first (sorted alphabetically), then uncategorized
   const namedChapters = [...byChapter.keys()].filter(k => k !== '').sort()
   for (const name of namedChapters) {
-    fullSequence.push(...shufflePick(byChapter.get(name)!, QUESTIONS_PER_CHAPTER))
+    fullSequence.push(...shufflePick(byChapter.get(name)!, perChapter))
   }
   const noChapter = byChapter.get('') ?? []
-  if (noChapter.length > 0) fullSequence.push(...shufflePick(noChapter, QUESTIONS_PER_CHAPTER))
+  if (noChapter.length > 0) fullSequence.push(...shufflePick(noChapter, perChapter))
 
   if (fullSequence.length === 0) {
     return NextResponse.json({ error: 'No exam questions available for this course yet' }, { status: 503 })

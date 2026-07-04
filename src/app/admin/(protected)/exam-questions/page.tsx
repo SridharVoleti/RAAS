@@ -1,19 +1,52 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { Plus, Pencil, Trash2, ChevronDown } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Plus, Pencil, Trash2, ChevronDown, Upload, X } from 'lucide-react'
 import type { Chapter, Course, ExamQuestion } from '@/types'
 
-type Difficulty = 1 | 2 | 3
-const DIFF_LABEL: Record<Difficulty, string> = { 1: 'Easy', 2: 'Medium', 3: 'Hard' }
-const DIFF_COLOR: Record<Difficulty, string> = {
-  1: 'text-brand-success',
-  2: 'text-brand-gold',
-  3: 'text-brand-error',
+type ImportRow = {
+  course_id:      number
+  chapter_id?:    number
+  chapter_name?:  string
+  question_en:    string
+  option_a_te:    string
+  option_b_te:    string
+  option_c_te:    string
+  option_d_te:    string
+  correct_option: 'a' | 'b' | 'c' | 'd'
+}
+
+function parseCSV(text: string): string[][] {
+  const rows: string[][] = []
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim()
+    if (!line) continue
+    const cols: string[] = []
+    let i = 0
+    while (i < line.length) {
+      if (line[i] === '"') {
+        i++
+        let val = ''
+        while (i < line.length) {
+          if (line[i] === '"' && line[i + 1] === '"') { val += '"'; i += 2 }
+          else if (line[i] === '"') { i++; break }
+          else { val += line[i++] }
+        }
+        cols.push(val)
+        if (line[i] === ',') i++
+      } else {
+        const end = line.indexOf(',', i)
+        if (end === -1) { cols.push(line.slice(i).trim()); break }
+        cols.push(line.slice(i, end).trim())
+        i = end + 1
+      }
+    }
+    rows.push(cols)
+  }
+  return rows
 }
 
 const BLANK_FORM = {
-  difficulty:   2 as Difficulty,
   chapter_id:   undefined as number | undefined,
   chapter_name: '',
   question_en: '', question_te: '',
@@ -28,7 +61,6 @@ export default function ExamQuestionsPage() {
   const [courses, setCourses] = useState<Course[]>([])
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null)
   const [chapters, setChapters] = useState<Chapter[]>([])
-  const [filterDiff, setFilterDiff] = useState<number | null>(null)
   const [questions, setQuestions] = useState<ExamQuestion[]>([])
   const [loading, setLoading] = useState(false)
   const [showForm, setShowForm] = useState(false)
@@ -36,6 +68,10 @@ export default function ExamQuestionsPage() {
   const [form, setForm] = useState({ ...BLANK_FORM })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [pendingRows, setPendingRows] = useState<ImportRow[] | null>(null)
+  const [importError, setImportError] = useState('')
+  const [importing, setImporting] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetch('/api/admin/courses')
@@ -46,12 +82,12 @@ export default function ExamQuestionsPage() {
   const loadQuestions = useCallback(async () => {
     if (!selectedCourseId) return
     setLoading(true)
-    const url = `/api/admin/exam-questions?courseId=${selectedCourseId}${filterDiff ? `&difficulty=${filterDiff}` : ''}`
+    const url = `/api/admin/exam-questions?courseId=${selectedCourseId}`
     const res = await fetch(url)
     const data = await res.json()
     setQuestions(Array.isArray(data) ? data : [])
     setLoading(false)
-  }, [selectedCourseId, filterDiff])
+  }, [selectedCourseId])
 
   useEffect(() => { loadQuestions() }, [loadQuestions])
 
@@ -73,7 +109,6 @@ export default function ExamQuestionsPage() {
   function openEdit(q: ExamQuestion) {
     setEditId(q.id)
     setForm({
-      difficulty:   q.difficulty as Difficulty,
       chapter_id:   q.chapter_id,
       chapter_name: q.chapter_name || '',
       question_en:  q.question_en,
@@ -90,6 +125,76 @@ export default function ExamQuestionsPage() {
     })
     setError('')
     setShowForm(true)
+  }
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !selectedCourseId) return
+    setImportError('')
+    setPendingRows(null)
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      try {
+        const allRows = parseCSV(ev.target?.result as string)
+        // Skip header row if first cell looks like a label
+        const dataRows = allRows[0]?.[0]?.toLowerCase().includes('chapter') ? allRows.slice(1) : allRows
+        const rows: ImportRow[] = []
+        const errs: string[] = []
+        for (let i = 0; i < dataRows.length; i++) {
+          const cols = dataRows[i]
+          const [chapterNum, question, optA, optB, optC, optD, answer] = cols
+          const correct = answer?.trim().toLowerCase() as 'a' | 'b' | 'c' | 'd'
+          if (!['a', 'b', 'c', 'd'].includes(correct)) {
+            errs.push(`Row ${i + 2}: invalid correct answer "${answer?.trim()}"`)
+            continue
+          }
+          if (!question?.trim()) { errs.push(`Row ${i + 2}: question is empty`); continue }
+          if (!optA?.trim() || !optB?.trim() || !optC?.trim() || !optD?.trim()) {
+            errs.push(`Row ${i + 2}: all four options are required`); continue
+          }
+          // Match chapter by order_index
+          const chIdx = Number(chapterNum?.trim())
+          const ch = chapters.find(c => c.order_index === chIdx)
+          rows.push({
+            course_id:      selectedCourseId,
+            chapter_id:     ch?.id,
+            chapter_name:   ch ? (ch.title_en || ch.title_te || '') : undefined,
+            question_en:    question.trim(),
+            option_a_te:    optA.trim(),
+            option_b_te:    optB.trim(),
+            option_c_te:    optC.trim(),
+            option_d_te:    optD.trim(),
+            correct_option: correct,
+          })
+        }
+        if (errs.length) { setImportError(errs.slice(0, 3).join(' · ') + (errs.length > 3 ? ` (+${errs.length - 3} more)` : '')); return }
+        if (!rows.length) { setImportError('No valid rows found in CSV'); return }
+        setPendingRows(rows)
+      } catch {
+        setImportError('Could not parse CSV file')
+      }
+    }
+    reader.readAsText(file)
+  }
+
+  async function handleImport() {
+    if (!pendingRows || !selectedCourseId) return
+    setImporting(true)
+    setImportError('')
+    const res = await fetch('/api/admin/exam-questions/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rows: pendingRows }),
+    })
+    if (!res.ok) {
+      const d = await res.json()
+      setImportError(d.error || 'Import failed')
+    } else {
+      setPendingRows(null)
+      loadQuestions()
+    }
+    setImporting(false)
   }
 
   function formIsValid() {
@@ -110,7 +215,6 @@ export default function ExamQuestionsPage() {
       course_id:    selectedCourseId,
       chapter_id:   form.chapter_id,
       chapter_name: form.chapter_name.trim() || undefined,
-      difficulty:   form.difficulty,
       question_en:  form.question_en,
       question_te:  form.question_te,
       option_a_en:  form.option_a_en,
@@ -149,11 +253,6 @@ export default function ExamQuestionsPage() {
     if (res.ok) loadQuestions()
   }
 
-  const countsByDiff = questions.reduce<Record<number, number>>((acc, q) => {
-    acc[q.difficulty] = (acc[q.difficulty] || 0) + 1
-    return acc
-  }, {})
-
   // Unique chapter names in this course's questions (for info display)
   const chapterNames = [...new Set(questions.map(q => q.chapter_name).filter(Boolean))] as string[]
 
@@ -168,13 +267,23 @@ export default function ExamQuestionsPage() {
           <p className="text-brand-gold-muted text-sm mt-1">5 random questions per chapter name are shown in the exam</p>
         </div>
         {selectedCourseId && (
-          <button
-            onClick={openAdd}
-            className="flex items-center gap-2 px-4 py-2 bg-brand-gold text-brand-bg font-semibold rounded-lg hover:bg-yellow-400 transition-colors text-sm"
-          >
-            <Plus className="w-4 h-4" />
-            Add Question
-          </button>
+          <div className="flex gap-2">
+            <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleFileSelect} />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 px-4 py-2 border border-brand-border text-brand-gold-muted hover:text-brand-gold hover:border-brand-gold rounded-lg transition-colors text-sm"
+            >
+              <Upload className="w-4 h-4" />
+              Import CSV
+            </button>
+            <button
+              onClick={openAdd}
+              className="flex items-center gap-2 px-4 py-2 bg-brand-gold text-brand-bg font-semibold rounded-lg hover:bg-yellow-400 transition-colors text-sm"
+            >
+              <Plus className="w-4 h-4" />
+              Add Question
+            </button>
+          </div>
         )}
       </div>
 
@@ -201,31 +310,46 @@ export default function ExamQuestionsPage() {
         )}
       </div>
 
+      {/* Import CSV preview / error */}
+      {(pendingRows || importError) && selectedCourseId && (
+        <div className="bg-brand-card border border-brand-gold/30 rounded-xl p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              {pendingRows && (
+                <p className="text-brand-gold text-sm font-semibold">
+                  {pendingRows.length} question{pendingRows.length !== 1 ? 's' : ''} ready to import
+                </p>
+              )}
+              {importError && <p className="text-brand-error text-xs mt-1">{importError}</p>}
+              {pendingRows && (
+                <p className="text-brand-gold-muted text-xs mt-1">
+                  Chapters: {[...new Set(pendingRows.map(r => r.chapter_name).filter(Boolean))].join(' · ') || 'Uncategorized'}
+                </p>
+              )}
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <button
+                onClick={() => { setPendingRows(null); setImportError('') }}
+                className="p-1.5 text-brand-gold-muted hover:text-brand-error transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              {pendingRows && (
+                <button
+                  onClick={handleImport}
+                  disabled={importing}
+                  className="px-4 py-1.5 bg-brand-gold text-brand-bg font-semibold rounded-lg hover:bg-yellow-400 transition-colors text-sm disabled:opacity-50"
+                >
+                  {importing ? 'Importing…' : 'Confirm Import'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {selectedCourseId && (
         <>
-          {/* Difficulty filter */}
-          <div className="flex flex-wrap gap-3 items-center">
-            <button
-              onClick={() => setFilterDiff(null)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                filterDiff === null ? 'bg-brand-gold text-brand-bg border-brand-gold' : 'border-brand-border text-brand-gold-muted hover:text-brand-gold'
-              }`}
-            >
-              All ({questions.length})
-            </button>
-            {([1, 2, 3] as Difficulty[]).map(d => (
-              <button
-                key={d}
-                onClick={() => setFilterDiff(filterDiff === d ? null : d)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                  filterDiff === d ? 'bg-brand-gold text-brand-bg border-brand-gold' : 'border-brand-border text-brand-gold-muted hover:text-brand-gold'
-                }`}
-              >
-                {DIFF_LABEL[d]} ({countsByDiff[d] ?? 0})
-              </button>
-            ))}
-          </div>
-
           {/* Question list */}
           {loading ? (
             <div className="text-center py-12 text-brand-gold text-2xl animate-pulse">ॐ</div>
@@ -240,9 +364,6 @@ export default function ExamQuestionsPage() {
                   <span className="text-brand-gold-muted text-xs w-6 shrink-0 mt-0.5">{i + 1}.</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className={`text-xs font-semibold ${DIFF_COLOR[q.difficulty as Difficulty]}`}>
-                        {DIFF_LABEL[q.difficulty as Difficulty]}
-                      </span>
                       {q.chapter_name && (
                         <span className="text-brand-gold-muted text-xs bg-brand-border/40 px-1.5 py-0.5 rounded">
                           {q.chapter_name}
@@ -287,49 +408,30 @@ export default function ExamQuestionsPage() {
 
             {error && <p className="text-brand-error text-sm mb-3">{error}</p>}
 
-            {/* Chapter name + Difficulty */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-brand-gold-muted text-xs mb-1.5">Chapter</label>
-                <div className="relative">
-                  <select
-                    value={form.chapter_id ?? ''}
-                    onChange={e => {
-                      const id = e.target.value ? Number(e.target.value) : undefined
-                      const ch = chapters.find(c => c.id === id)
-                      const name = ch ? (ch.title_en || ch.title_te || '') : ''
-                      setForm(f => ({ ...f, chapter_id: id, chapter_name: name }))
-                    }}
-                    className={`${inputCls} appearance-none pr-8`}
-                  >
-                    <option value="">— No chapter —</option>
-                    {chapters.map(c => (
-                      <option key={c.id} value={c.id}>{c.order_index}. {c.title_en || c.title_te}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-gold-muted pointer-events-none" />
-                </div>
-                {chapters.length === 0 && (
-                  <p className="text-brand-gold-muted text-[10px] mt-1">Add chapters to this course first</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-brand-gold-muted text-xs mb-1.5">Difficulty</label>
-                <div className="flex gap-2">
-                  {([1, 2, 3] as Difficulty[]).map(d => (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => setForm(f => ({ ...f, difficulty: d }))}
-                      className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                        form.difficulty === d ? 'bg-brand-gold text-brand-bg border-brand-gold' : 'border-brand-border text-brand-gold-muted hover:text-brand-gold'
-                      }`}
-                    >
-                      {DIFF_LABEL[d]}
-                    </button>
+            {/* Chapter */}
+            <div className="mb-4">
+              <label className="block text-brand-gold-muted text-xs mb-1.5">Chapter</label>
+              <div className="relative max-w-xs">
+                <select
+                  value={form.chapter_id ?? ''}
+                  onChange={e => {
+                    const id = e.target.value ? Number(e.target.value) : undefined
+                    const ch = chapters.find(c => c.id === id)
+                    const name = ch ? (ch.title_en || ch.title_te || '') : ''
+                    setForm(f => ({ ...f, chapter_id: id, chapter_name: name }))
+                  }}
+                  className={`${inputCls} appearance-none pr-8`}
+                >
+                  <option value="">— No chapter —</option>
+                  {chapters.map(c => (
+                    <option key={c.id} value={c.id}>{c.order_index}. {c.title_en || c.title_te}</option>
                   ))}
-                </div>
+                </select>
+                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-gold-muted pointer-events-none" />
               </div>
+              {chapters.length === 0 && (
+                <p className="text-brand-gold-muted text-[10px] mt-1">Add chapters to this course first</p>
+              )}
             </div>
 
             {/* Question */}

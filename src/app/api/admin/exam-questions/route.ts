@@ -11,7 +11,6 @@ export async function GET(req: Request) {
   const courseId = Number(searchParams.get('courseId'))
   if (!courseId) return NextResponse.json({ error: 'courseId required' }, { status: 400 })
 
-  const difficulty = searchParams.get('difficulty')
   const chapterName = searchParams.get('chapterName')
   const supabase = await createAdminClient()
 
@@ -20,12 +19,8 @@ export async function GET(req: Request) {
     .select('*')
     .eq('course_id', courseId)
     .order('chapter_name', { ascending: true, nullsFirst: false })
-    .order('difficulty', { ascending: true })
     .order('id', { ascending: true })
 
-  if (difficulty && ['1', '2', '3'].includes(difficulty)) {
-    query = query.eq('difficulty', Number(difficulty))
-  }
   if (chapterName) {
     query = query.eq('chapter_name', chapterName)
   }
@@ -51,7 +46,6 @@ export async function POST(req: Request) {
       course_id:    body.course_id,
       chapter_id:   body.chapter_id ?? null,
       chapter_name: body.chapter_name?.trim() || null,
-      difficulty:   body.difficulty,
       question_en:  body.question_en,
       question_te:  body.question_te || null,
       option_a_en:  body.option_a_en,

@@ -167,7 +167,6 @@ const ExamQuestionBaseSchema = z.object({
   course_id:    z.number().int().positive(),
   chapter_id:   z.number().int().positive().optional(),
   chapter_name: z.string().max(200).optional(),
-  difficulty:   z.union([z.literal(1), z.literal(2), z.literal(3)]),
   question_en:    z.string().max(2000).optional().default(''),
   question_te:    z.string().max(2000).optional().default(''),
   option_a_en:    z.string().max(500).optional().default(''),
