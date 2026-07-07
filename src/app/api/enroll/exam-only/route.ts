@@ -10,7 +10,7 @@ export async function POST(req: Request) {
 
   const parsed = await parseBody(req, ExamEnrollSchema)
   if (!parsed.success) return parsed.response
-  const { courseId } = parsed.data
+  const { courseId, teacherName, teacherMobile, bookName } = parsed.data
 
   const adminSupabase = await createAdminClient()
 
@@ -25,6 +25,22 @@ export async function POST(req: Request) {
   if (!course) return NextResponse.json({ error: 'Course not found' }, { status: 404 })
   if (!course.has_exam) {
     return NextResponse.json({ error: 'This course does not offer an exam-only option' }, { status: 400 })
+  }
+
+  // Record the prior-learning declaration (who the student's guru was)
+  const { error: declError } = await adminSupabase
+    .from('prior_learning_declarations')
+    .upsert({
+      user_id:        user.id,
+      course_id:      courseId,
+      teacher_name:   teacherName,
+      teacher_mobile: teacherMobile,
+      book_name:      bookName,
+    }, { onConflict: 'user_id,course_id' })
+
+  if (declError) {
+    logger.error({ error: declError.message, userId: user.id, courseId }, 'exam.enroll.declaration.failed')
+    return NextResponse.json({ error: 'Could not save your prior-learning details' }, { status: 500 })
   }
 
   // Upsert enrollment as exam_only + active

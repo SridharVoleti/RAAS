@@ -109,6 +109,7 @@ export async function POST(req: Request) {
       user_id:      payment.user_id,
       course_id:    payment.course_id,
       is_active:    true,
+      exam_only:    false,
       activated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,course_id' })
 

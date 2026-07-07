@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, Star, Users, Clock, Check } from 'lucide-react'
+import { X, Star, Users, Clock, Check, GraduationCap } from 'lucide-react'
 import { useLang } from '@/contexts/LanguageContext'
 import { createClient } from '@/lib/supabase/client'
 import { formatPrice } from '@/lib/utils'
@@ -173,6 +173,22 @@ export default function CourseDetailOverlay({ course, onClose }: Props) {
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {/* Prior-learning final test */}
+          {!isEnrolled && course.has_exam && (
+            <div className="flex items-center justify-between gap-3 p-3 bg-brand-bg rounded-xl border border-brand-gold/30 mb-5">
+              <div className="flex items-center gap-2 text-sm text-brand-body">
+                <GraduationCap className="w-4 h-4 text-brand-gold flex-shrink-0" />
+                <span>{t.exam.alreadyLearnt}</span>
+              </div>
+              <button
+                onClick={() => router.push(`/exam/${course.id}`)}
+                className="text-brand-gold text-sm font-semibold hover:underline whitespace-nowrap"
+              >
+                {t.exam.takeFinalTest} →
+              </button>
             </div>
           )}
         </div>

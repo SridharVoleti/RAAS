@@ -107,6 +107,14 @@ export interface UserProgress {
   completed_at: string
 }
 
+export interface VideoPlaybackProgress {
+  user_id: string
+  course_id: number
+  lesson_id: number
+  position_seconds: number
+  updated_at: string
+}
+
 export interface Testimonial {
   id: number
   reviewer_name: string
@@ -115,6 +123,9 @@ export interface Testimonial {
   rating: number
   course_id?: number
   created_at: string
+  // Present on admin/moderation queries; the public home query doesn't select them
+  is_published?: boolean
+  user_id?: string | null
 }
 
 export interface PaymentLog {
@@ -198,13 +209,17 @@ export interface ExamSession {
   score: number | null
   passed: boolean | null
   started_at: string
+  expires_at: string | null
   submitted_at: string | null
 }
 
-export interface ExamNextQuestion {
-  question: ExamQuestion_Public
-  question_number: number
+export interface ExamQuestionPage {
+  questions: ExamQuestion_Public[]
+  page_number: number
+  total_pages: number
+  question_offset: number
   total_questions: number
+  expires_at: string | null
   done: false
 }
 
@@ -214,9 +229,11 @@ export interface ExamComplete {
   total: number
   passed: boolean
   session_id: string
+  expired?: boolean
+  must_take_course?: boolean
 }
 
-export type ExamNextResponse = ExamNextQuestion | ExamComplete
+export type ExamNextResponse = ExamQuestionPage | ExamComplete
 
 export interface TextWidget {
   id: number

@@ -1,4 +1,4 @@
-import type { Course, Testimonial } from '@/types'
+import type { Course } from '@/types'
 
 export const COURSES: Course[] = [
   {
@@ -204,45 +204,6 @@ export const COURSES: Course[] = [
       'Vastu for the main entrance and living room', 'Kitchen and bedroom Vastu guidelines',
       'Vastu for pooja room placement', 'Common Vastu doshas and their remedies',
     ],
-  },
-]
-
-export const TESTIMONIALS: Testimonial[] = [
-  {
-    id: 1, reviewer_name: 'Priya Lakshmi', course_id: 1,
-    content_en: 'The Bhagavad Gita course transformed my understanding of life. Swami Ramananda\'s explanations are crystal clear and deeply meaningful.',
-    content_te: 'భగవద్గీత కోర్సు జీవితంపై నా అవగాహనను మార్చింది. స్వామి రామానంద వివరణలు స్పష్టంగా మరియు లోతుగా ఉన్నాయి.',
-    rating: 5, created_at: '2026-02-15',
-  },
-  {
-    id: 2, reviewer_name: 'Ravi Kumar', course_id: 2,
-    content_en: 'The Vedic Mantra Chanting course is incredible. I can now recite the Gayatri mantra with perfect pronunciation. Highly recommended!',
-    content_te: 'వేద మంత్ర పఠన కోర్సు అద్భుతంగా ఉంది. నేను ఇప్పుడు గాయత్రీ మంత్రాన్ని సరైన ఉచ్చారణతో పఠించగలను.',
-    rating: 5, created_at: '2026-03-01',
-  },
-  {
-    id: 3, reviewer_name: 'Anitha Devi', course_id: 4,
-    content_en: 'Finally I can perform puja correctly at home! The step-by-step guidance in Puja Vidhi course is exactly what I needed.',
-    content_te: 'చివరకు నేను ఇంట్లో సరిగ్గా పూజ చేయగలను! పూజా విధి కోర్సులో దశలవారీ మార్గదర్శకత్వం అద్భుతంగా ఉంది.',
-    rating: 5, created_at: '2026-01-20',
-  },
-  {
-    id: 4, reviewer_name: 'Suresh Reddy', course_id: 6,
-    content_en: 'The Ramayana for Beginners course brought tears to my eyes. Never understood the depth of Valmiki\'s work until this course.',
-    content_te: 'రామాయణం కోర్సు నా కళ్ళలో కన్నీళ్ళు తెచ్చింది. వాల్మీకి రచనల లోతు ఈ కోర్సు వరకు అర్థం కాలేదు.',
-    rating: 5, created_at: '2026-02-28',
-  },
-  {
-    id: 5, reviewer_name: 'Meena Sharma', course_id: 5,
-    content_en: 'Yogacharya Prasad\'s teaching style is exceptional. The Yoga and Vedic Philosophy course gave me a completely new perspective on yoga.',
-    content_te: 'యోగాచార్య ప్రసాద్ బోధన శైలి అసాధారణమైనది. యోగ కోర్సు యోగపై పూర్తి కొత్త దృక్పథం ఇచ్చింది.',
-    rating: 5, created_at: '2026-03-10',
-  },
-  {
-    id: 6, reviewer_name: 'Venkata Rao', course_id: 10,
-    content_en: 'Sanskrit for Beginners is perfectly structured. In just 22 hours I can read simple slokas. The course exceeded my expectations.',
-    content_te: 'సంస్కృతం కోర్సు చాలా బాగా నిర్మించబడింది. 22 గంటల్లోనే నేను సరళమైన శ్లోకాలు చదవగలను.',
-    rating: 5, created_at: '2026-03-15',
   },
 ]
 

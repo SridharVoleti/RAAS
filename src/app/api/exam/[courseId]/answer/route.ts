@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import { parseBody, ExamAnswerSchema } from '@/lib/validation'
+import { parseBody, ExamPageAnswerSchema } from '@/lib/validation'
 import { logger } from '@/lib/logger'
-import type { ExamNextQuestion, ExamComplete, ExamQuestion_Public } from '@/types'
-
-const PASS_THRESHOLD = 0.70
+import { fetchQuestionPage, gradeAndFinalize, isExpired } from '@/lib/exam'
+import type { ExamComplete } from '@/types'
 
 export async function POST(
   req: Request,
@@ -14,9 +13,9 @@ export async function POST(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const parsed = await parseBody(req, ExamAnswerSchema)
+  const parsed = await parseBody(req, ExamPageAnswerSchema)
   if (!parsed.success) return parsed.response
-  const { session_id, question_id, answer } = parsed.data
+  const { session_id, answers: pageAnswers } = parsed.data
 
   const { courseId } = await params
   const courseIdNum = Number(courseId)
@@ -36,76 +35,54 @@ export async function POST(
   }
 
   const seq: number[] = session.question_sequence
-  const examLength = seq.length
   const currentIdx = session.questions_answered as number
-
-  // Validate the question being answered is the current one in the sequence
-  if (seq[currentIdx] !== question_id) {
-    return NextResponse.json({ error: 'Unexpected question_id' }, { status: 400 })
-  }
-
   const adminSupabase = await createAdminClient()
+  const isExamOnly = session.session_type === 'exam_only'
 
-  // Fetch correct answer server-side
-  const { data: qRow } = await adminSupabase
-    .from('exam_questions')
-    .select('correct_option')
-    .eq('id', question_id)
-    .single()
-
-  if (!qRow) return NextResponse.json({ error: 'Question not found' }, { status: 404 })
-
-  const isCorrect = answer === qRow.correct_option
-  const newAnswers = { ...(session.answers as Record<string, string>), [String(question_id)]: answer }
-  const newAnswered = currentIdx + 1
-
-  // Exam complete
-  if (newAnswered >= examLength) {
-    const { data: allQuestions } = await adminSupabase
-      .from('exam_questions')
-      .select('id, correct_option')
-      .in('id', seq)
-
-    let score = 0
-    if (allQuestions) {
-      for (const q of allQuestions) {
-        if (newAnswers[String(q.id)] === q.correct_option) score++
-      }
+  // Time is up: grade whatever was answered before this page (unanswered = wrong)
+  if (isExpired(session.expires_at)) {
+    const finalAnswers = session.answers as Record<string, string>
+    const { score, total, passed } = await gradeAndFinalize(
+      adminSupabase, session_id, seq, finalAnswers, currentIdx
+    )
+    logger.info({ userId: user.id, courseId: courseIdNum, sessionId: session_id, score, total, passed }, 'exam.session.expired')
+    const result: ExamComplete = {
+      done: true, score, total, passed, session_id,
+      expired: true,
+      ...(isExamOnly && !passed ? { must_take_course: true } : {}),
     }
-
-    const passed = score / examLength >= PASS_THRESHOLD
-    const now = new Date().toISOString()
-
-    await adminSupabase
-      .from('exam_sessions')
-      .update({
-        answers:            newAnswers,
-        questions_answered: newAnswered,
-        status:             'submitted',
-        score,
-        passed,
-        submitted_at:       now,
-      })
-      .eq('id', session_id)
-
-    logger.info({ userId: user.id, courseId: courseIdNum, sessionId: session_id, score, total: examLength, passed }, 'exam.session.submitted')
-
-    const result: ExamComplete = { done: true, score, total: examLength, passed, session_id }
     return NextResponse.json(result)
   }
 
-  // Fetch the next question from the pre-built sequence
-  const nextQId = seq[newAnswered]
-  const { data: nextQ } = await adminSupabase
-    .from('exam_questions')
-    .select('*')
-    .eq('id', nextQId)
-    .single()
+  // The submitted page must be exactly the next unanswered slice of the sequence
+  const expectedIds = seq.slice(currentIdx, currentIdx + pageAnswers.length)
+  const submittedIds = pageAnswers.map(a => a.question_id)
+  const matchesSlice =
+    expectedIds.length === submittedIds.length &&
+    expectedIds.every((id, i) => id === submittedIds[i])
 
-  if (!nextQ) {
-    return NextResponse.json({ error: 'Next question not found in bank' }, { status: 500 })
+  if (!matchesSlice) {
+    return NextResponse.json({ error: 'Submitted questions do not match the current page' }, { status: 400 })
   }
 
+  const newAnswers = { ...(session.answers as Record<string, string>) }
+  for (const a of pageAnswers) newAnswers[String(a.question_id)] = a.answer
+  const newAnswered = currentIdx + pageAnswers.length
+
+  // Exam complete
+  if (newAnswered >= seq.length) {
+    const { score, total, passed } = await gradeAndFinalize(
+      adminSupabase, session_id, seq, newAnswers, newAnswered
+    )
+    logger.info({ userId: user.id, courseId: courseIdNum, sessionId: session_id, score, total, passed }, 'exam.session.submitted')
+    const result: ExamComplete = {
+      done: true, score, total, passed, session_id,
+      ...(isExamOnly && !passed ? { must_take_course: true } : {}),
+    }
+    return NextResponse.json(result)
+  }
+
+  // Persist progress and return the next page
   await adminSupabase
     .from('exam_sessions')
     .update({
@@ -114,16 +91,10 @@ export async function POST(
     })
     .eq('id', session_id)
 
-  const { correct_option: _omit, ...publicQuestion } = nextQ
-  const response: ExamNextQuestion = {
-    question:        publicQuestion as ExamQuestion_Public,
-    question_number: newAnswered + 1,
-    total_questions: examLength,
-    done:            false,
+  const nextPage = await fetchQuestionPage(adminSupabase, seq, newAnswered, session.expires_at)
+  if (!nextPage) {
+    return NextResponse.json({ error: 'Next questions not found in bank' }, { status: 500 })
   }
 
-  // Note: isCorrect is available here if we ever want to add per-answer feedback
-  void isCorrect
-
-  return NextResponse.json(response)
+  return NextResponse.json(nextPage)
 }

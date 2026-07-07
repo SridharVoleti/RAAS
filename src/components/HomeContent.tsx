@@ -6,6 +6,7 @@ import { Star } from 'lucide-react'
 import { useLang } from '@/contexts/LanguageContext'
 import CourseCard from '@/components/CourseCard'
 import CourseDetailOverlay from '@/components/CourseDetailOverlay'
+import TestimonialDialog from '@/components/TestimonialDialog'
 import WelcomeVideoDialog from '@/components/WelcomeVideoDialog'
 import { createClient } from '@/lib/supabase/client'
 import type { Course, Testimonial, TextWidget } from '@/types'
@@ -36,6 +37,7 @@ export default function HomeContent({ courses, stats, testimonials, widgets }: P
   }, [searchParams, router])
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
+  const [voiceDialogOpen, setVoiceDialogOpen] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -220,22 +222,48 @@ export default function HomeContent({ courses, stats, testimonials, widgets }: P
           <div className="lg:w-[35%]">
             <div className="lg:sticky lg:top-20">
               <h2 className="text-brand-gold font-bold text-xl mb-6">{t.home.studentVoices}</h2>
-              <div className="space-y-4 max-h-[600px] lg:max-h-[70vh] overflow-y-auto pr-1">
-                {testimonials.map(testimonial => (
-                  <TestimonialCard
-                    key={testimonial.id}
-                    testimonial={testimonial}
-                    lang={lang}
-                    courseTitle={courses.find(c => c.id === testimonial.course_id)?.title_en}
-                  />
-                ))}
-              </div>
+              {testimonials.length > 1 ? (
+                <div className="voices-marquee relative overflow-hidden max-h-[600px] lg:max-h-[70vh]">
+                  {/* List rendered twice so the -50% translate loops seamlessly */}
+                  <div
+                    className="voices-marquee-track"
+                    style={{ animationDuration: `${testimonials.length * 7}s` }}
+                  >
+                    {[...testimonials, ...testimonials].map((testimonial, i) => (
+                      <div key={`${testimonial.id}-${i}`} className="pb-4">
+                        <TestimonialCard
+                          testimonial={testimonial}
+                          lang={lang}
+                          courseTitle={courses.find(c => c.id === testimonial.course_id)?.title_en}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="pointer-events-none absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-brand-bg to-transparent" />
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-brand-bg to-transparent" />
+                </div>
+              ) : testimonials.length === 1 ? (
+                <TestimonialCard
+                  testimonial={testimonials[0]}
+                  lang={lang}
+                  courseTitle={courses.find(c => c.id === testimonials[0].course_id)?.title_en}
+                />
+              ) : null}
+              {isLoggedIn && (
+                <button
+                  onClick={() => setVoiceDialogOpen(true)}
+                  className="w-full mt-4 py-2.5 border border-brand-gold text-brand-gold rounded-lg hover:bg-brand-gold hover:text-brand-bg transition-colors font-medium text-sm"
+                >
+                  {t.voices.shareButton}
+                </button>
+              )}
             </div>
           </div>
         </div>
       </section>
 
       <CourseDetailOverlay course={selectedCourse} onClose={() => setSelectedCourse(null)} />
+      <TestimonialDialog open={voiceDialogOpen} onClose={() => setVoiceDialogOpen(false)} />
       <WelcomeVideoDialog />
     </div>
   )

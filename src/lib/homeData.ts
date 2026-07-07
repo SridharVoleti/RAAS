@@ -1,7 +1,7 @@
 import { unstable_cache } from 'next/cache'
 import { createClient } from '@supabase/supabase-js'
 import type { Course, Testimonial, TextWidget } from '@/types'
-import { COURSES, TESTIMONIALS, STATS } from './courseData'
+import { COURSES, STATS } from './courseData'
 
 export interface HomeStats {
   studentsEnrolled: number
@@ -103,10 +103,10 @@ export const getCachedTestimonials = unstable_cache(
         .eq('is_published', true)
         .order('id', { ascending: false })
         .limit(10)
-      if (error || !data?.length) return TESTIMONIALS
+      if (error || !data) return []
       return data as Testimonial[]
     } catch {
-      return TESTIMONIALS
+      return []
     }
   },
   ['home-testimonials'],

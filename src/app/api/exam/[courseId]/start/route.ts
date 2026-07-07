@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
-import type { ExamQuestion_Public, ExamNextQuestion } from '@/types'
+import {
+  COOLDOWN_HOURS,
+  EXAM_ONLY_DURATION_MINUTES,
+  EXAM_ONLY_QUESTION_TARGET,
+  fetchQuestionPage,
+} from '@/lib/exam'
 
 const QUESTIONS_PER_CHAPTER = 5
-const PASS_THRESHOLD = 0.70
-const COOLDOWN_HOURS = 48
 
 export async function POST(
   _req: Request,
@@ -43,29 +46,51 @@ export async function POST(
     return NextResponse.json({ error: 'Not enrolled in this course' }, { status: 403 })
   }
 
-  // Check 48h cooldown
-  const cooldownCutoff = new Date(Date.now() - COOLDOWN_HOURS * 60 * 60 * 1000).toISOString()
-  const { data: recentFailed } = await supabase
-    .from('exam_sessions')
-    .select('submitted_at')
-    .eq('user_id', user.id)
-    .eq('course_id', courseIdNum)
-    .eq('status', 'submitted')
-    .eq('passed', false)
-    .gt('submitted_at', cooldownCutoff)
-    .order('submitted_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+  if (enrollment.exam_only) {
+    // Prior-learning students get exactly ONE attempt: a failed submitted session
+    // permanently blocks re-attempts until they take the course (exam_only → false).
+    const { data: failedAttempt } = await supabase
+      .from('exam_sessions')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('course_id', courseIdNum)
+      .eq('session_type', 'exam_only')
+      .eq('status', 'submitted')
+      .eq('passed', false)
+      .limit(1)
+      .maybeSingle()
 
-  if (recentFailed) {
-    const nextAllowed = new Date(
-      new Date(recentFailed.submitted_at).getTime() + COOLDOWN_HOURS * 60 * 60 * 1000
-    )
-    return NextResponse.json({
-      error: 'cooldown',
-      message: `You must wait ${COOLDOWN_HOURS} hours before retaking. Next attempt allowed after ${nextAllowed.toISOString()}`,
-      nextAllowedAt: nextAllowed.toISOString(),
-    }, { status: 429 })
+    if (failedAttempt) {
+      return NextResponse.json({
+        error:   'must_take_course',
+        message: 'You have used your one attempt at the final test. We kindly request you to take this course on the site before attempting the exam again.',
+      }, { status: 403 })
+    }
+  } else {
+    // Regular course students: 48h cooldown after a failed attempt
+    const cooldownCutoff = new Date(Date.now() - COOLDOWN_HOURS * 60 * 60 * 1000).toISOString()
+    const { data: recentFailed } = await supabase
+      .from('exam_sessions')
+      .select('submitted_at')
+      .eq('user_id', user.id)
+      .eq('course_id', courseIdNum)
+      .eq('status', 'submitted')
+      .eq('passed', false)
+      .gt('submitted_at', cooldownCutoff)
+      .order('submitted_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (recentFailed) {
+      const nextAllowed = new Date(
+        new Date(recentFailed.submitted_at).getTime() + COOLDOWN_HOURS * 60 * 60 * 1000
+      )
+      return NextResponse.json({
+        error: 'cooldown',
+        message: `You must wait ${COOLDOWN_HOURS} hours before retaking. Next attempt allowed after ${nextAllowed.toISOString()}`,
+        nextAllowedAt: nextAllowed.toISOString(),
+      }, { status: 429 })
+    }
   }
 
   // Abandon any stale in-progress session
@@ -76,7 +101,7 @@ export async function POST(
     .eq('course_id', courseIdNum)
     .eq('status', 'in_progress')
 
-  // Build question sequence: 5 random per chapter_name (alphabetical order)
+  // Build question sequence from the bank, grouped by chapter_name
   const { data: allQRows } = await adminSupabase
     .from('exam_questions')
     .select('id, chapter_name')
@@ -95,34 +120,52 @@ export async function POST(
     byChapter.set(key, arr)
   }
 
-  function shufflePick(pool: number[], n: number): number[] {
-    const shuffled = pool.slice().sort(() => Math.random() - 0.5)
-    return shuffled.slice(0, n)
+  function shuffle(pool: number[]): number[] {
+    return pool.slice().sort(() => Math.random() - 0.5)
   }
 
-  // Exam-only students get equal weightage across chapters (capped to smallest pool).
-  // Regular course students always get exactly QUESTIONS_PER_CHAPTER per chapter.
-  const allPoolSizes = [...byChapter.values()].map(arr => arr.length)
-  const perChapter = enrollment.exam_only
-    ? Math.min(QUESTIONS_PER_CHAPTER, ...allPoolSizes)
-    : QUESTIONS_PER_CHAPTER
+  // Named chapters first (sorted alphabetically), then uncategorized
+  const chapterOrder = [...byChapter.keys()].filter(k => k !== '').sort()
+  if (byChapter.has('')) chapterOrder.push('')
 
   const fullSequence: number[] = []
 
-  // Named chapters first (sorted alphabetically), then uncategorized
-  const namedChapters = [...byChapter.keys()].filter(k => k !== '').sort()
-  for (const name of namedChapters) {
-    fullSequence.push(...shufflePick(byChapter.get(name)!, perChapter))
+  if (enrollment.exam_only) {
+    // Prior-learning final test: 100 questions drawn round-robin across chapters
+    // for equal weightage; if the bank has fewer, every question is used.
+    const target = Math.min(EXAM_ONLY_QUESTION_TARGET, allQRows.length)
+    const pools = chapterOrder.map(name => shuffle(byChapter.get(name)!))
+    const picked: number[][] = pools.map(() => [])
+    let total = 0
+    for (let round = 0; total < target; round++) {
+      let took = false
+      for (let c = 0; c < pools.length && total < target; c++) {
+        if (round < pools[c].length) {
+          picked[c].push(pools[c][round])
+          total++
+          took = true
+        }
+      }
+      if (!took) break
+    }
+    for (const chapterPicks of picked) fullSequence.push(...chapterPicks)
+  } else {
+    // Regular course students: fixed questions per chapter
+    for (const name of chapterOrder) {
+      fullSequence.push(...shuffle(byChapter.get(name)!).slice(0, QUESTIONS_PER_CHAPTER))
+    }
   }
-  const noChapter = byChapter.get('') ?? []
-  if (noChapter.length > 0) fullSequence.push(...shufflePick(noChapter, perChapter))
 
   if (fullSequence.length === 0) {
     return NextResponse.json({ error: 'No exam questions available for this course yet' }, { status: 503 })
   }
 
-  // Create session with the full pre-built sequence
+  // Create session with the full pre-built sequence; exam-only sessions carry a 100-minute timer
   const sessionType = enrollment.exam_only ? 'exam_only' : 'course'
+  const expiresAt = enrollment.exam_only
+    ? new Date(Date.now() + EXAM_ONLY_DURATION_MINUTES * 60 * 1000).toISOString()
+    : null
+
   const { data: session, error: sessionError } = await supabase
     .from('exam_sessions')
     .insert({
@@ -134,6 +177,7 @@ export async function POST(
       answers:            {},
       current_difficulty: 2,
       questions_answered: 0,
+      expires_at:         expiresAt,
     })
     .select()
     .single()
@@ -143,26 +187,12 @@ export async function POST(
     return NextResponse.json({ error: 'Failed to create exam session' }, { status: 500 })
   }
 
-  // Fetch first question
-  const { data: firstQuestion } = await adminSupabase
-    .from('exam_questions')
-    .select('*')
-    .eq('id', fullSequence[0])
-    .single()
-
-  if (!firstQuestion) {
-    return NextResponse.json({ error: 'Could not load first question' }, { status: 500 })
+  const firstPage = await fetchQuestionPage(adminSupabase, fullSequence, 0, expiresAt)
+  if (!firstPage) {
+    return NextResponse.json({ error: 'Could not load first page of questions' }, { status: 500 })
   }
 
   logger.info({ userId: user.id, courseId: courseIdNum, sessionId: session.id, total: fullSequence.length }, 'exam.session.started')
 
-  const { correct_option: _omit, ...publicQuestion } = firstQuestion
-  const response: ExamNextQuestion = {
-    question:        publicQuestion as ExamQuestion_Public,
-    question_number: 1,
-    total_questions: fullSequence.length,
-    done:            false,
-  }
-
-  return NextResponse.json({ session_id: session.id, ...response })
+  return NextResponse.json({ session_id: session.id, ...firstPage })
 }

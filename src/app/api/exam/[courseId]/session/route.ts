@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import type { ExamQuestion_Public } from '@/types'
-
-const COOLDOWN_HOURS = 48
+import { COOLDOWN_HOURS, EXAM_ONLY_QUESTION_TARGET, fetchQuestionPage, gradeAndFinalize, isExpired } from '@/lib/exam'
+import type { ExamQuestionPage } from '@/types'
 
 export async function GET(
   _req: Request,
@@ -15,6 +14,14 @@ export async function GET(
   const { courseId } = await params
   const courseIdNum = Number(courseId)
 
+  const adminSupabase = await createAdminClient()
+
+  // Bank size determines the final-test question count shown in the disclaimer (capped at 100)
+  const { count: bankCount } = await adminSupabase
+    .from('exam_questions')
+    .select('id', { count: 'exact', head: true })
+    .eq('course_id', courseIdNum)
+
   // Check enrollment
   const { data: enrollment } = await supabase
     .from('enrollments')
@@ -23,24 +30,44 @@ export async function GET(
     .eq('course_id', courseIdNum)
     .maybeSingle()
 
-  // Check cooldown from last failed attempt
+  const examOnly = enrollment?.exam_only ?? false
+
+  // Exam-only students: a failed submitted attempt permanently blocks re-attempts
+  let mustTakeCourse = false
+  if (examOnly) {
+    const { data: failedAttempt } = await supabase
+      .from('exam_sessions')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('course_id', courseIdNum)
+      .eq('session_type', 'exam_only')
+      .eq('status', 'submitted')
+      .eq('passed', false)
+      .limit(1)
+      .maybeSingle()
+    mustTakeCourse = !!failedAttempt
+  }
+
+  // Regular students: cooldown from last failed attempt
   const cooldownCutoff = new Date(Date.now() - COOLDOWN_HOURS * 60 * 60 * 1000).toISOString()
-  const { data: recentFailed } = await supabase
-    .from('exam_sessions')
-    .select('submitted_at')
-    .eq('user_id', user.id)
-    .eq('course_id', courseIdNum)
-    .eq('status', 'submitted')
-    .eq('passed', false)
-    .gt('submitted_at', cooldownCutoff)
-    .order('submitted_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+  const { data: recentFailed } = examOnly
+    ? { data: null }
+    : await supabase
+        .from('exam_sessions')
+        .select('submitted_at')
+        .eq('user_id', user.id)
+        .eq('course_id', courseIdNum)
+        .eq('status', 'submitted')
+        .eq('passed', false)
+        .gt('submitted_at', cooldownCutoff)
+        .order('submitted_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
   // Best (passing) session
   const { data: bestSession } = await supabase
     .from('exam_sessions')
-    .select('id, score, passed, submitted_at, session_type')
+    .select('id, score, passed, submitted_at, session_type, question_sequence')
     .eq('user_id', user.id)
     .eq('course_id', courseIdNum)
     .eq('status', 'submitted')
@@ -52,7 +79,7 @@ export async function GET(
   // In-progress session
   const { data: activeSession } = await supabase
     .from('exam_sessions')
-    .select('id, questions_answered, question_sequence, current_difficulty')
+    .select('id, questions_answered, question_sequence, answers, session_type, expires_at')
     .eq('user_id', user.id)
     .eq('course_id', courseIdNum)
     .eq('status', 'in_progress')
@@ -60,20 +87,28 @@ export async function GET(
     .limit(1)
     .maybeSingle()
 
-  let currentQuestion: (ExamQuestion_Public & { question_number: number }) | null = null
+  let currentPage: ExamQuestionPage | null = null
+  let liveSession = activeSession
 
-  if (activeSession && activeSession.question_sequence.length > 0) {
-    const adminSupabase = await createAdminClient()
-    const currentIdx = activeSession.questions_answered as number
-    const currentQId = activeSession.question_sequence[currentIdx]
-    const { data: qRow } = await adminSupabase
-      .from('exam_questions')
-      .select('id, course_id, chapter_id, difficulty, question_en, question_te, option_a_en, option_a_te, option_b_en, option_b_te, option_c_en, option_c_te, option_d_en, option_d_te, created_at')
-      .eq('id', currentQId)
-      .single()
-
-    if (qRow) {
-      currentQuestion = { ...qRow, question_number: currentIdx + 1 }
+  if (activeSession) {
+    // Auto-finalize a session found past its 100-minute window
+    if (isExpired(activeSession.expires_at)) {
+      await gradeAndFinalize(
+        adminSupabase,
+        activeSession.id,
+        activeSession.question_sequence,
+        activeSession.answers as Record<string, string>,
+        activeSession.questions_answered as number
+      )
+      if (examOnly) mustTakeCourse = true
+      liveSession = null
+    } else if (activeSession.question_sequence.length > 0) {
+      currentPage = await fetchQuestionPage(
+        adminSupabase,
+        activeSession.question_sequence,
+        activeSession.questions_answered as number,
+        activeSession.expires_at
+      )
     }
   }
 
@@ -83,18 +118,25 @@ export async function GET(
 
   return NextResponse.json({
     enrolled:        !!enrollment?.is_active,
-    exam_only:       enrollment?.exam_only ?? false,
+    exam_only:       examOnly,
     passed:          !!bestSession,
-    bestSession,
-    inProgress:      !!activeSession,
-    activeSession:   activeSession ? {
-      id:                  activeSession.id,
-      questions_answered:  activeSession.questions_answered,
-      total_questions:     activeSession.question_sequence.length,
-      current_difficulty:  activeSession.current_difficulty,
+    bestSession:     bestSession ? {
+      id:           bestSession.id,
+      score:        bestSession.score,
+      total:        bestSession.question_sequence?.length ?? null,
+      submitted_at: bestSession.submitted_at,
     } : null,
-    currentQuestion,
+    inProgress:      !!liveSession,
+    activeSession:   liveSession ? {
+      id:                 liveSession.id,
+      questions_answered: liveSession.questions_answered,
+      total_questions:    liveSession.question_sequence.length,
+      expires_at:         liveSession.expires_at,
+    } : null,
+    currentPage,
     cooldown:        !!recentFailed,
     nextAllowedAt,
+    mustTakeCourse,
+    questionCount:   Math.min(bankCount ?? 0, EXAM_ONLY_QUESTION_TARGET),
   })
 }

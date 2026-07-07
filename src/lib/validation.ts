@@ -205,8 +205,29 @@ export const ExamAnswerSchema = z.object({
   answer: z.enum(['a', 'b', 'c', 'd']),
 })
 
+export const ExamPageAnswerSchema = z.object({
+  session_id: z.string().uuid(),
+  // Empty array is allowed: an expired session is flushed with no new answers
+  answers: z.array(z.object({
+    question_id: z.number().int().positive(),
+    answer: z.enum(['a', 'b', 'c', 'd']),
+  })).max(10),
+})
+
 export const ExamEnrollSchema = z.object({
-  courseId: z.number().int().positive(),
+  courseId:      z.number().int().positive(),
+  teacherName:   z.string().trim().min(1, 'Guru name is required').max(200),
+  teacherMobile: z.string().regex(/^\+?\d{7,15}$/, 'Invalid mobile number'),
+  bookName:      z.string().trim().min(1, 'Book / text name is required').max(200),
+})
+
+// ── Testimonials (Student Voices) ─────────────────────────────────────────────
+
+export const TestimonialSubmitSchema = z.object({
+  reviewerName: z.string().trim().min(2, 'Name is too short').max(100),
+  message:      z.string().trim().min(10, 'Please write at least 10 characters').max(1000),
+  rating:       z.number().int().min(1).max(5),
+  courseId:     z.number().int().positive().optional(),
 })
 
 // ── Email templates ───────────────────────────────────────────────────────────
