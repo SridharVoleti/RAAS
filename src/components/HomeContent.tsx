@@ -6,6 +6,7 @@ import { Star } from 'lucide-react'
 import { useLang } from '@/contexts/LanguageContext'
 import CourseCard from '@/components/CourseCard'
 import CourseDetailOverlay from '@/components/CourseDetailOverlay'
+import PriorLearningDialog from '@/components/PriorLearningDialog'
 import TestimonialDialog from '@/components/TestimonialDialog'
 import WelcomeVideoDialog from '@/components/WelcomeVideoDialog'
 import { createClient } from '@/lib/supabase/client'
@@ -38,6 +39,22 @@ export default function HomeContent({ courses, stats, testimonials, widgets }: P
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
   const [voiceDialogOpen, setVoiceDialogOpen] = useState(false)
+  const [plDialogOpen, setPlDialogOpen] = useState(false)
+
+  // Reopen the guru-learning dialog after a login round-trip (?pl=1)
+  useEffect(() => {
+    if (searchParams.get('pl') === '1') {
+      setPlDialogOpen(true)
+      const url = new URL(window.location.href)
+      url.searchParams.delete('pl')
+      router.replace(url.pathname)
+    }
+  }, [searchParams, router])
+
+  function handleGuruRegister() {
+    if (isLoggedIn) setPlDialogOpen(true)
+    else router.push(`/login?returnTo=${encodeURIComponent('/?pl=1')}`)
+  }
 
   useEffect(() => {
     const supabase = createClient()
@@ -106,6 +123,32 @@ export default function HomeContent({ courses, stats, testimonials, widgets }: P
           </div>
         </div>
       )}
+
+      {/* Guru-learning marquee: Login + register links rolling above Choose Your Path */}
+      <div className="pl-marquee overflow-hidden border-y border-brand-gold/25 bg-brand-gold/5 py-2.5">
+        <div className="pl-marquee-track" style={{ animationDuration: '28s' }}>
+          {[0, 1].map(copy => (
+            <div key={copy} className="flex items-center shrink-0">
+              {isLoggedIn === false && (
+                <button
+                  onClick={() => router.push('/login')}
+                  className="mx-10 flex items-center gap-2 text-brand-gold text-sm font-medium hover:underline"
+                >
+                  <span aria-hidden>🔑</span>
+                  {t.priorLearning.marqueeLogin}
+                </button>
+              )}
+              <button
+                onClick={handleGuruRegister}
+                className="mx-10 flex items-center gap-2 text-brand-gold text-sm font-medium hover:underline"
+              >
+                <span aria-hidden>🎓</span>
+                {t.priorLearning.marqueeRegister}
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* Learning Paths */}
       <section className="max-w-7xl mx-auto px-4 py-10">
@@ -264,6 +307,7 @@ export default function HomeContent({ courses, stats, testimonials, widgets }: P
 
       <CourseDetailOverlay course={selectedCourse} onClose={() => setSelectedCourse(null)} />
       <TestimonialDialog open={voiceDialogOpen} onClose={() => setVoiceDialogOpen(false)} />
+      <PriorLearningDialog open={plDialogOpen} onClose={() => setPlDialogOpen(false)} />
       <WelcomeVideoDialog />
     </div>
   )

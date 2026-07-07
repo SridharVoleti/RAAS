@@ -221,6 +221,20 @@ export const ExamEnrollSchema = z.object({
   bookName:      z.string().trim().min(1, 'Book / text name is required').max(200),
 })
 
+// ── Prior learning (guru) registration ────────────────────────────────────────
+
+export const PriorLearningRegisterSchema = z.object({
+  subjects: z.array(z.object({
+    courseId:      z.number().int().positive(),
+    teacherName:   z.string().trim().min(2, 'Guru name is too short').max(200),
+    teacherMobile: z.string().regex(/^\+?\d{7,15}$/, 'Invalid mobile number'),
+  })).min(1).max(50)
+    .refine(
+      subjects => new Set(subjects.map(s => s.courseId)).size === subjects.length,
+      { message: 'Duplicate subjects in request' }
+    ),
+})
+
 // ── Testimonials (Student Voices) ─────────────────────────────────────────────
 
 export const TestimonialSubmitSchema = z.object({

@@ -52,6 +52,21 @@ body {
   .voices-marquee-track { animation: none; }
 }
 
+/* Prior-learning marquee: horizontal variant of the same duplicated-track trick */
+@keyframes pl-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.pl-marquee-track {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: pl-marquee linear infinite;
+}
+.pl-marquee:hover .pl-marquee-track { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .pl-marquee-track { animation: none; }
+}
+
 @keyframes twinkle {
   0%, 100% { opacity: 0.2; transform: scale(0.8); }
   50% { opacity: 1; transform: scale(1.3); }
