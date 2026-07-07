@@ -221,6 +221,37 @@ export const ExamEnrollSchema = z.object({
   bookName:      z.string().trim().min(1, 'Book / text name is required').max(200),
 })
 
+// ── Learning paths ────────────────────────────────────────────────────────────
+
+const PathFieldsSchema = z.object({
+  slug:           z.string().regex(/^[a-z0-9-]+$/, 'Lowercase letters, digits and hyphens only').min(2).max(50),
+  name:           z.string().trim().min(1).max(50),
+  full_name_en:   z.string().trim().max(200),
+  full_name_te:   z.string().trim().max(200),
+  tagline_en:     z.string().trim().max(500),
+  tagline_te:     z.string().trim().max(500),
+  description_en: z.string().trim().max(500),
+  description_te: z.string().trim().max(500),
+  emoji:          z.string().min(1).max(8),
+  is_active:      z.boolean(),
+  order_index:    z.number().int().nonnegative(),
+})
+
+export const PathSchema = PathFieldsSchema.extend({
+  full_name_en:   PathFieldsSchema.shape.full_name_en.optional().default(''),
+  full_name_te:   PathFieldsSchema.shape.full_name_te.optional().default(''),
+  tagline_en:     PathFieldsSchema.shape.tagline_en.optional().default(''),
+  tagline_te:     PathFieldsSchema.shape.tagline_te.optional().default(''),
+  description_en: PathFieldsSchema.shape.description_en.optional().default(''),
+  description_te: PathFieldsSchema.shape.description_te.optional().default(''),
+  emoji:          PathFieldsSchema.shape.emoji.optional().default('🕉️'),
+  is_active:      PathFieldsSchema.shape.is_active.optional().default(true),
+  order_index:    PathFieldsSchema.shape.order_index.optional().default(0),
+})
+
+// Partial update WITHOUT defaults — a PUT must never reset omitted fields
+export const PathUpdateSchema = PathFieldsSchema.partial()
+
 // ── Prior learning (guru) registration ────────────────────────────────────────
 
 export const PriorLearningRegisterSchema = z.object({

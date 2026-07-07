@@ -10,17 +10,34 @@ import PriorLearningDialog from '@/components/PriorLearningDialog'
 import TestimonialDialog from '@/components/TestimonialDialog'
 import WelcomeVideoDialog from '@/components/WelcomeVideoDialog'
 import { createClient } from '@/lib/supabase/client'
-import type { Course, Testimonial, TextWidget } from '@/types'
+import type { Course, LearningPath, Testimonial, TextWidget } from '@/types'
 import type { HomeStats } from '@/lib/homeData'
+
+// Rich-text styling shared by home-section widgets and the widget dialog box
+const WIDGET_HTML_CLASSES = [
+  'flow-root text-brand-body text-sm leading-relaxed',
+  '[&_h1]:text-brand-gold [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-3 [&_h1]:mt-1',
+  '[&_h2]:text-brand-gold [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-2 [&_h2]:mt-1',
+  '[&_h3]:text-brand-gold [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-1.5',
+  '[&_p]:mb-2 [&_p:last-child]:mb-0',
+  '[&_a]:text-brand-gold [&_a]:underline [&_a]:hover:text-yellow-300 [&_a]:transition-colors [&_a]:cursor-pointer',
+  '[&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2',
+  '[&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-2',
+  '[&_li]:mb-1',
+  '[&_strong]:font-bold [&_em]:italic [&_u]:underline',
+  '[&_blockquote]:border-l-2 [&_blockquote]:border-brand-gold [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-brand-gold-muted',
+  '[&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg',
+].join(' ')
 
 interface Props {
   courses: Course[]
+  paths: LearningPath[]
   stats: HomeStats
   testimonials: Testimonial[]
   widgets: TextWidget[]
 }
 
-export default function HomeContent({ courses, stats, testimonials, widgets }: Props) {
+export default function HomeContent({ courses, paths, stats, testimonials, widgets }: Props) {
   const { lang, t } = useLang()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -56,6 +73,22 @@ export default function HomeContent({ courses, stats, testimonials, widgets }: P
     else router.push(`/login?returnTo=${encodeURIComponent('/?pl=1')}`)
   }
 
+  // Bumping this reopens the welcome YouTube video (WelcomeVideoDialog)
+  const [videoSignal, setVideoSignal] = useState(0)
+
+  // Dialog links inside widget HTML: <a data-dialog="…" data-dialog-title="…">
+  const [widgetDialog, setWidgetDialog] = useState<{ title?: string; text: string } | null>(null)
+
+  function handleWidgetClick(e: React.MouseEvent<HTMLDivElement>) {
+    const anchor = (e.target as HTMLElement).closest('a[data-dialog]') as HTMLAnchorElement | null
+    if (!anchor) return
+    e.preventDefault()
+    setWidgetDialog({
+      title: anchor.dataset.dialogTitle || undefined,
+      text:  anchor.dataset.dialog ?? '',
+    })
+  }
+
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getSession().then(({ data: { session } }) => { setIsLoggedIn(!!session) })
@@ -66,7 +99,6 @@ export default function HomeContent({ courses, stats, testimonials, widgets }: P
   }, [])
 
   const topCourses = [...courses].sort((a, b) => b.student_count - a.student_count).slice(0, 6)
-  const raasCount = courses.filter(c => c.path_id === 1).length
 
   const announcementWidgets = widgets.filter(w => w.position === 'announcement')
   const homeSectionWidgets  = widgets.filter(w => w.position === 'home-section')
@@ -77,7 +109,8 @@ export default function HomeContent({ courses, stats, testimonials, widgets }: P
       {announcementWidgets.map(w => (
         <div key={w.id} className="w-full bg-brand-gold/10 border-b border-brand-gold/20 px-4 py-2.5 text-center">
           <div
-            className="text-brand-gold text-sm font-medium [&_a]:underline [&_a]:hover:text-yellow-300 [&_strong]:font-bold [&_em]:italic [&_u]:underline"
+            className="text-brand-gold text-sm font-medium [&_a]:underline [&_a]:hover:text-yellow-300 [&_a]:cursor-pointer [&_strong]:font-bold [&_em]:italic [&_u]:underline"
+            onClick={handleWidgetClick}
             dangerouslySetInnerHTML={{ __html: w.content }}
           />
         </div>
@@ -139,6 +172,13 @@ export default function HomeContent({ courses, stats, testimonials, widgets }: P
                 </button>
               )}
               <button
+                onClick={() => setVideoSignal(s => s + 1)}
+                className="mx-10 flex items-center gap-2 text-brand-gold text-sm font-medium hover:underline"
+              >
+                <span aria-hidden>🎧</span>
+                {t.priorLearning.marqueeNewStudent}
+              </button>
+              <button
                 onClick={handleGuruRegister}
                 className="mx-10 flex items-center gap-2 text-brand-gold text-sm font-medium hover:underline"
               >
@@ -150,44 +190,54 @@ export default function HomeContent({ courses, stats, testimonials, widgets }: P
         </div>
       </div>
 
-      {/* Learning Paths */}
+      {/* Learning Paths — driven by the paths table */}
       <section className="max-w-7xl mx-auto px-4 py-10">
         <h2 className="text-brand-gold font-bold text-xl text-center mb-6">{t.paths.heading}</h2>
-        <div className="grid grid-cols-2 gap-4 max-w-xl mx-auto">
-          {/* RAAS — clickable, navigates to filtered explore */}
-          <button
-            onClick={() => router.push('/explore?path=raas')}
-            className="p-5 rounded-xl border-2 border-brand-border bg-brand-card hover:border-brand-gold hover:bg-brand-gold/5 hover:shadow-lg hover:shadow-brand-gold/10 cursor-pointer transition-all text-left group"
-          >
-            <div className="text-3xl mb-2">ॐ</div>
-            <h3 className="text-brand-gold font-bold text-lg group-hover:text-yellow-300 transition-colors">
-              {t.paths.raas.name}
-            </h3>
-            <p className="text-brand-gold-muted text-xs mb-2">{t.paths.raas.description}</p>
-            <div className="flex items-center justify-between">
-              <span className="inline-block px-2 py-0.5 bg-brand-gold/20 text-brand-gold text-xs rounded-full font-medium">
-                {raasCount} {lang === 'te' ? 'కోర్సులు' : 'courses'}
-              </span>
-              <span className="text-brand-gold-muted text-xs group-hover:text-brand-gold transition-colors">
-                {lang === 'te' ? 'వీక్షించు →' : 'View →'}
-              </span>
-            </div>
-          </button>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl mx-auto">
+          {paths.map(path => {
+            const fullName = lang === 'te' && path.full_name_te ? path.full_name_te : path.full_name_en
+            const tagline = lang === 'te' && path.tagline_te ? path.tagline_te : path.tagline_en
+            const count = courses.filter(c => c.path_id === path.id && c.is_published).length
 
-          {/* DAAS — coming soon */}
-          <div className="p-5 rounded-xl border-2 border-brand-border bg-brand-card opacity-60 cursor-not-allowed relative overflow-hidden">
-            <div className="absolute top-2 right-2">
-              <span className="px-2 py-0.5 bg-brand-border text-brand-gold-muted text-[10px] rounded-full font-medium">
-                {lang === 'te' ? 'త్వరలో' : 'Coming Soon'}
-              </span>
-            </div>
-            <div className="text-3xl mb-2">🕊</div>
-            <h3 className="text-brand-gold-muted font-bold text-lg">{t.paths.daas.name}</h3>
-            <p className="text-brand-gold-muted text-xs mb-2">{t.paths.daas.description}</p>
-            <span className="inline-block px-2 py-0.5 bg-brand-border text-brand-gold-muted text-xs rounded-full font-medium">
-              {t.paths.daas.courseCount}
-            </span>
-          </div>
+            if (!path.is_active) {
+              return (
+                <div key={path.id} className="p-5 rounded-xl border-2 border-brand-border bg-brand-card opacity-60 cursor-not-allowed relative overflow-hidden">
+                  <div className="absolute top-2 right-2">
+                    <span className="px-2 py-0.5 bg-brand-border text-brand-gold-muted text-[10px] rounded-full font-medium">
+                      {lang === 'te' ? 'త్వరలో' : 'Coming Soon'}
+                    </span>
+                  </div>
+                  <div className="text-3xl mb-2">{path.emoji}</div>
+                  <h3 className="text-brand-gold-muted font-bold text-lg">{path.name}</h3>
+                  {fullName && <p className="text-brand-gold-muted text-[11px] italic leading-snug mb-1.5">{fullName}</p>}
+                  <p className="text-brand-gold-muted text-xs">{tagline}</p>
+                </div>
+              )
+            }
+
+            return (
+              <button
+                key={path.id}
+                onClick={() => router.push(`/explore?path=${path.slug}`)}
+                className="p-5 rounded-xl border-2 border-brand-border bg-brand-card hover:border-brand-gold hover:bg-brand-gold/5 hover:shadow-lg hover:shadow-brand-gold/10 cursor-pointer transition-all text-left group"
+              >
+                <div className="text-3xl mb-2">{path.emoji}</div>
+                <h3 className="text-brand-gold font-bold text-lg group-hover:text-yellow-300 transition-colors">
+                  {path.name}
+                </h3>
+                {fullName && <p className="text-brand-gold-muted text-[11px] italic leading-snug mb-1.5">{fullName}</p>}
+                <p className="text-brand-gold-muted text-xs mb-2">{tagline}</p>
+                <div className="flex items-center justify-between">
+                  <span className="inline-block px-2 py-0.5 bg-brand-gold/20 text-brand-gold text-xs rounded-full font-medium">
+                    {count} {lang === 'te' ? 'కోర్సులు' : 'courses'}
+                  </span>
+                  <span className="text-brand-gold-muted text-xs group-hover:text-brand-gold transition-colors">
+                    {lang === 'te' ? 'వీక్షించు →' : 'View →'}
+                  </span>
+                </div>
+              </button>
+            )
+          })}
         </div>
       </section>
 
@@ -198,20 +248,8 @@ export default function HomeContent({ courses, stats, testimonials, widgets }: P
             {homeSectionWidgets.map(w => (
               <div key={w.id} className="bg-brand-card border border-brand-gold/20 rounded-xl px-5 py-4">
                 <div
-                  className={[
-                    'flow-root text-brand-body text-sm leading-relaxed',
-                    '[&_h1]:text-brand-gold [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-3 [&_h1]:mt-1',
-                    '[&_h2]:text-brand-gold [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-2 [&_h2]:mt-1',
-                    '[&_h3]:text-brand-gold [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-1.5',
-                    '[&_p]:mb-2 [&_p:last-child]:mb-0',
-                    '[&_a]:text-brand-gold [&_a]:underline [&_a]:hover:text-yellow-300 [&_a]:transition-colors',
-                    '[&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2',
-                    '[&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-2',
-                    '[&_li]:mb-1',
-                    '[&_strong]:font-bold [&_em]:italic [&_u]:underline',
-                    '[&_blockquote]:border-l-2 [&_blockquote]:border-brand-gold [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-brand-gold-muted',
-                    '[&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg',
-                  ].join(' ')}
+                  className={WIDGET_HTML_CLASSES}
+                  onClick={handleWidgetClick}
                   dangerouslySetInnerHTML={{ __html: w.content }}
                 />
               </div>
@@ -305,10 +343,29 @@ export default function HomeContent({ courses, stats, testimonials, widgets }: P
         </div>
       </section>
 
+      {/* Dialog box opened from a widget dialog-link */}
+      {widgetDialog && (
+        <>
+          <div className="fixed inset-0 bg-black/60 z-40 backdrop-blur-sm" onClick={() => setWidgetDialog(null)} />
+          <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-2rem)] max-w-md bg-brand-card border border-brand-border rounded-2xl p-6 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <h2 className="text-brand-gold font-bold text-lg">{widgetDialog.title ?? ''}</h2>
+              <button
+                onClick={() => setWidgetDialog(null)}
+                className="w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-brand-gold-muted hover:text-brand-gold hover:bg-brand-border/50 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-brand-body text-sm leading-relaxed whitespace-pre-wrap">{widgetDialog.text}</p>
+          </div>
+        </>
+      )}
+
       <CourseDetailOverlay course={selectedCourse} onClose={() => setSelectedCourse(null)} />
       <TestimonialDialog open={voiceDialogOpen} onClose={() => setVoiceDialogOpen(false)} />
       <PriorLearningDialog open={plDialogOpen} onClose={() => setPlDialogOpen(false)} />
-      <WelcomeVideoDialog />
+      <WelcomeVideoDialog openSignal={videoSignal} />
     </div>
   )
 }

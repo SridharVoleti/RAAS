@@ -1,10 +1,11 @@
 import { Suspense } from 'react'
-import { getCachedCourses, getCachedStats, getCachedTestimonials, getCachedWidgets } from '@/lib/homeData'
+import { getCachedCourses, getCachedPaths, getCachedStats, getCachedTestimonials, getCachedWidgets } from '@/lib/homeData'
 import HomeContent from '@/components/HomeContent'
 
 export default async function HomePage() {
-  const [courses, stats, testimonials, widgets] = await Promise.all([
+  const [courses, paths, stats, testimonials, widgets] = await Promise.all([
     getCachedCourses(),
+    getCachedPaths(),
     getCachedStats(),
     getCachedTestimonials(),
     getCachedWidgets(),
@@ -12,7 +13,7 @@ export default async function HomePage() {
 
   return (
     <Suspense>
-      <HomeContent courses={courses} stats={stats} testimonials={testimonials} widgets={widgets} />
+      <HomeContent courses={courses} paths={paths} stats={stats} testimonials={testimonials} widgets={widgets} />
     </Suspense>
   )
 }

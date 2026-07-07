@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Plus, Pencil, Trash2, Eye, EyeOff, X, Save,
   Link2, List, ListOrdered, ImagePlus, AlignLeft, AlignCenter, AlignRight, Loader2,
+  MessageSquareText,
 } from 'lucide-react'
 import type { TextWidget } from '@/types'
 
@@ -87,6 +88,10 @@ export default function WidgetsPage() {
   const [imgToolbar, setImgToolbar] = useState<ImgToolbar | null>(null)
   const [isResizing, setIsResizing] = useState(false)
 
+  // Dialog-link popover: a link whose click opens a dialog with admin-defined text
+  const [dialogLinkForm, setDialogLinkForm] = useState<{ label: string; title: string; text: string } | null>(null)
+  const editingDialogAnchorRef = useRef<HTMLAnchorElement | null>(null)
+
   // ── Data loading ────────────────────────────────────────────────────────────
 
   const loadWidgets = useCallback(async () => {
@@ -133,6 +138,8 @@ export default function WidgetsPage() {
     setEditingId(null)
     setForm(EMPTY_FORM)
     setImgToolbar(null)
+    setDialogLinkForm(null)
+    editingDialogAnchorRef.current = null
     if (editorRef.current) editorRef.current.innerHTML = ''
   }
 
@@ -187,6 +194,77 @@ export default function WidgetsPage() {
         `<a href="${url}" target="_blank" rel="noopener">${text}</a>`)
       syncContent()
     }
+  }
+
+  // ── Dialog links ────────────────────────────────────────────────────────────
+  // A dialog link stores its dialog text in data attributes on the anchor itself,
+  // so it travels inside the widget HTML with no extra storage.
+
+  function openDialogLinkForm() {
+    saveSelection()
+    const selectedText = window.getSelection()?.toString().trim() ?? ''
+    editingDialogAnchorRef.current = null
+    setDialogLinkForm({ label: selectedText, title: '', text: '' })
+  }
+
+  function openDialogLinkEdit(anchor: HTMLAnchorElement) {
+    editingDialogAnchorRef.current = anchor
+    setDialogLinkForm({
+      label: anchor.textContent ?? '',
+      title: anchor.dataset.dialogTitle ?? '',
+      text:  anchor.dataset.dialog ?? '',
+    })
+  }
+
+  function applyDialogLink() {
+    if (!dialogLinkForm) return
+    const { label, title, text } = dialogLinkForm
+    if (!label.trim() || !text.trim()) return
+
+    const existing = editingDialogAnchorRef.current
+    if (existing) {
+      existing.textContent = label.trim()
+      existing.dataset.dialog = text
+      if (title.trim()) existing.dataset.dialogTitle = title.trim()
+      else delete existing.dataset.dialogTitle
+    } else {
+      restoreSelection()
+      editorRef.current?.focus()
+      // Build via DOM so label/text need no manual HTML escaping
+      const a = document.createElement('a')
+      a.href = '#'
+      a.dataset.dialog = text
+      if (title.trim()) a.dataset.dialogTitle = title.trim()
+      a.textContent = label.trim()
+      a.style.textDecorationStyle = 'dotted'   // distinguishes dialog links from URL links
+
+      const sel = window.getSelection()
+      if (sel && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0)
+        range.deleteContents()
+        range.insertNode(a)
+        range.setStartAfter(a)
+        range.collapse(true)
+        sel.removeAllRanges()
+        sel.addRange(range)
+      } else {
+        editorRef.current?.appendChild(a)
+      }
+    }
+
+    setDialogLinkForm(null)
+    editingDialogAnchorRef.current = null
+    syncContent()
+  }
+
+  function removeDialogLink() {
+    const anchor = editingDialogAnchorRef.current
+    if (anchor) {
+      anchor.replaceWith(document.createTextNode(anchor.textContent ?? ''))
+    }
+    setDialogLinkForm(null)
+    editingDialogAnchorRef.current = null
+    syncContent()
   }
 
   // ── Image handling ──────────────────────────────────────────────────────────
@@ -307,6 +385,15 @@ export default function WidgetsPage() {
 
   function handleEditorClick(e: React.MouseEvent<HTMLDivElement>) {
     const target = e.target as HTMLElement
+
+    // Clicking an existing dialog link reopens its form for editing
+    const dialogAnchor = target.closest('a[data-dialog]') as HTMLAnchorElement | null
+    if (dialogAnchor && editorRef.current?.contains(dialogAnchor)) {
+      e.preventDefault()
+      openDialogLinkEdit(dialogAnchor)
+      return
+    }
+
     if (target.tagName === 'IMG') {
       const img = target as HTMLImageElement
       // Remove outline from previously selected image
@@ -514,6 +601,9 @@ export default function WidgetsPage() {
 
                 {/* Links */}
                 <ToolBtn onClick={handleLink}             title="Insert link"><Link2 className="w-3.5 h-3.5" /></ToolBtn>
+                <ToolBtn onClick={openDialogLinkForm}     title="Insert dialog link (opens a text dialog on click)" active={dialogLinkForm !== null}>
+                  <MessageSquareText className="w-3.5 h-3.5" />
+                </ToolBtn>
                 <ToolBtn onClick={() => execCmd('unlink')} title="Remove link"><span className="line-through opacity-70 text-xs">url</span></ToolBtn>
 
                 <div className="w-px h-4 bg-brand-border mx-1 flex-shrink-0" />
@@ -528,6 +618,65 @@ export default function WidgetsPage() {
                   <span className="text-[10px] font-mono">IMG</span>
                 </ToolBtn>
               </div>
+
+              {/* Dialog-link form — define the text the dialog shows when the link is clicked */}
+              {dialogLinkForm && (
+                <div className="px-3 py-3 bg-brand-bg border-b border-brand-gold/40 space-y-2">
+                  <p className="text-brand-gold text-xs font-semibold flex items-center gap-1.5">
+                    <MessageSquareText className="w-3.5 h-3.5" />
+                    {editingDialogAnchorRef.current ? 'Edit dialog link' : 'Insert dialog link'}
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={dialogLinkForm.label}
+                      onChange={e => setDialogLinkForm(f => f ? { ...f, label: e.target.value } : f)}
+                      placeholder="Link text shown in the widget *"
+                      className="px-3 py-1.5 bg-brand-card border border-brand-border rounded-lg text-brand-body text-xs focus:outline-none focus:border-brand-gold"
+                    />
+                    <input
+                      type="text"
+                      value={dialogLinkForm.title}
+                      onChange={e => setDialogLinkForm(f => f ? { ...f, title: e.target.value } : f)}
+                      placeholder="Dialog title (optional)"
+                      className="px-3 py-1.5 bg-brand-card border border-brand-border rounded-lg text-brand-body text-xs focus:outline-none focus:border-brand-gold"
+                    />
+                  </div>
+                  <textarea
+                    value={dialogLinkForm.text}
+                    onChange={e => setDialogLinkForm(f => f ? { ...f, text: e.target.value } : f)}
+                    placeholder="Text shown inside the dialog when the link is clicked *"
+                    rows={3}
+                    className="w-full px-3 py-1.5 bg-brand-card border border-brand-border rounded-lg text-brand-body text-xs focus:outline-none focus:border-brand-gold resize-y"
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={applyDialogLink}
+                      disabled={!dialogLinkForm.label.trim() || !dialogLinkForm.text.trim()}
+                      className="px-3 py-1.5 bg-brand-gold text-brand-bg text-xs font-semibold rounded-lg hover:bg-yellow-400 transition-colors disabled:opacity-40"
+                    >
+                      {editingDialogAnchorRef.current ? 'Update' : 'Insert'}
+                    </button>
+                    {editingDialogAnchorRef.current && (
+                      <button
+                        type="button"
+                        onClick={removeDialogLink}
+                        className="px-3 py-1.5 border border-brand-error/40 text-brand-error text-xs font-semibold rounded-lg hover:bg-brand-error/10 transition-colors"
+                      >
+                        Remove link
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => { setDialogLinkForm(null); editingDialogAnchorRef.current = null }}
+                      className="px-3 py-1.5 text-brand-gold-muted text-xs hover:text-brand-gold transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Editable content area — relative so the image toolbar can be positioned inside it */}
               <div className="relative">

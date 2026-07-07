@@ -19,7 +19,12 @@ function extractYouTubeId(url: string): string | null {
   return null
 }
 
-export default function WelcomeVideoDialog() {
+interface Props {
+  /** Increment to reopen the dialog on demand (e.g. from the home marquee) */
+  openSignal?: number
+}
+
+export default function WelcomeVideoDialog({ openSignal = 0 }: Props) {
   const { lang } = useLang()
   const [open, setOpen] = useState(false)
   const [videoUrl, setVideoUrl] = useState('')
@@ -39,6 +44,11 @@ export default function WelcomeVideoDialog() {
       })
       .catch(() => {})
   }, [])
+
+  // Reopen when the parent bumps the signal (once the video URL is known)
+  useEffect(() => {
+    if (openSignal > 0 && videoUrl) setOpen(true)
+  }, [openSignal, videoUrl])
 
   function close() {
     localStorage.setItem(WATCHED_KEY, '1')

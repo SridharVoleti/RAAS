@@ -17,16 +17,6 @@ export const translations = {
     },
     paths: {
       heading: 'Choose Your Path',
-      raas: {
-        name: 'RAAS',
-        description: 'Vedic & Spiritual Learning',
-        courseCount: '12 courses',
-      },
-      daas: {
-        name: 'DAAS',
-        description: 'Coming Soon',
-        courseCount: 'Coming Soon',
-      },
     },
     stats: {
       enrolled: 'Students Enrolled',
@@ -95,6 +85,7 @@ export const translations = {
     },
     priorLearning: {
       marqueeLogin: 'Login to begin your journey',
+      marqueeNewStudent: 'Are you registering as a student? Listen to this first',
       marqueeRegister: 'Already learnt from a Guru? Register & take the final test',
       dialogTitle: 'Learnt from Another Guru?',
       subtitle: 'Select the subjects you have completed and tell us about the Guru who taught each one.',
@@ -317,16 +308,6 @@ export const translations = {
     },
     paths: {
       heading: 'మీ మార్గాన్ని ఎంచుకోండి',
-      raas: {
-        name: 'RAAS',
-        description: 'వేద మరియు ఆధ్యాత్మిక అభ్యాసం',
-        courseCount: '12 కోర్సులు',
-      },
-      daas: {
-        name: 'DAAS',
-        description: 'త్వరలో వస్తోంది',
-        courseCount: 'త్వరలో వస్తోంది',
-      },
     },
     stats: {
       enrolled: 'నమోదైన విద్యార్థులు',
@@ -395,6 +376,7 @@ export const translations = {
     },
     priorLearning: {
       marqueeLogin: 'మీ ప్రయాణం ప్రారంభించడానికి లాగిన్ అవ్వండి',
+      marqueeNewStudent: 'విద్యార్థిగా నమోదు చేసుకుంటున్నారా? ముందుగా ఇది వినండి',
       marqueeRegister: 'ఇప్పటికే గురువు వద్ద నేర్చుకున్నారా? నమోదు చేసుకుని చివరి పరీక్ష రాయండి',
       dialogTitle: 'వేరే గురువు వద్ద నేర్చుకున్నారా?',
       subtitle: 'మీరు పూర్తి చేసిన విషయాలను ఎంచుకుని, ఒక్కొక్కదాన్ని బోధించిన గురువు వివరాలు తెలియజేయండి.',

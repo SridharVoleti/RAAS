@@ -115,6 +115,22 @@ export interface VideoPlaybackProgress {
   updated_at: string
 }
 
+export interface LearningPath {
+  id: number
+  slug: string
+  name: string
+  emoji: string
+  full_name_en: string
+  full_name_te: string
+  tagline_en: string
+  tagline_te: string
+  description_en: string
+  description_te: string
+  is_active: boolean
+  order_index: number
+  created_at: string
+}
+
 export interface Testimonial {
   id: number
   reviewer_name: string

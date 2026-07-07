@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import type { Course } from '@/types'
+import { getPaths } from '@/lib/getPaths'
+import type { Course, LearningPath } from '@/types'
 
 const CATEGORY_SUGGESTIONS = ['Scripture', 'Chanting', 'Philosophy', 'Rituals', 'Yoga', 'Puranas', 'Music', 'Language', 'Jyotisha', 'Vastu']
 const LEVELS = ['Beginner', 'Intermediate', 'Advanced']
@@ -43,6 +44,13 @@ export default function CourseForm({ course }: Props) {
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [paths, setPaths] = useState<LearningPath[]>([])
+
+  // Path options come from the paths table (includes inactive paths so
+  // courses can be staged for an unlaunched path)
+  useEffect(() => {
+    getPaths().then(setPaths).catch(() => {})
+  }, [])
 
   function showError(msg: string) {
     setError(msg)
@@ -136,8 +144,12 @@ export default function CourseForm({ course }: Props) {
             <label className={labelCls}>Path</label>
             <select value={form.path_id} onChange={e => set('path_id', Number(e.target.value))}
               className={inputCls}>
-              <option value={1}>RAAS</option>
-              <option value={2}>DAAS</option>
+              {paths.length === 0 && <option value={form.path_id}>Loading…</option>}
+              {paths.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.name}{p.is_active ? '' : ' (inactive)'}
+                </option>
+              ))}
             </select>
           </div>
           <div>

@@ -1,6 +1,6 @@
 import { unstable_cache } from 'next/cache'
 import { createClient } from '@supabase/supabase-js'
-import type { Course, Testimonial, TextWidget } from '@/types'
+import type { Course, LearningPath, Testimonial, TextWidget } from '@/types'
 import { COURSES, STATS } from './courseData'
 
 export interface HomeStats {
@@ -91,6 +91,24 @@ export const getCachedWidgets = unstable_cache(
   },
   ['home-widgets'],
   { revalidate: 300, tags: ['widgets'] }
+)
+
+export const getCachedPaths = unstable_cache(
+  async (): Promise<LearningPath[]> => {
+    try {
+      const sb = createCacheClient()
+      const { data, error } = await sb
+        .from('paths')
+        .select('*')
+        .order('order_index', { ascending: true })
+      if (error || !data) return []
+      return data as LearningPath[]
+    } catch {
+      return []
+    }
+  },
+  ['home-paths'],
+  { revalidate: 86400, tags: ['paths'] }
 )
 
 export const getCachedTestimonials = unstable_cache(

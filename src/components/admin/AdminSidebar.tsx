@@ -2,12 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, BookOpen, CreditCard, Users, Mail, Shield, BarChart2, LogOut, Type, Newspaper, Settings, Heart, ClipboardList, MessageSquareQuote, GraduationCap } from 'lucide-react'
+import { LayoutDashboard, BookOpen, CreditCard, Users, Mail, Shield, BarChart2, LogOut, Type, Newspaper, Settings, Heart, ClipboardList, MessageSquareQuote, GraduationCap, Compass } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const NAV = [
   { label: 'Dashboard',   href: '/admin',                icon: LayoutDashboard, exact: true },
   { label: 'Courses',     href: '/admin/courses',        icon: BookOpen },
+  { label: 'Paths',       href: '/admin/paths',          icon: Compass },
   { label: 'Exam Bank',   href: '/admin/exam-questions', icon: ClipboardList },
   { label: 'Payments',    href: '/admin/payments',       icon: CreditCard },
   { label: 'Students',    href: '/admin/students',       icon: Users },

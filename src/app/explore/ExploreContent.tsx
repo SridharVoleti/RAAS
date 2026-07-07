@@ -7,15 +7,13 @@ import CourseCard from '@/components/CourseCard'
 import CourseDetailOverlay from '@/components/CourseDetailOverlay'
 import { CATEGORY_ICONS } from '@/lib/courseData'
 import { getCourses } from '@/lib/getCourses'
-import type { Course } from '@/types'
+import { getPaths } from '@/lib/getPaths'
+import type { Course, LearningPath } from '@/types'
 
 type ViewMode = 'category' | 'level'
 type SortMode = 'popular' | 'newest' | 'price-asc' | 'price-desc' | 'rated'
 
 const LEVEL_EMOJIS = { Beginner: '🌱', Intermediate: '🌿', Advanced: '🌳' }
-
-// RAAS = path_id 1; extend here when DAAS (path_id 2) launches
-const PATH_FILTER: Record<string, number> = { raas: 1 }
 
 export default function ExploreContent() {
   const { lang, t } = useLang()
@@ -28,6 +26,7 @@ export default function ExploreContent() {
   const [search, setSearch] = useState(qParam)
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
   const [courses, setCourses] = useState<Course[]>([])
+  const [paths, setPaths] = useState<LearningPath[]>([])
 
   // Keep local search box in sync when URL q param changes
   useEffect(() => { setSearch(qParam) }, [qParam])
@@ -36,10 +35,18 @@ export default function ExploreContent() {
     getCourses({ limit: 100 })
       .then(data => setCourses(data))
       .catch(err => { console.error('Failed to load courses:', err) })
+    getPaths()
+      .then(data => setPaths(data))
+      .catch(() => {})
   }, [])
 
-  const pathId = pathParam ? PATH_FILTER[pathParam] ?? null : null
-  const pathLabel = pathParam === 'raas' ? 'RAAS — Vedic & Spiritual Learning' : null
+  const activePath = pathParam ? paths.find(p => p.slug === pathParam) ?? null : null
+  const pathId = activePath?.id ?? null
+  const pathLabel = activePath
+    ? `${activePath.name}${(lang === 'te' && activePath.full_name_te) || activePath.full_name_en
+        ? ` — ${lang === 'te' && activePath.full_name_te ? activePath.full_name_te : activePath.full_name_en}`
+        : ''}`
+    : null
 
   const filtered = useMemo(() => {
     let c = courses.filter(x => x.is_published)
