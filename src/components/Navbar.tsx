@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Search } from 'lucide-react'
 import { useLang } from '@/contexts/LanguageContext'
@@ -73,7 +74,14 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Left: Logo */}
           <Link href="/" className="flex items-center gap-3 group">
-            <span className="text-3xl leading-none text-brand-gold">ॐ</span>
+            <Image
+              src="/logo.webp"
+              alt="Sri Krishna Margam"
+              width={40}
+              height={40}
+              priority
+              className="rounded-full shrink-0 ring-1 ring-brand-gold/40 group-hover:ring-brand-gold transition-shadow"
+            />
             <div className="flex flex-col leading-tight">
               <span className="text-brand-gold font-bold text-lg tracking-wide group-hover:text-yellow-300 transition-colors">
                 {t.nav.platform}
