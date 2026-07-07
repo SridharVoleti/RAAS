@@ -48,8 +48,8 @@ export default async function WatchPage({
     return <NotEnrolledScreen course={course as Course} status="pending" />
   }
 
-  // Fetch lessons + progress + chapters in parallel
-  const [{ data: lessons }, { data: progressRows }, { data: chapters }] = await Promise.all([
+  // Fetch lessons + progress + chapters + playback positions in parallel
+  const [{ data: lessons }, { data: progressRows }, { data: chapters }, { data: playbackRows }] = await Promise.all([
     adminSupabase
       .from('lessons')
       .select('*')
@@ -65,6 +65,12 @@ export default async function WatchPage({
       .select('id, title_en, title_te, order_index')
       .eq('course_id', course.id)
       .order('order_index'),
+    supabase
+      .from('video_playback_progress')
+      .select('lesson_id, position_seconds, updated_at')
+      .eq('user_id', user.id)
+      .eq('course_id', course.id)
+      .order('updated_at', { ascending: false }),
   ])
 
   const allLessons = (lessons || []) as Lesson[]
@@ -122,10 +128,21 @@ export default async function WatchPage({
     : { data: [] }
 
   const completedLessonIds = (progressRows || []).map(p => p.lesson_id as number)
-  const initialIdx = Math.max(
-    0,
-    Math.min(parseInt(lessonParam || '0', 10), allLessons.length - 1)
-  )
+
+  const lessonPositions: Record<number, number> = {}
+  for (const row of (playbackRows ?? [])) {
+    lessonPositions[row.lesson_id as number] = row.position_seconds as number
+  }
+
+  // No explicit ?lesson= param: resume the most recently watched lesson.
+  const lastWatchedLessonId = playbackRows?.[0]?.lesson_id as number | undefined
+  const lastWatchedIdx = lastWatchedLessonId !== undefined
+    ? allLessons.findIndex(l => l.id === lastWatchedLessonId)
+    : -1
+  const defaultIdx = lastWatchedIdx !== -1 ? lastWatchedIdx : 0
+  const initialIdx = lessonParam !== undefined
+    ? Math.max(0, Math.min(parseInt(lessonParam, 10), allLessons.length - 1))
+    : defaultIdx
 
   return (
     <WatchClient
@@ -133,6 +150,7 @@ export default async function WatchPage({
       lessons={allLessons}
       completedLessonIds={completedLessonIds}
       initialLessonIndex={initialIdx}
+      lessonPositions={lessonPositions}
       quizQuestions={(quizQuestions ?? []) as QuizQuestion_Public[]}
       quizSubmissions={(quizSubmissions ?? []) as QuizSubmission[]}
       chapters={allChapters}

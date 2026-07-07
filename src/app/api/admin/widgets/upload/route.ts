@@ -3,8 +3,10 @@ import { getAdminUser, forbidden } from '@/lib/admin'
 import { createAdminClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
 
-const BUCKET   = 'widget-images'
-const MAX_SIZE = 5 * 1024 * 1024   // 5 MB
+const BUCKET          = 'widget-images'
+const MAX_SIZE        = 5 * 1024 * 1024   // 5 MB
+const ALLOWED_TYPES   = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+const ALLOWED_EXTS    = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif'])
 
 export async function POST(req: Request) {
   const admin = await getAdminUser()
@@ -18,8 +20,9 @@ export async function POST(req: Request) {
   }
 
   const file = formData.get('file') as File | null
-  if (!file || !file.type.startsWith('image/')) {
-    return NextResponse.json({ error: 'Please upload a valid image file.' }, { status: 400 })
+  const ext = file?.name.split('.').pop()?.toLowerCase() ?? ''
+  if (!file || !ALLOWED_TYPES.has(file.type) || !ALLOWED_EXTS.has(ext)) {
+    return NextResponse.json({ error: 'Please upload a valid image file (jpg, png, webp, gif).' }, { status: 400 })
   }
   if (file.size > MAX_SIZE) {
     return NextResponse.json({ error: 'Image must be under 5 MB.' }, { status: 400 })
@@ -30,7 +33,6 @@ export async function POST(req: Request) {
   // Create the bucket if it doesn't exist yet (idempotent)
   await supabase.storage.createBucket(BUCKET, { public: true }).catch(() => {})
 
-  const ext  = file.name.split('.').pop()?.toLowerCase() ?? 'jpg'
   const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
 
   const buffer = Buffer.from(await file.arrayBuffer())

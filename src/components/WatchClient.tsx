@@ -26,14 +26,21 @@ type YTPlayerOptions = {
   }
 }
 type YTPlayer = {
-  loadVideoById: (videoId: string) => void
-  cueVideoById: (videoId: string) => void
+  loadVideoById: (videoId: string, startSeconds?: number) => void
+  cueVideoById: (videoId: string, startSeconds?: number) => void
   pauseVideo: () => void
   destroy: () => void
+  getCurrentTime: () => number
+  getDuration: () => number
 }
 
 const QUIZ_PASS_PCT = 80
+// A lesson only counts as "watched" if genuine playback (not seek-jumps) covers
+// this fraction of the video. Prevents marking complete by dragging to the end.
+const MIN_WATCH_RATIO = 0.85
+const SEEK_JUMP_TOLERANCE_SEC = 2
 const CHAPTER_QUIZ_PASS_SCORE = 3
+const POSITION_SAVE_INTERVAL_SEC = 10
 
 // Chapter quizzes are always 5 questions — message text is tuned for that.
 function getChapterQuizMessage(score: number, lang: string): string | undefined {
@@ -49,6 +56,7 @@ interface Props {
   lessons: Lesson[]
   completedLessonIds: number[]
   initialLessonIndex: number
+  lessonPositions?: Record<number, number>
   quizQuestions?: QuizQuestion_Public[]
   quizSubmissions?: QuizSubmission[]
   chapters?: Chapter[]
@@ -78,7 +86,7 @@ function isLastLessonInChapter(lesson: Lesson, allLessons: Lesson[]): boolean {
 }
 
 export default function WatchClient({
-  course, lessons, completedLessonIds, initialLessonIndex,
+  course, lessons, completedLessonIds, initialLessonIndex, lessonPositions: initialLessonPositions = {},
   quizQuestions = [], quizSubmissions = [],
   chapters = [], chapterQuestionCounts = {}, chapterSubmissions = [],
 }: Props) {
@@ -87,6 +95,7 @@ export default function WatchClient({
   const pathname = usePathname()
   const [currentIdx, setCurrentIdx] = useState(initialLessonIndex)
   const [completedIds, setCompletedIds] = useState<Set<number>>(new Set(completedLessonIds))
+  const [lessonPositions, setLessonPositions] = useState<Record<number, number>>(initialLessonPositions)
   const [viewingQuiz, setViewingQuiz] = useState(false)
   const [chapterQuizState, setChapterQuizState] = useState<{ chapterId: number; chapterTitle: string } | null>(null)
   const [passedQuizIds, setPassedQuizIds] = useState<Set<number>>(() => new Set(
@@ -104,6 +113,7 @@ export default function WatchClient({
   const [notesStatus, setNotesStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [marking, setMarking] = useState(false)
   const [justCompleted, setJustCompleted] = useState(false)
+  const [watchWarning, setWatchWarning] = useState(false)
   const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const sidebarRef = useRef<HTMLDivElement>(null)
   const isFirstRender = useRef(true)
@@ -116,6 +126,10 @@ export default function WatchClient({
   const viewingQuizRef = useRef(viewingQuiz)
   const passedQuizIdsRef = useRef(passedQuizIds)
   const passedChapterQuizIdsRef = useRef(passedChapterQuizIds)
+  const watchedSecondsRef = useRef(0)
+  const lastSampleTimeRef = useRef<number | null>(null)
+  const watchPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const activeLessonIdRef = useRef<number | null>(null)
   useEffect(() => { currentIdxRef.current = currentIdx }, [currentIdx])
   useEffect(() => { completedIdsRef.current = completedIds }, [completedIds])
   useEffect(() => { markingRef.current = marking }, [marking])
@@ -202,17 +216,28 @@ export default function WatchClient({
 
   useEffect(() => {
     if (lessons.length === 0) return
+    const initialLesson = lessons[initialLessonIndex]
+    activeLessonIdRef.current = initialLesson?.id ?? null
+    const resumeAt = initialLesson ? (initialLessonPositions[initialLesson.id] ?? 0) : 0
     loadYTScript(() => {
       playerRef.current = new window.YT.Player('yt-player', {
-        videoId: lessons[initialLessonIndex]?.youtube_video_id,
-        playerVars: { rel: 0, modestbranding: 1, enablejsapi: 1, origin: window.location.origin },
+        videoId: initialLesson?.youtube_video_id,
+        playerVars: {
+          rel: 0, modestbranding: 1, enablejsapi: 1, origin: window.location.origin,
+          ...(resumeAt > 0 ? { start: Math.floor(resumeAt) } : {}),
+        },
         events: {
           onReady: () => { playerReadyRef.current = true },
-          onStateChange: (e) => { if (e.data === 0) autoMarkComplete() },
+          onStateChange: (e) => {
+            if (e.data === 1) startWatchPolling()
+            else stopWatchPolling()
+            if (e.data === 0) handleVideoEnded()
+          },
         },
       })
     })
     return () => {
+      stopWatchPolling()
       playerRef.current?.destroy()
       playerRef.current = null
       playerReadyRef.current = false
@@ -222,12 +247,74 @@ export default function WatchClient({
 
   useEffect(() => {
     if (!currentLesson) return
+    // Persist the outgoing lesson's last known position, then switch tracking to the new one.
+    stopWatchPolling()
+    activeLessonIdRef.current = currentLesson.id
+    watchedSecondsRef.current = 0
+    lastSampleTimeRef.current = null
     if (playerReadyRef.current && playerRef.current) {
-      if (viewingQuizRef.current || chapterQuizState) playerRef.current.cueVideoById(currentLesson.youtube_video_id)
-      else playerRef.current.loadVideoById(currentLesson.youtube_video_id)
+      const resumeAt = lessonPositions[currentLesson.id] ?? 0
+      if (viewingQuizRef.current || chapterQuizState) playerRef.current.cueVideoById(currentLesson.youtube_video_id, resumeAt)
+      else playerRef.current.loadVideoById(currentLesson.youtube_video_id, resumeAt)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentLesson?.youtube_video_id])
+
+  function savePosition(lessonId: number, seconds: number) {
+    const rounded = Math.floor(seconds)
+    if (rounded < 1) return
+    setLessonPositions(prev => ({ ...prev, [lessonId]: rounded }))
+    fetch(`/api/progress/${course.id}/lesson/${lessonId}/position`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ positionSeconds: rounded }),
+    }).catch(() => {})
+  }
+
+  function stopWatchPolling() {
+    if (watchPollRef.current) {
+      clearInterval(watchPollRef.current)
+      watchPollRef.current = null
+    }
+    if (activeLessonIdRef.current !== null && lastSampleTimeRef.current !== null) {
+      savePosition(activeLessonIdRef.current, lastSampleTimeRef.current)
+    }
+  }
+
+  function startWatchPolling() {
+    stopWatchPolling()
+    let tick = 0
+    watchPollRef.current = setInterval(() => {
+      const player = playerRef.current
+      if (!player) return
+      const current = player.getCurrentTime()
+      const last = lastSampleTimeRef.current
+      if (last !== null) {
+        const delta = current - last
+        // Only credit forward playback within tolerance as "watched" —
+        // large jumps (seeking ahead) don't count, so dragging to the
+        // end doesn't fake a full watch.
+        if (delta > 0 && delta <= SEEK_JUMP_TOLERANCE_SEC) {
+          watchedSecondsRef.current += delta
+        }
+      }
+      lastSampleTimeRef.current = current
+      tick += 1
+      if (tick % POSITION_SAVE_INTERVAL_SEC === 0 && activeLessonIdRef.current !== null) {
+        savePosition(activeLessonIdRef.current, current)
+      }
+    }, 1000)
+  }
+
+  function handleVideoEnded() {
+    const duration = playerRef.current?.getDuration() ?? 0
+    if (duration > 0 && watchedSecondsRef.current < duration * MIN_WATCH_RATIO) {
+      setWatchWarning(true)
+      setTimeout(() => setWatchWarning(false), 4000)
+      return
+    }
+    autoMarkComplete()
+  }
 
   async function autoMarkComplete() {
     const lesson = lessons[currentIdxRef.current]
@@ -332,6 +419,12 @@ export default function WatchClient({
             <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-brand-success text-brand-bg text-sm font-semibold rounded-full shadow-lg flex items-center gap-2 animate-fade-in">
               <CheckCircle2 className="w-4 h-4" />
               {t.watch.lessonCompleted}
+            </div>
+          )}
+
+          {watchWarning && (
+            <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-brand-error text-brand-bg text-sm font-semibold rounded-full shadow-lg flex items-center gap-2 animate-fade-in">
+              {t.watch.watchIncomplete}
             </div>
           )}
 

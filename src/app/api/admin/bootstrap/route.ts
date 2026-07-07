@@ -8,6 +8,12 @@ import { createAdminClient } from '@/lib/supabase/server'
 //   Body: { "email": "you@example.com" }
 
 export async function POST(req: Request) {
+  // This endpoint is intentionally disabled in production.
+  // To promote an admin: set NODE_ENV=development locally, then run against the DB.
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
   const secret = process.env.ADMIN_SETUP_SECRET
   if (!secret) {
     return NextResponse.json({ error: 'ADMIN_SETUP_SECRET is not configured' }, { status: 500 })

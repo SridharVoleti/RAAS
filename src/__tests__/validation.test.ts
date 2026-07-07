@@ -248,8 +248,12 @@ describe('CreateLessonSchema', () => {
     expect(CreateLessonSchema.safeParse({ ...validLesson, youtube_video_id: 'abc' }).success).toBe(false)
   })
 
-  it('rejects title_en shorter than 2 chars', () => {
-    expect(CreateLessonSchema.safeParse({ ...validLesson, title_en: 'X' }).success).toBe(false)
+  it('rejects a lesson with no title in either language', () => {
+    expect(CreateLessonSchema.safeParse({ ...validLesson, title_en: '' }).success).toBe(false)
+  })
+
+  it('accepts a lesson with only a Telugu title', () => {
+    expect(CreateLessonSchema.safeParse({ ...validLesson, title_en: '', title_te: 'పరిచయం' }).success).toBe(true)
   })
 })
 

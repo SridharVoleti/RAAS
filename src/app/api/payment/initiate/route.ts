@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import Razorpay from 'razorpay'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { parseBody, PaymentInitiateSchema } from '@/lib/validation'
 import { logger } from '@/lib/logger'
 
@@ -24,11 +24,30 @@ export async function POST(req: Request) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    logger.info({ userId: user.id, courseId, amount }, 'payment.initiate')
+    // Always use the server-side course price — never trust the client-supplied amount
+    const adminSupabase = createAdminClient()
+    const { data: course } = await adminSupabase
+      .from('courses')
+      .select('price, is_published, is_free')
+      .eq('id', courseId)
+      .single()
 
-    // Create order in Razorpay (amount in paise)
+    if (!course || !course.is_published) {
+      return NextResponse.json({ error: 'Course not found' }, { status: 404 })
+    }
+    if (course.is_free) {
+      return NextResponse.json({ error: 'Course is free — no payment required' }, { status: 400 })
+    }
+    const serverAmount = Number(course.price ?? 0)
+    if (serverAmount <= 0) {
+      return NextResponse.json({ error: 'Course has no valid price set' }, { status: 400 })
+    }
+
+    logger.info({ userId: user.id, courseId, serverAmount }, 'payment.initiate')
+
+    // Create order in Razorpay (amount in paise) using server-verified price
     const order = await razorpay.orders.create({
-      amount:   Math.round(amount * 100),
+      amount:   Math.round(serverAmount * 100),
       currency: 'INR',
       receipt:  `rcpt_${courseId}_${Date.now()}`,
     })
@@ -36,7 +55,7 @@ export async function POST(req: Request) {
     const { error } = await supabase.from('payment_logs').insert({
       user_id:           user.id,
       course_id:         courseId,
-      amount,
+      amount:            serverAmount,
       status:            'created',
       razorpay_order_id: order.id,
     })
