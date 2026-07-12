@@ -5,7 +5,7 @@ const csp = [
   "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.supabase.co",
-  "frame-src https://www.youtube.com https://www.youtube-nocookie.com",
+  "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
   "font-src 'self' data:",
   "object-src 'none'",
@@ -23,7 +23,12 @@ const securityHeaders = [
 ]
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['pino', 'razorpay', 'resend'],
+  serverExternalPackages: ['pino', 'razorpay', 'resend', 'pdf-lib', '@pdf-lib/fontkit'],
+  // Certificate template + Telugu fonts are read from disk at runtime
+  outputFileTracingIncludes: {
+    '/api/certificate/[courseId]/pdf': ['./src/assets/**/*'],
+    '/api/admin/certificate-preview': ['./src/assets/**/*'],
+  },
   images: {
     remotePatterns: [
       {
