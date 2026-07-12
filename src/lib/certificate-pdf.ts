@@ -11,8 +11,8 @@ import type { CertificateData } from '@/lib/certificate'
 // cx = horizontal centre, baselineTop = baseline as a fraction of page height
 // from the top, maxW = max text width in points before the size shrinks to fit.
 const LAYOUT = {
-  name:   { cx: 0.600, baselineTop: 0.578, size: 26, maxW: 370 },
-  course: { cx: 0.425, baselineTop: 0.642, size: 26, maxW: 305 },
+  name:   { cx: 0.600, baselineTop: 0.568, size: 26, maxW: 370 },
+  course: { cx: 0.425, baselineTop: 0.634, size: 26, maxW: 305 },
   date:   { cx: 0.205, baselineTop: 0.940, size: 18, maxW: 110 },
 } as const
 
