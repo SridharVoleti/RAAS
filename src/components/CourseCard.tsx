@@ -2,6 +2,7 @@
 
 import { useLang } from '@/contexts/LanguageContext'
 import { formatPrice } from '@/lib/utils'
+import { BADGE_STYLES } from '@/lib/badges'
 import type { Course } from '@/types'
 import { Star } from 'lucide-react'
 
@@ -14,12 +15,6 @@ const LEVEL_COLORS = {
   Beginner: 'text-brand-success border-brand-success',
   Intermediate: 'text-brand-gold border-brand-gold',
   Advanced: 'text-brand-error border-brand-error',
-}
-
-const BADGE_STYLES = {
-  Popular: 'bg-brand-gold text-brand-bg',
-  New: 'bg-brand-success text-brand-bg',
-  Free: 'bg-blue-500 text-white',
 }
 
 export default function CourseCard({ course, onClick }: CourseCardProps) {
@@ -40,9 +35,11 @@ export default function CourseCard({ course, onClick }: CourseCardProps) {
       >
         <span className="group-hover:scale-110 transition-transform duration-200">{course.emoji}</span>
         {/* Badge */}
-        <div className={`absolute top-3 left-3 px-2 py-0.5 rounded-full text-xs font-bold ${BADGE_STYLES[course.badge]}`}>
-          {course.badge === 'Free' ? t.course.free : course.badge}
-        </div>
+        {course.badge && (
+          <div className={`absolute top-3 left-3 px-2 py-0.5 rounded-full text-xs font-bold ${BADGE_STYLES[course.badge]}`}>
+            {course.badge === 'Free' ? t.course.free : course.badge === 'Coming Soon' ? t.course.comingSoon : course.badge}
+          </div>
+        )}
       </div>
 
       {/* Card body */}

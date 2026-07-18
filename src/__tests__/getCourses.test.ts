@@ -36,7 +36,7 @@ describe('getCourses', () => {
   })
 
   it('should return courses from database when available', async () => {
-    const mockCourses: Course[] = [
+    const dbRows = [
       {
         id: 1,
         path_id: 1,
@@ -61,6 +61,51 @@ describe('getCourses', () => {
         has_quiz: false,
         order_index: 1,
         is_published: true,
+        lessons: [{ id: 1 }],
+      },
+    ]
+    const { lessons: _lessons, ...expectedCourse } = dbRows[0]
+
+    const mockQuery = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      range: vi.fn().mockResolvedValue({ data: dbRows, error: null }),
+    }
+
+    vi.mocked(mockSupabaseClient.from).mockReturnValue(mockQuery as any)
+
+    const result = await getCourses()
+    expect(result).toEqual([expectedCourse])
+  })
+
+  it('marks a course with no lessons as Coming Soon, overriding any badge an admin picked', async () => {
+    const dbRows = [
+      {
+        id: 2,
+        path_id: 1,
+        slug: 'empty-course',
+        emoji: '📖',
+        bg_color: '#1a0f00',
+        title_en: 'Empty Course',
+        title_te: 'టెస్ట్',
+        description_en: 'Test',
+        description_te: 'టెస్ట్',
+        instructor_en: 'Test',
+        instructor_te: 'టెస్ట్',
+        category: 'Test',
+        level: 'Beginner',
+        badge: 'Popular', // admin picked a badge, but there are no lessons yet
+        duration: '4 weeks',
+        is_free: false,
+        price: 999,
+        rating: 4.5,
+        review_count: 10,
+        student_count: 100,
+        has_quiz: false,
+        order_index: 1,
+        is_published: true,
+        lessons: [],
       },
     ]
 
@@ -68,13 +113,13 @@ describe('getCourses', () => {
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
-      range: vi.fn().mockResolvedValue({ data: mockCourses, error: null }),
+      range: vi.fn().mockResolvedValue({ data: dbRows, error: null }),
     }
 
     vi.mocked(mockSupabaseClient.from).mockReturnValue(mockQuery as any)
 
     const result = await getCourses()
-    expect(result).toEqual(mockCourses)
+    expect(result[0].badge).toBe('Coming Soon')
   })
 
   it('should apply limit and offset for pagination', async () => {
@@ -110,7 +155,7 @@ describe('getCourses', () => {
   })
 
   it('should cache results and return cached data on second call', async () => {
-    const mockCourses: Course[] = [
+    const dbRows = [
       {
         id: 1,
         path_id: 1,
@@ -135,24 +180,26 @@ describe('getCourses', () => {
         has_quiz: false,
         order_index: 1,
         is_published: true,
+        lessons: [{ id: 1 }],
       },
     ]
+    const { lessons: _lessons, ...expectedCourse } = dbRows[0]
 
     const mockQuery = {
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
-      range: vi.fn().mockResolvedValue({ data: mockCourses, error: null }),
+      range: vi.fn().mockResolvedValue({ data: dbRows, error: null }),
     }
 
     vi.mocked(mockSupabaseClient.from).mockReturnValue(mockQuery as any)
 
     const result1 = await getCourses()
-    expect(result1).toEqual(mockCourses)
+    expect(result1).toEqual([expectedCourse])
 
     // Second call should use cache
     const result2 = await getCourses()
-    expect(result2).toEqual(mockCourses)
+    expect(result2).toEqual([expectedCourse])
     expect(result1 === result2).toBe(true) // Same reference from cache
 
     // Should only call database once

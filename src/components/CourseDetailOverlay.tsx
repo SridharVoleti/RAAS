@@ -6,6 +6,7 @@ import { X, Star, Users, Clock, Check, GraduationCap } from 'lucide-react'
 import { useLang } from '@/contexts/LanguageContext'
 import { createClient } from '@/lib/supabase/client'
 import { formatPrice } from '@/lib/utils'
+import { BADGE_STYLES } from '@/lib/badges'
 import type { Course } from '@/types'
 
 interface Props {
@@ -17,12 +18,6 @@ const LEVEL_COLORS = {
   Beginner: 'text-brand-success border-brand-success bg-brand-success/10',
   Intermediate: 'text-brand-gold border-brand-gold bg-brand-gold/10',
   Advanced: 'text-brand-error border-brand-error bg-brand-error/10',
-}
-
-const BADGE_STYLES = {
-  Popular: 'bg-brand-gold text-brand-bg',
-  New: 'bg-brand-success text-brand-bg',
-  Free: 'bg-blue-500 text-white',
 }
 
 export default function CourseDetailOverlay({ course, onClose }: Props) {
@@ -118,9 +113,11 @@ export default function CourseDetailOverlay({ course, onClose }: Props) {
         <div className="flex-1 p-6 pb-24">
           {/* Badge row */}
           <div className="flex items-center gap-2 mb-3">
-            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${BADGE_STYLES[course.badge]}`}>
-              {course.badge === 'Free' ? t.course.free : course.badge}
-            </span>
+            {course.badge && (
+              <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${BADGE_STYLES[course.badge]}`}>
+                {course.badge === 'Free' ? t.course.free : course.badge === 'Coming Soon' ? t.course.comingSoon : course.badge}
+              </span>
+            )}
             <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${LEVEL_COLORS[course.level]}`}>
               {t.levels[course.level]}
             </span>

@@ -1,6 +1,14 @@
 import { createClient } from '@/lib/supabase/client'
 import type { Course } from '@/types'
 import { COURSES } from '@/lib/courseData'
+import { effectiveBadge } from '@/lib/badges'
+
+type CourseRow = Course & { lessons?: { id: number }[] }
+
+function withComputedBadge(row: CourseRow): Course {
+  const { lessons, ...course } = row
+  return { ...course, badge: effectiveBadge(course.badge, lessons?.length ?? 0) }
+}
 
 // Simple in-memory cache with TTL
 const cache = new Map<string, { data: unknown; expires: number }>()
@@ -50,7 +58,7 @@ export async function getCourses(options?: {
     const supabase = createClient()
     let query = supabase
       .from('courses')
-      .select('*')
+      .select('*, lessons(id)')
       .order('order_index', { ascending: true })
 
     // Apply filters
@@ -77,8 +85,9 @@ export async function getCourses(options?: {
       return COURSES as Course[]
     }
 
-    setCachedData(cacheKey, data as Course[])
-    return data as Course[]
+    const courses = (data as CourseRow[]).map(withComputedBadge)
+    setCachedData(cacheKey, courses)
+    return courses
   } catch (err) {
     console.error('[getCourses] Exception:', err)
     // Graceful fallback to seed data

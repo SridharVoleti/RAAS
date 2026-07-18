@@ -29,12 +29,15 @@ create table if not exists paths (
   slug          text not null unique,
   name          text not null,
   emoji         text not null default '🕉️',
+  full_name_en  text not null default '',
+  full_name_te  text not null default '',
   tagline_en    text not null,
   tagline_te    text not null,
   description_en text not null,
   description_te text not null,
   is_active     boolean not null default true,
   order_index   int not null default 0,
+  certificates_enabled boolean not null default false,
   created_at    timestamptz not null default now()
 );
 

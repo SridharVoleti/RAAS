@@ -1,7 +1,7 @@
 export const translations = {
   en: {
     nav: {
-      platform: 'Krishnamargam',
+      platform: 'Sri Krishna margamu',
       tagline: 'Your Spiritual Journey',
       explore: 'Explore',
       signIn: 'Sign In',
@@ -11,7 +11,7 @@ export const translations = {
       donate: 'Donate',
     },
     hero: {
-      title: 'Krishnamargam',
+      title: 'Sri Krishna margamu',
       tagline: 'Your Spiritual Journey',
       tagline2: 'మీ ఆధ్యాత్మిక మార్గం',
       searchPlaceholder: 'Search courses...',
@@ -42,6 +42,7 @@ export const translations = {
     },
     course: {
       free: 'FREE',
+      comingSoon: 'Coming Soon',
       enroll: 'Enroll Now',
       enrollFree: 'Enroll Now – Free',
       enrolled: 'Enrolled',
@@ -310,7 +311,7 @@ export const translations = {
   },
   te: {
     nav: {
-      platform: 'కృష్ణమార్గం',
+      platform: 'శ్రీ కృష్ణ మార్గము',
       tagline: 'మీ ఆధ్యాత్మిక మార్గం',
       explore: 'అన్వేషించు',
       signIn: 'లాగిన్',
@@ -320,7 +321,7 @@ export const translations = {
       donate: 'దానం చేయండి',
     },
     hero: {
-      title: 'కృష్ణమార్గం',
+      title: 'శ్రీ కృష్ణ మార్గము',
       tagline: 'మీ ఆధ్యాత్మిక మార్గం',
       tagline2: 'Your Spiritual Journey',
       searchPlaceholder: 'కోర్సులు వెతకండి...',
@@ -351,6 +352,7 @@ export const translations = {
     },
     course: {
       free: 'ఉచితం',
+      comingSoon: 'త్వరలో',
       enroll: 'నమోదు చేయండి',
       enrollFree: 'ఉచితంగా నమోదు చేయండి',
       enrolled: 'నమోదైంది',
