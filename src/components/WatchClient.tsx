@@ -197,6 +197,36 @@ export default function WatchClient({
     setPassedChapterQuizIds(prev => new Set([...prev, chapterId]))
   }
 
+  // ── Course-completion congratulations popup ────────────────
+  const requiredChapterIds = chapters
+    .filter(c => (chapterQuestionCounts[c.id] || 0) > 0)
+    .map(c => c.id)
+  const fullyComplete =
+    totalLessons > 0 &&
+    completedCount === totalLessons &&
+    requiredChapterIds.every(id => passedChapterQuizIds.has(id))
+  const [showCongrats, setShowCongrats] = useState(false)
+  const completeOnMountRef = useRef(fullyComplete)
+  const congratsCheckedRef = useRef(false)
+
+  useEffect(() => {
+    // Fire only when the final tick lands in this session, and only if the
+    // server confirms certificate eligibility (path rules, track rules)
+    if (!fullyComplete || completeOnMountRef.current || congratsCheckedRef.current) return
+    congratsCheckedRef.current = true
+    fetch(`/api/certificate/${course.id}`)
+      .then(res => {
+        if (!res.ok) return
+        setShowCongrats(true)
+        // refresh the navbar's per-session "has certificates" cache
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const key = sessionStorage.key(i)
+          if (key?.startsWith('km_has_certs_')) sessionStorage.setItem(key, '1')
+        }
+      })
+      .catch(() => {})
+  }, [fullyComplete, course.id])
+
   useEffect(() => {
     fetch(`/api/notes/${course.id}`)
       .then(r => r.json())
@@ -425,6 +455,30 @@ export default function WatchClient({
           {watchWarning && (
             <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-brand-error text-brand-bg text-sm font-semibold rounded-full shadow-lg flex items-center gap-2 animate-fade-in">
               {t.watch.watchIncomplete}
+            </div>
+          )}
+
+          {showCongrats && (
+            <div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center px-4">
+              <div className="bg-brand-card border border-brand-gold/50 rounded-2xl p-8 max-w-md w-full text-center shadow-2xl">
+                <div className="text-5xl mb-3">🎉</div>
+                <h2 className="text-brand-gold font-bold text-2xl mb-2">{t.cert.congratsTitle}</h2>
+                <p className="text-brand-body text-sm mb-6">{t.cert.congratsBody}</p>
+                <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                  <button
+                    onClick={() => router.push('/my-certificates')}
+                    className="px-5 py-2.5 bg-brand-gold text-brand-bg text-sm font-semibold rounded-lg hover:bg-yellow-400 transition-colors"
+                  >
+                    {t.cert.goToMyCertificates}
+                  </button>
+                  <button
+                    onClick={() => setShowCongrats(false)}
+                    className="px-5 py-2.5 border border-brand-border text-brand-gold-muted text-sm font-semibold rounded-lg hover:text-brand-gold hover:border-brand-gold transition-colors"
+                  >
+                    {t.cert.later}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 

@@ -14,6 +14,7 @@ interface FormState {
   emoji: string
   is_active: boolean
   order_index: number
+  certificates_enabled: boolean
 }
 
 const EMPTY_FORM: FormState = {
@@ -26,6 +27,7 @@ const EMPTY_FORM: FormState = {
   emoji: '🕉️',
   is_active: true,
   order_index: 0,
+  certificates_enabled: false,
 }
 
 function toSlug(s: string) {
@@ -80,6 +82,7 @@ export default function AdminPathsPage() {
       emoji: p.emoji,
       is_active: p.is_active,
       order_index: p.order_index,
+      certificates_enabled: p.certificates_enabled ?? false,
     })
     setEditingId(p.id)
     setShowForm(true)
@@ -225,13 +228,21 @@ export default function AdminPathsPage() {
                 className={inputCls} />
             </div>
           </div>
-          <div className="flex items-center justify-between mt-4">
-            <label className="flex items-center gap-2 cursor-pointer text-sm text-brand-body">
-              <input type="checkbox" checked={form.is_active}
-                onChange={e => set('is_active', e.target.checked)}
-                className="accent-[#d4a017]" />
-              Active (clickable on home page — unchecked shows as &ldquo;Coming Soon&rdquo;)
-            </label>
+          <div className="flex items-center justify-between mt-4 gap-4">
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer text-sm text-brand-body">
+                <input type="checkbox" checked={form.is_active}
+                  onChange={e => set('is_active', e.target.checked)}
+                  className="accent-[#d4a017]" />
+                Active (clickable on home page — unchecked shows as &ldquo;Coming Soon&rdquo;)
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer text-sm text-brand-body">
+                <input type="checkbox" checked={form.certificates_enabled}
+                  onChange={e => set('certificates_enabled', e.target.checked)}
+                  className="accent-[#d4a017]" />
+                Certificates (students can earn completion certificates in this path)
+              </label>
+            </div>
             <button
               onClick={handleSave}
               disabled={!formValid || saving}
@@ -270,6 +281,11 @@ export default function AdminPathsPage() {
                     }`}>
                       {p.is_active ? 'Active' : 'Coming Soon'}
                     </span>
+                    {p.certificates_enabled && (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-brand-gold/15 text-brand-gold">
+                        Certificates
+                      </span>
+                    )}
                     <span className="text-brand-gold-muted text-xs">Order {p.order_index}</span>
                   </div>
                   {p.full_name_en && (

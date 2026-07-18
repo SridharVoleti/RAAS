@@ -45,7 +45,7 @@ function mockClients({
   courseProgress = { progress_pct: 100 },
   profileName = 'Arjuna Kumar',
   progressRecord = { completed_at: '2024-06-01T10:00:00Z' },
-  courseInfo = { title_en: 'Vedanta Basics', title_te: 'వేదాంత పాఠాలు', emoji: '🪷' },
+  courseInfo = { title_en: 'Vedanta Basics', title_te: 'వేదాంత పాఠాలు', emoji: '🪷', paths: { certificates_enabled: true } },
   chapters = [],
   chapterQuestions = [],
   passingChapterSubs = [],
@@ -89,6 +89,17 @@ describe('GET /api/certificate/[courseId]', () => {
     expect(res.status).toBe(403)
     const data = await res.json()
     expect(data.error).toContain('Not enrolled')
+  })
+
+  it('returns 403 when the course path has certificates disabled', async () => {
+    mockClients({
+      chapters: [],
+      courseInfo: { title_en: 'Other Path Course', title_te: null, emoji: '📖', paths: { certificates_enabled: false } },
+    })
+    const res = await GET(new Request('http://localhost/'), courseParams)
+    expect(res.status).toBe(403)
+    const data = await res.json()
+    expect(data.error).toContain('not available')
   })
 
   it('returns 403 for full-course student when lessons are not all completed', async () => {

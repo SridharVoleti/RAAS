@@ -2,7 +2,7 @@ import type { NextConfig } from 'next'
 
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://s.ytimg.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.supabase.co",
   "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",

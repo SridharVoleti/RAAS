@@ -235,6 +235,7 @@ const PathFieldsSchema = z.object({
   emoji:          z.string().min(1).max(8),
   is_active:      z.boolean(),
   order_index:    z.number().int().nonnegative(),
+  certificates_enabled: z.boolean(),
 })
 
 export const PathSchema = PathFieldsSchema.extend({
@@ -247,6 +248,7 @@ export const PathSchema = PathFieldsSchema.extend({
   emoji:          PathFieldsSchema.shape.emoji.optional().default('🕉️'),
   is_active:      PathFieldsSchema.shape.is_active.optional().default(true),
   order_index:    PathFieldsSchema.shape.order_index.optional().default(0),
+  certificates_enabled: PathFieldsSchema.shape.certificates_enabled.optional().default(false),
 })
 
 // Partial update WITHOUT defaults — a PUT must never reset omitted fields

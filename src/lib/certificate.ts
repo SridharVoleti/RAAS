@@ -22,6 +22,9 @@ export type CertificateResult =
  *  - Regular course track: every lesson ticked (progress 100%) AND every
  *    chapter quiz passed (score ≥ 3/5). No final exam required.
  *  - Prior-learning (exam-only) track: pass the full final exam.
+ *
+ * Certificates are only issued for courses whose learning path has
+ * certificates_enabled (admin-managed on the Paths page).
  */
 export async function getCertificate(courseId: number): Promise<CertificateResult> {
   const supabase = await createClient()
@@ -39,6 +42,21 @@ export async function getCertificate(courseId: number): Promise<CertificateResul
 
   if (!enrollment?.is_active) {
     return { ok: false, status: 403, error: 'Not enrolled in this course' }
+  }
+
+  const { data: courseInfo } = await adminSupabase
+    .from('courses')
+    .select('title_en, title_te, emoji, paths(certificates_enabled)')
+    .eq('id', courseId)
+    .single()
+
+  if (!courseInfo) {
+    return { ok: false, status: 404, error: 'Course not found' }
+  }
+
+  const pathInfo = courseInfo.paths as unknown as { certificates_enabled?: boolean } | null
+  if (!pathInfo?.certificates_enabled) {
+    return { ok: false, status: 403, error: 'Certificates are not available for this course' }
   }
 
   // Best passing exam session (completion evidence for the exam-only track)
@@ -124,12 +142,6 @@ export async function getCertificate(courseId: number): Promise<CertificateResul
       [lastLessonAt, lastQuizAt].filter((d): d is string => d !== null).sort().pop()
       ?? new Date().toISOString()
   }
-
-  const { data: courseInfo } = await adminSupabase
-    .from('courses')
-    .select('title_en, title_te, emoji')
-    .eq('id', courseId)
-    .single()
 
   const { data: profile } = await supabase
     .from('profiles')

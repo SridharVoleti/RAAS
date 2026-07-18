@@ -1,10 +1,27 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Award, Loader2, ExternalLink } from 'lucide-react'
+import { Award, Loader2, ExternalLink, ChevronDown, ChevronUp, Download, Users } from 'lucide-react'
 
 interface StudentRow { id: string; full_name: string | null; student_id?: string | null }
 interface CourseRow { id: number; title_en: string; title_te: string | null; is_published: boolean }
+
+interface AwardSummary {
+  courseId: number
+  title_en: string
+  title_te: string | null
+  emoji: string
+  awardedCount: number
+}
+
+interface AwardedStudentRow {
+  userId: string
+  studentName: string
+  studentId: string | null
+  track: 'course' | 'exam'
+  completedAt: string
+  examScore: number | null
+}
 
 function today(): string {
   return new Date().toISOString().slice(0, 10)
@@ -22,6 +39,12 @@ export default function AdminCertificatesPage() {
   const [date, setDate] = useState(today())
   const [specimen, setSpecimen] = useState(true)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+
+  const [awards, setAwards] = useState<AwardSummary[]>([])
+  const [awardsLoading, setAwardsLoading] = useState(true)
+  const [expandedId, setExpandedId] = useState<number | null>(null)
+  const [detailByCourse, setDetailByCourse] = useState<Record<number, AwardedStudentRow[]>>({})
+  const [detailLoading, setDetailLoading] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -41,8 +64,38 @@ export default function AdminCertificatesPage() {
         setLoading(false)
       }
     }
+    async function loadAwards() {
+      try {
+        const res = await fetch('/api/admin/certificates')
+        if (!res.ok) throw new Error('load failed')
+        const data = await res.json()
+        setAwards(data.courses ?? [])
+      } catch {
+        setError('Failed to load awarded certificates.')
+      } finally {
+        setAwardsLoading(false)
+      }
+    }
     load()
+    loadAwards()
   }, [])
+
+  async function toggleExpand(id: number) {
+    if (expandedId === id) { setExpandedId(null); return }
+    setExpandedId(id)
+    if (!detailByCourse[id]) {
+      setDetailLoading(true)
+      try {
+        const res = await fetch(`/api/admin/certificates/${id}`)
+        if (res.ok) {
+          const data = await res.json()
+          setDetailByCourse(prev => ({ ...prev, [id]: data.students ?? [] }))
+        }
+      } finally {
+        setDetailLoading(false)
+      }
+    }
+  }
 
   const canGenerate = courseId !== '' && (customName.trim() !== '' || userId !== '')
 
@@ -76,8 +129,7 @@ export default function AdminCertificatesPage() {
           Certificates
         </h1>
         <p className="text-brand-gold-muted text-sm mt-1">
-          Generate a test certificate for any student and course — eligibility checks are bypassed.
-          Keep the specimen watermark on unless you are checking the final layout.
+          Certificates awarded per course, and a test generator.
         </p>
       </div>
 
@@ -87,6 +139,114 @@ export default function AdminCertificatesPage() {
         </div>
       )}
 
+      {/* ── Awarded certificates by course ─────────────────── */}
+      <h2 className="text-brand-gold font-semibold text-lg flex items-center gap-2 mb-3">
+        <Users className="w-5 h-5" />
+        Awarded Certificates
+      </h2>
+      {awardsLoading ? (
+        <div className="flex items-center justify-center py-10 text-brand-gold-muted">
+          <Loader2 className="w-5 h-5 animate-spin" />
+        </div>
+      ) : awards.length === 0 ? (
+        <p className="text-brand-gold-muted text-sm mb-8">
+          No courses in a certificate-enabled path yet. Enable certificates on a path in Admin → Paths.
+        </p>
+      ) : (
+        <div className="space-y-3 mb-10">
+          {awards.map(a => {
+            const expanded = expandedId === a.courseId
+            const detail = detailByCourse[a.courseId]
+            return (
+              <div key={a.courseId} className="bg-brand-card border border-brand-border rounded-xl overflow-hidden">
+                <button
+                  onClick={() => toggleExpand(a.courseId)}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-brand-border/20 transition-colors"
+                >
+                  <span className="text-2xl leading-none">{a.emoji}</span>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-brand-gold font-semibold text-sm">{a.title_te ?? a.title_en}</span>
+                    {a.title_te && <span className="text-brand-gold-muted text-xs ml-2">{a.title_en}</span>}
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                    a.awardedCount > 0 ? 'bg-brand-gold/15 text-brand-gold' : 'bg-brand-border text-brand-gold-muted'
+                  }`}>
+                    {a.awardedCount} awarded
+                  </span>
+                  {expanded ? <ChevronUp className="w-4 h-4 text-brand-gold-muted" /> : <ChevronDown className="w-4 h-4 text-brand-gold-muted" />}
+                </button>
+
+                {expanded && (
+                  <div className="border-t border-brand-border px-4 py-4">
+                    {detailLoading && !detail ? (
+                      <div className="flex items-center justify-center py-6 text-brand-gold-muted">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      </div>
+                    ) : !detail || detail.length === 0 ? (
+                      <p className="text-brand-gold-muted text-sm">No certificates awarded for this course yet.</p>
+                    ) : (
+                      <>
+                        <div className="flex justify-end mb-3">
+                          <a
+                            href={`/api/admin/certificates/${a.courseId}?format=csv`}
+                            className="flex items-center gap-1.5 px-3 py-1.5 border border-brand-gold text-brand-gold text-xs font-semibold rounded-lg hover:bg-brand-gold hover:text-brand-bg transition-colors"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            Export CSV
+                          </a>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="text-brand-gold-muted text-xs border-b border-brand-border">
+                                <th className="text-left py-2 pr-4 font-semibold">Student</th>
+                                <th className="text-left py-2 pr-4 font-semibold">Student ID</th>
+                                <th className="text-left py-2 pr-4 font-semibold">Track</th>
+                                <th className="text-left py-2 pr-4 font-semibold">Completed On</th>
+                                <th className="text-left py-2 font-semibold">Exam Score</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {detail.map(s => (
+                                <tr key={s.userId} className="border-b border-brand-border/50 text-brand-body">
+                                  <td className="py-2 pr-4">{s.studentName}</td>
+                                  <td className="py-2 pr-4 text-brand-gold-muted">{s.studentId ?? '—'}</td>
+                                  <td className="py-2 pr-4">
+                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                      s.track === 'exam'
+                                        ? 'bg-brand-gold/15 text-brand-gold'
+                                        : 'bg-brand-success/15 text-brand-success'
+                                    }`}>
+                                      {s.track === 'exam' ? 'Final Exam' : 'Course'}
+                                    </span>
+                                  </td>
+                                  <td className="py-2 pr-4">
+                                    {s.completedAt ? new Date(s.completedAt).toLocaleDateString('en-IN', {
+                                      day: 'numeric', month: 'short', year: 'numeric',
+                                    }) : '—'}
+                                  </td>
+                                  <td className="py-2 text-brand-gold-muted">{s.examScore ?? '—'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ── Test generator ─────────────────────────────────── */}
+      <h2 className="text-brand-gold font-semibold text-lg mb-1">Test Generator</h2>
+      <p className="text-brand-gold-muted text-sm mb-3">
+        Generate a test certificate for any student and course — eligibility checks are bypassed.
+        Keep the specimen watermark on unless you are checking the final layout.
+      </p>
       <div className="bg-brand-card border border-brand-border rounded-xl p-5 max-w-2xl space-y-4">
         <div className="grid sm:grid-cols-2 gap-4">
           <div>

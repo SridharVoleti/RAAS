@@ -17,6 +17,7 @@ export default function Navbar() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [showVerifyBanner, setShowVerifyBanner] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [hasCertificates, setHasCertificates] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -24,6 +25,23 @@ export default function Navbar() {
     async function loadProfile(userId: string) {
       const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
       setProfile(data)
+    }
+
+    // Show "My Certificates" only once the student has earned at least one.
+    // Cached per session — eligibility rarely changes mid-session, and the
+    // completion popup links to the page directly anyway.
+    async function checkCertificates(userId: string) {
+      const cacheKey = `km_has_certs_${userId}`
+      const cached = sessionStorage.getItem(cacheKey)
+      if (cached !== null) { setHasCertificates(cached === '1'); return }
+      try {
+        const res = await fetch('/api/my-certificates')
+        if (!res.ok) return
+        const data = await res.json()
+        const has = (data.certificates?.length ?? 0) > 0
+        sessionStorage.setItem(cacheKey, has ? '1' : '0')
+        setHasCertificates(has)
+      } catch { /* nav link is optional — ignore */ }
     }
 
     function checkVerification(user: { email?: string; user_metadata?: Record<string, unknown> } | null) {
@@ -35,7 +53,7 @@ export default function Navbar() {
 
     // Fast optimistic read from cookie storage (no network round-trip)
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) { loadProfile(session.user.id); checkVerification(session.user) }
+      if (session?.user) { loadProfile(session.user.id); checkVerification(session.user); checkCertificates(session.user.id) }
     })
 
     // Authoritative listener — handles INITIAL_SESSION, SIGNED_IN, SIGNED_OUT,
@@ -44,9 +62,11 @@ export default function Navbar() {
       if (session?.user) {
         loadProfile(session.user.id)
         checkVerification(session.user)
+        checkCertificates(session.user.id)
       } else {
         setProfile(null)
         setShowVerifyBanner(false)
+        setHasCertificates(false)
       }
     })
 
@@ -127,6 +147,11 @@ export default function Navbar() {
                 <Link href="/my-courses" className="text-brand-gold-secondary hover:text-brand-gold transition-colors text-sm font-medium">
                   {t.nav.myCourses}
                 </Link>
+                {hasCertificates && (
+                  <Link href="/my-certificates" className="text-brand-gold-secondary hover:text-brand-gold transition-colors text-sm font-medium">
+                    {t.nav.myCertificates}
+                  </Link>
+                )}
                 <Link href="/donate" className="text-brand-gold-secondary hover:text-brand-gold transition-colors text-sm font-medium">
                   {t.nav.donate}
                 </Link>

@@ -128,6 +128,8 @@ export interface LearningPath {
   description_te: string
   is_active: boolean
   order_index: number
+  // optional until the 20260712_path_certificates migration is applied
+  certificates_enabled?: boolean
   created_at: string
 }
 
