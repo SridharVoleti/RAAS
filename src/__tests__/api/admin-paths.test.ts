@@ -92,6 +92,17 @@ describe('admin paths routes', () => {
     expect(res.status).toBe(409)
   })
 
+  it('POST returns a generic 500 when the insert fails for a reason other than a duplicate slug (e.g. a column missing from the DB schema)', async () => {
+    mockAdminClient(chain({
+      data: null,
+      error: { code: '42703', message: 'column "certificates_enabled" of relation "paths" does not exist' },
+    }))
+    const res = await createPath(jsonRequest(validPath))
+    expect(res.status).toBe(500)
+    const data = await res.json()
+    expect(data.error).toBe('Failed to create path')
+  })
+
   it('PUT updates a path and revalidates the cache', async () => {
     const c = chain({ data: { id: 2, ...validPath, is_active: true }, error: null })
     mockAdminClient(c)
