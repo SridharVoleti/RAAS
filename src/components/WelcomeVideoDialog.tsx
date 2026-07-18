@@ -37,15 +37,12 @@ export default function WelcomeVideoDialog({ openSignal = 0 }: Props) {
     fetch('/api/public/settings')
       .then(r => r.json())
       .then((data: Record<string, string>) => {
-        if (data.welcome_video_url) {
-          setVideoUrl(data.welcome_video_url)
-          setOpen(true)
-        }
+        if (data.welcome_video_url) setVideoUrl(data.welcome_video_url)
       })
       .catch(() => {})
   }, [])
 
-  // Reopen when the parent bumps the signal (once the video URL is known)
+  // Opens only when the parent bumps the signal (e.g. the home page's "listen to this video" link)
   useEffect(() => {
     if (openSignal > 0 && videoUrl) setOpen(true)
   }, [openSignal, videoUrl])

@@ -17,7 +17,7 @@ export const translations = {
       searchPlaceholder: 'Search courses...',
     },
     paths: {
-      heading: 'Choose Your Path',
+      otherHeading: 'Other Paths',
     },
     stats: {
       enrolled: 'Students Enrolled',
@@ -28,6 +28,11 @@ export const translations = {
     home: {
       featuredCourses: 'Featured Courses',
       studentVoices: 'Student Voices',
+      listenPrompt: 'Are you planning to enroll as a student? Listen to this video.',
+      enrollCta: 'Enroll yourself as a student',
+      loginCta: 'Congratulations! Login as a student',
+      guruPrompt: 'Have you learnt any subject from another Acharya? If yes, click here.',
+      examCta: 'For external students — write exams to get your certificate.',
     },
     explore: {
       title: 'Explore Courses',
@@ -327,7 +332,7 @@ export const translations = {
       searchPlaceholder: 'కోర్సులు వెతకండి...',
     },
     paths: {
-      heading: 'మీ మార్గాన్ని ఎంచుకోండి',
+      otherHeading: 'ఇతర మార్గాలు',
     },
     stats: {
       enrolled: 'నమోదైన విద్యార్థులు',
@@ -338,6 +343,11 @@ export const translations = {
     home: {
       featuredCourses: 'ప్రముఖ కోర్సులు',
       studentVoices: 'విద్యార్థుల అభిప్రాయాలు',
+      listenPrompt: 'మీరు విద్యార్థిగా చేరాలని అనుకుంటున్నారా? ఈ వీడియో చూడండి.',
+      enrollCta: 'విద్యార్థిగా నమోదు చేసుకోండి',
+      loginCta: 'అభినందనలు! విద్యార్థిగా లాగిన్ అవ్వండి',
+      guruPrompt: 'మీరు వేరే ఆచార్యుల వద్ద ఏదైనా విషయం నేర్చుకున్నారా? అయితే ఇక్కడ క్లిక్ చేయండి.',
+      examCta: 'బయటి విద్యార్థుల కోసం — మీ ధృవీకరణ పత్రం పొందడానికి పరీక్ష రాయండి.',
     },
     explore: {
       title: 'కోర్సులు అన్వేషించు',

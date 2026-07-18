@@ -4,7 +4,7 @@ const csp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://s.ytimg.com",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.supabase.co",
+  "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.supabase.co https://*.ytimg.com",
   "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
   "font-src 'self' data:",
