@@ -8,7 +8,7 @@ type ImportRow = {
   course_id:      number
   chapter_id?:    number
   chapter_name?:  string
-  question_en:    string
+  question_te:    string
   option_a_te:    string
   option_b_te:    string
   option_c_te:    string
@@ -160,7 +160,7 @@ export default function ExamQuestionsPage() {
             course_id:      selectedCourseId,
             chapter_id:     ch?.id,
             chapter_name:   ch ? (ch.title_en || ch.title_te || '') : undefined,
-            question_en:    question.trim(),
+            question_te:    question.trim(),
             option_a_te:    optA.trim(),
             option_b_te:    optB.trim(),
             option_c_te:    optC.trim(),

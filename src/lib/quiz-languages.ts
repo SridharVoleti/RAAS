@@ -22,6 +22,30 @@ export const QUIZ_LANGUAGES: readonly QuizLanguage[] = [
 /** Kept for legacy references — no language is strictly primary; at least one must be filled. */
 export const PRIMARY_QUIZ_LANG = QUIZ_LANGUAGES[0]
 
+interface LocalizedQuestion {
+  question_en: string
+  question_te?: string
+  option_a_en: string
+  option_a_te?: string
+  option_b_en: string
+  option_b_te?: string
+  option_c_en: string
+  option_c_te?: string
+  option_d_en: string
+  option_d_te?: string
+}
+
+/** True if this question has non-empty text for the question and all 4 options in the given language. */
+export function isCompleteInLanguage(q: LocalizedQuestion, code: string): boolean {
+  const key = (field: string) => q[`${field}_${code}` as keyof LocalizedQuestion] as string | undefined
+  return !!(key('question') && key('option_a') && key('option_b') && key('option_c') && key('option_d'))
+}
+
+/** True if every question in the set has full text in the given language. */
+export function allCompleteInLanguage(questions: LocalizedQuestion[], code: string): boolean {
+  return questions.length > 0 && questions.every(q => isCompleteInLanguage(q, code))
+}
+
 /** CSV column headers for all supported languages. */
 export function csvTemplateHeaders(): string[] {
   const cols: string[] = []

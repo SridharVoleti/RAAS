@@ -173,6 +173,8 @@ export const translations = {
       cooldownTitle: 'Cooldown Period',
       cooldownBody: 'You may retake the exam after 48 hours from your last attempt.',
       nextAttemptAfter: 'Next attempt allowed after',
+      languageUnavailable: "This exam isn't available in English yet. Please switch to Telugu to continue.",
+      switchToTelugu: 'Switch to Telugu',
     },
     payment: {
       title: 'Choose an Option',
@@ -288,6 +290,8 @@ export const translations = {
       retry: 'Retry Quiz',
       nextLesson: 'Next Lesson',
       testYourKnowledge: 'Test your knowledge',
+      languageUnavailable: "This quiz isn't available in English yet. Please switch to Telugu to continue.",
+      switchToTelugu: 'Switch to Telugu',
     },
     donate: {
       title: 'Support Krishnamargam',
@@ -478,6 +482,8 @@ export const translations = {
       cooldownTitle: 'విరామ సమయం',
       cooldownBody: 'మీ చివరి ప్రయత్నం నుండి 48 గంటల తర్వాత మళ్లీ పరీక్ష రాయవచ్చు.',
       nextAttemptAfter: 'తదుపరి ప్రయత్నం అనుమతించబడే సమయం',
+      languageUnavailable: 'ఈ పరీక్ష ప్రస్తుతం అందుబాటులో లేదు. దయచేసి తెలుగుకు మారండి.',
+      switchToTelugu: 'తెలుగుకు మారండి',
     },
     payment: {
       title: 'ఒక ఎంపిక చేసుకోండి',
@@ -593,6 +599,8 @@ export const translations = {
       retry: 'మళ్ళీ ప్రయత్నించండి',
       nextLesson: 'తదుపరి పాఠం',
       testYourKnowledge: 'మీ జ్ఞానాన్ని పరీక్షించుకోండి',
+      languageUnavailable: 'ఈ క్విజ్ ప్రస్తుతం అందుబాటులో లేదు. దయచేసి తెలుగుకు మారండి.',
+      switchToTelugu: 'తెలుగుకు మారండి',
     },
     donate: {
       title: 'కృష్ణమార్గాన్ని సహాయించండి',
