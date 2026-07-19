@@ -5,18 +5,11 @@ import { useRouter } from 'next/navigation'
 import { X, Star, Users, Clock, Check, GraduationCap } from 'lucide-react'
 import { useLang } from '@/contexts/LanguageContext'
 import { createClient } from '@/lib/supabase/client'
-import { formatPrice } from '@/lib/utils'
 import type { Course } from '@/types'
 
 interface Props {
   course: Course | null
   onClose: () => void
-}
-
-const LEVEL_COLORS = {
-  Beginner: 'text-brand-success border-brand-success bg-brand-success/10',
-  Intermediate: 'text-brand-gold border-brand-gold bg-brand-gold/10',
-  Advanced: 'text-brand-error border-brand-error bg-brand-error/10',
 }
 
 export default function CourseDetailOverlay({ course, onClose }: Props) {
@@ -110,13 +103,6 @@ export default function CourseDetailOverlay({ course, onClose }: Props) {
 
         {/* Content */}
         <div className="flex-1 p-6 pb-24">
-          {/* Level row */}
-          <div className="flex items-center gap-2 mb-3">
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${LEVEL_COLORS[course.level]}`}>
-              {t.levels[course.level]}
-            </span>
-          </div>
-
           {/* Title */}
           <h2 className="text-brand-gold font-bold text-xl mb-1">{title}</h2>
           {subtitle && <p className="text-brand-gold-muted text-sm mb-4">{subtitle}</p>}
@@ -185,12 +171,7 @@ export default function CourseDetailOverlay({ course, onClose }: Props) {
         </div>
 
         {/* Sticky footer */}
-        <div className="sticky bottom-0 bg-brand-card border-t border-brand-border p-4 flex items-center justify-between">
-          <div>
-            <span className={`text-xl font-bold ${course.is_free ? 'text-brand-success' : 'text-brand-gold'}`}>
-              {formatPrice(course.price)}
-            </span>
-          </div>
+        <div className="sticky bottom-0 bg-brand-card border-t border-brand-border p-4 flex items-center justify-end">
           {isEnrolled ? (
             <button
               onClick={() => router.push(`/watch/${course.slug}`)}
