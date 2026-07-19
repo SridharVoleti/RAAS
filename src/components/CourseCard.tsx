@@ -1,7 +1,6 @@
 'use client'
 
 import { useLang } from '@/contexts/LanguageContext'
-import { formatPrice } from '@/lib/utils'
 import type { Course } from '@/types'
 import { Star } from 'lucide-react'
 
@@ -71,11 +70,8 @@ export default function CourseCard({ course, onClick, isEnrolled }: CourseCardPr
           {course.student_count.toLocaleString()} {t.course.students}
         </p>
 
-        {/* Price */}
-        <div className="flex items-center justify-between">
-          <span className={`font-bold text-sm ${course.is_free ? 'text-brand-success' : 'text-brand-gold'}`}>
-            {formatPrice(course.price)}
-          </span>
+        {/* Action */}
+        <div className="flex items-center justify-end">
           <button className="px-3 py-1 bg-brand-gold text-brand-bg text-xs font-semibold rounded-lg hover:bg-yellow-400 transition-colors">
             {isEnrolled ? t.course.continueLearning : t.course.enroll}
           </button>
