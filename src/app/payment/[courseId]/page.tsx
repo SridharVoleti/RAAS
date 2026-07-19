@@ -5,21 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { useLang } from '@/contexts/LanguageContext'
 import { createClient } from '@/lib/supabase/client'
 import { getCourseById, getCourseBySlug } from '@/lib/getCourses'
-import { getISTHour } from '@/lib/utils'
 import type { Course } from '@/types'
-
-import type { RazorpayOptions } from '@/types'
-
-async function loadRazorpayScript(): Promise<boolean> {
-  if (typeof window !== 'undefined' && window.Razorpay) return true
-  return new Promise(resolve => {
-    const script = document.createElement('script')
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
-    script.onload = () => resolve(true)
-    script.onerror = () => resolve(false)
-    document.head.appendChild(script)
-  })
-}
 
 export default function PaymentPage() {
   const { t } = useLang()
@@ -30,7 +16,6 @@ export default function PaymentPage() {
   const [course, setCourse] = useState<Course | null>(null)
   const [loading, setLoading] = useState<'pay' | 'scholarship' | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [istHour] = useState(() => getISTHour())
 
   useEffect(() => {
     async function loadCourse() {
@@ -46,58 +31,13 @@ export default function PaymentPage() {
     loadCourse()
   }, [params.courseId, router])
 
-  async function handlePay() {
+  // TODO: Razorpay isn't configured yet — both options enroll directly for now.
+  async function handleEnroll(source: 'pay' | 'scholarship') {
     if (!course) return
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/login'); return }
 
-    setLoading('pay')
-    setError(null)
-    try {
-      const res = await fetch('/api/payment/initiate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ courseId: course.id, amount: course.price }),
-      })
-      if (!res.ok) {
-        const body = await res.json() as { error?: string }
-        setError(body.error ?? 'Payment initiation failed')
-        setLoading(null)
-        return
-      }
-      const { razorpayOrderId, razorpayKeyId, amount } = await res.json() as {
-        razorpayOrderId: string; razorpayKeyId: string; amount: number
-      }
-      const loaded = await loadRazorpayScript()
-      if (!loaded) { setError('Failed to load payment gateway. Please try again.'); setLoading(null); return }
-
-      const rzp = new window.Razorpay({
-        key:         razorpayKeyId,
-        amount,
-        currency:    'INR',
-        name:        'Krishnamargam',
-        description: course.title_en,
-        order_id:    razorpayOrderId,
-        handler: () => {
-          router.push(`/payment/confirm?courseId=${course.id}&istHour=${istHour}`)
-        },
-        prefill: { email: user.email ?? undefined },
-        theme:   { color: '#f0b429' },
-        modal:   { ondismiss: () => setLoading(null) },
-      })
-      rzp.open()
-    } catch {
-      setError('Something went wrong. Please try again.')
-      setLoading(null)
-    }
-  }
-
-  async function handleScholarship() {
-    if (!course) return
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { router.push('/login'); return }
-
-    setLoading('scholarship')
+    setLoading(source)
     setError(null)
     try {
       const res = await fetch('/api/enroll/scholarship', {
@@ -151,9 +91,9 @@ export default function PaymentPage() {
               </div>
             )}
 
-            {/* Option 1: Pay via Razorpay */}
+            {/* Option 1: Donate */}
             <button
-              onClick={handlePay}
+              onClick={() => handleEnroll('pay')}
               disabled={loading !== null}
               className="w-full p-4 bg-brand-gold text-brand-bg rounded-xl text-left hover:bg-yellow-400 transition-colors disabled:opacity-60 group"
             >
@@ -161,23 +101,14 @@ export default function PaymentPage() {
               {loading === 'pay' && <div className="text-brand-bg/70 text-xs mt-1">Loading…</div>}
             </button>
 
-            {/* Option 2: I cannot pay */}
+            {/* Option 2: Free access */}
             <button
-              onClick={handleScholarship}
+              onClick={() => handleEnroll('scholarship')}
               disabled={loading !== null}
               className="w-full p-4 bg-brand-bg border border-brand-border rounded-xl text-left hover:border-brand-gold transition-colors disabled:opacity-60"
             >
               <div className="text-brand-body font-semibold text-sm">{t.payment.optionCannotPay}</div>
               {loading === 'scholarship' && <div className="text-brand-gold-muted text-xs mt-1">Loading…</div>}
-            </button>
-
-            {/* Option 3: I don't want to pay */}
-            <button
-              onClick={() => router.push(`/course/${course.slug}`)}
-              disabled={loading !== null}
-              className="w-full p-4 bg-brand-bg border border-brand-border rounded-xl text-left hover:border-brand-border/60 transition-colors disabled:opacity-60 opacity-70 hover:opacity-100"
-            >
-              <div className="text-brand-gold-muted font-medium text-sm">{t.payment.optionDoNotWantPay}</div>
             </button>
           </div>
         </div>

@@ -188,7 +188,7 @@ export const translations = {
       switchToTelugu: 'Switch to Telugu',
     },
     payment: {
-      title: 'Choose an Option',
+      title: 'Choose an option for Enrollment',
       upiId: 'UPI ID',
       copy: 'Copy',
       copied: 'Copied!',
@@ -198,7 +198,6 @@ export const translations = {
       afterElevenPm: 'Payments after 11 PM IST are confirmed by 8 AM IST the next morning.',
       optionPay: 'Donate Rs 100 to SriKrishnaMargam Trust',
       optionCannotPay: 'I want to access this course for free',
-      optionDoNotWantPay: 'I don\'t want to pay',
     },
     confirmation: {
       instant: {
@@ -518,7 +517,7 @@ export const translations = {
       switchToTelugu: 'తెలుగుకు మారండి',
     },
     payment: {
-      title: 'ఒక ఎంపిక చేసుకోండి',
+      title: 'నమోదు కోసం ఒక ఎంపిక చేసుకోండి',
       upiId: 'UPI ID',
       copy: 'కాపీ',
       copied: 'కాపీ అయింది!',
@@ -528,7 +527,6 @@ export const translations = {
       afterElevenPm: 'రాత్రి 11 తర్వాత చెల్లింపులు తెల్లవారు జామున 8 గంటలకు నిర్ధారించబడతాయి.',
       optionPay: 'Donate Rs 100 to SriKrishnaMargam Trust',
       optionCannotPay: 'I want to access this course for free',
-      optionDoNotWantPay: 'నేను చెల్లించాలని అనుకోవడం లేదు',
     },
     confirmation: {
       instant: {
