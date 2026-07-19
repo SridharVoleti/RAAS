@@ -17,7 +17,7 @@ export const translations = {
       searchPlaceholder: 'Search courses...',
     },
     paths: {
-      otherHeading: 'Other Books',
+      otherHeading: 'Other Granthas',
     },
     stats: {
       enrolled: 'Students Enrolled',
@@ -344,7 +344,7 @@ export const translations = {
       searchPlaceholder: 'కోర్సులు వెతకండి...',
     },
     paths: {
-      otherHeading: 'ఇతర గ్రంథాలు',
+      otherHeading: 'ఇతర గ్రంథములు',
     },
     stats: {
       enrolled: 'నమోదైన విద్యార్థులు',
