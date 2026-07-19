@@ -16,6 +16,33 @@ Format: newest defects at the top within each section.
 
 ---
 
+## CONTENT — Course Category Data
+
+### CONTENT-001 · Renaming "Scriptures" text on the explore/path page had no effect — actual label came from DB `category` field, not a translation string
+| | |
+|---|---|
+| **Date** | 2026-07-19 |
+| **Severity** | P3 |
+| **Status** | Fixed |
+| **Commit** | `bbaec5d` |
+
+**Issue**
+User asked to rename "Scriptures" to "Grantha" on the explore path page. First fix changed the `t.paths.otherHeading` translation string ("Other Books" → "Other Granthas"), but the word "Scripture" still appeared on the explore page unchanged.
+
+**Root Cause**
+The visible category label wasn't a translation string at all — it was the literal `category` column value ("Scripture") on all 10 rows in the live Supabase `courses` table, rendered as-is on `/explore` because `t.categories` had no mapping for it (falls back to the raw DB string per [[feedback_no_hardcoded_data]]).
+
+**Solution**
+- Updated `category` from "Scripture" to "Grantha" on all 10 course rows via the Supabase REST API (production data change, confirmed with user first).
+- Updated code-side defaults/suggestions in `CourseForm.tsx` and the CSV import route (`'Scripture'` → `'Grantha'`).
+- Added `Grantha` entries to `t.categories` (EN/TE) in `translations.ts` and to `CATEGORY_ICONS` in `courseData.ts` so future data isn't left untranslated/iconless.
+
+**Prevention for Future Projects**
+- Before editing a user-facing label, check whether it's a translation string (`translations.ts`) or admin-managed DB content (courses/paths tables) — grep the DB via the REST API (`.env.local` has `SUPABASE_SERVICE_ROLE_KEY`) when a static-code grep turns up nothing.
+- Any hardcoded category/label list in admin forms should have a matching `t.categories` entry, or it silently renders untranslated in the UI.
+
+---
+
 ## EXAM — Final Test & Prior Learning
 
 ---
