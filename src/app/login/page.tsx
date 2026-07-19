@@ -11,7 +11,7 @@ import { looksLikeMobile } from '@/lib/validation'
 function LoginForm() {
   const { t } = useLang()
   const params = useSearchParams()
-  const returnTo = params.get('returnTo') || '/'
+  const returnTo = params.get('returnTo') || '/home'
   const justRegistered = params.get('registered') === '1'
 
   const [username, setUsername] = useState('')

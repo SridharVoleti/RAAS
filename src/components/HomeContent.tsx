@@ -214,24 +214,28 @@ export default function HomeContent({ courses, paths, stats, testimonials, widge
                       <span>{t.home.listenPrompt}</span>
                     </button>
                   </li>
-                  <li>
-                    <button
-                      onClick={() => router.push('/register')}
-                      className="flex items-start gap-2.5 text-left text-brand-gold-muted hover:text-brand-gold text-sm leading-snug transition-colors"
-                    >
-                      <span aria-hidden className="mt-0.5">📝</span>
-                      <span>{t.home.enrollCta}</span>
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => router.push('/login')}
-                      className="flex items-start gap-2.5 text-left text-brand-gold-muted hover:text-brand-gold text-sm leading-snug transition-colors"
-                    >
-                      <span aria-hidden className="mt-0.5">🔑</span>
-                      <span>{t.home.loginCta}</span>
-                    </button>
-                  </li>
+                  {isLoggedIn === false && (
+                    <li>
+                      <button
+                        onClick={() => router.push('/register')}
+                        className="flex items-start gap-2.5 text-left text-brand-gold-muted hover:text-brand-gold text-sm leading-snug transition-colors"
+                      >
+                        <span aria-hidden className="mt-0.5">📝</span>
+                        <span>{t.home.enrollCta}</span>
+                      </button>
+                    </li>
+                  )}
+                  {isLoggedIn === false && (
+                    <li>
+                      <button
+                        onClick={() => router.push('/login')}
+                        className="flex items-start gap-2.5 text-left text-brand-gold-muted hover:text-brand-gold text-sm leading-snug transition-colors"
+                      >
+                        <span aria-hidden className="mt-0.5">🔑</span>
+                        <span>{t.home.loginCta}</span>
+                      </button>
+                    </li>
+                  )}
                   <li>
                     <button
                       onClick={handleGuruRegister}
