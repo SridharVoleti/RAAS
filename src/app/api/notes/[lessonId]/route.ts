@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-export async function GET(_req: Request, { params }: { params: Promise<{ courseId: string }> }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ lessonId: string }> }) {
   try {
-    const { courseId } = await params
+    const { lessonId } = await params
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -12,7 +12,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ courseI
       .from('user_notes')
       .select('content')
       .eq('user_id', user.id)
-      .eq('course_id', Number(courseId))
+      .eq('lesson_id', Number(lessonId))
       .single()
 
     return NextResponse.json({ content: data?.content || '' })
@@ -21,9 +21,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ courseI
   }
 }
 
-export async function POST(req: Request, { params }: { params: Promise<{ courseId: string }> }) {
+export async function POST(req: Request, { params }: { params: Promise<{ lessonId: string }> }) {
   try {
-    const { courseId } = await params
+    const { lessonId } = await params
     const { content } = await req.json()
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -31,9 +31,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ courseI
 
     await supabase.from('user_notes').upsert({
       user_id: user.id,
-      course_id: Number(courseId),
+      lesson_id: Number(lessonId),
       content,
-    }, { onConflict: 'user_id,course_id' })
+    }, { onConflict: 'user_id,lesson_id' })
 
     return NextResponse.json({ success: true })
   } catch {

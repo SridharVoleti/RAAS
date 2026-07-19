@@ -252,9 +252,10 @@ export const translations = {
     },
     watch: {
       backToMyCourses: 'Back to My Courses',
+      additionalResources: 'Additional Resources',
       lessons: 'Lessons',
       notes: 'My Notes',
-      notesPlaceholder: 'Take notes for this course...',
+      notesPlaceholder: 'Take notes for this lesson...',
       notesSaving: 'Saving...',
       notesSaved: 'Saved',
       markComplete: 'Mark as Complete',
@@ -567,9 +568,10 @@ export const translations = {
     },
     watch: {
       backToMyCourses: 'నా కోర్సులకు తిరిగి వెళ్ళు',
+      additionalResources: 'అదనపు వనరులు',
       lessons: 'పాఠాలు',
       notes: 'నా నోట్సులు',
-      notesPlaceholder: 'ఈ కోర్సుకు నోట్సులు రాయండి...',
+      notesPlaceholder: 'ఈ పాఠానికి నోట్సులు రాయండి...',
       notesSaving: 'భద్రపరుస్తున్నాం...',
       notesSaved: 'భద్రపరచబడింది',
       markComplete: 'పూర్తయింది అని గుర్తించు',

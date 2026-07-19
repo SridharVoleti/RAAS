@@ -77,6 +77,10 @@ const CourseBaseSchema = z.object({
   has_exam:       z.boolean().optional(),
   order_index:    z.number().int().nonnegative().optional(),
   is_published:   z.boolean().optional(),
+  resources:      z.array(z.object({
+    title: z.string().trim().min(1).max(200),
+    url:   z.string().trim().url().max(2000),
+  })).max(50).optional(),
 })
 
 export const CreateCourseSchema = CourseBaseSchema

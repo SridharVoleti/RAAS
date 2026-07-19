@@ -40,6 +40,7 @@ export async function PUT(
       has_quiz:       body.has_quiz,
       is_published:   body.is_published,
       order_index:    body.order_index !== undefined ? Number(body.order_index) : undefined,
+      resources:      body.resources,
     })
     .eq('id', Number(id))
     .select()

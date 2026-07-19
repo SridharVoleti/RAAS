@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
-import { CheckCircle2, ChevronLeft, ChevronRight, BookOpen, FileText, HelpCircle, Layers, Loader2 } from 'lucide-react'
+import { CheckCircle2, ChevronLeft, ChevronRight, BookOpen, ExternalLink, FileText, HelpCircle, Layers, Loader2 } from 'lucide-react'
 import { useLang } from '@/contexts/LanguageContext'
 import { allCompleteInLanguage } from '@/lib/quiz-languages'
 import { LanguageUnavailableModal } from '@/components/LanguageUnavailableModal'
@@ -230,11 +230,13 @@ export default function WatchClient({
   }, [fullyComplete, course.id])
 
   useEffect(() => {
-    fetch(`/api/notes/${course.id}`)
+    if (!currentLesson) return
+    fetch(`/api/notes/${currentLesson.id}`)
       .then(r => r.json())
       .then((data: { content?: string }) => setNotes(data.content || ''))
       .catch(() => {})
-  }, [course.id])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentLesson?.id])
 
   useEffect(() => {
     if (isFirstRender.current) { isFirstRender.current = false; return }
@@ -385,12 +387,14 @@ export default function WatchClient({
   }
 
   function handleNotesChange(value: string) {
+    if (!currentLesson) return
+    const lessonId = currentLesson.id
     setNotes(value)
     setNotesStatus('idle')
     if (notesTimer.current) clearTimeout(notesTimer.current)
     notesTimer.current = setTimeout(() => {
       setNotesStatus('saving')
-      fetch(`/api/notes/${course.id}`, {
+      fetch(`/api/notes/${lessonId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: value }),
@@ -558,6 +562,28 @@ export default function WatchClient({
               </button>
             </div>
           </div>
+
+          {/* Additional Resources */}
+          {course.resources && course.resources.length > 0 && (
+            <div className="p-4 border-b border-brand-border">
+              <h3 className="text-brand-gold font-semibold text-sm mb-2">{t.watch.additionalResources}</h3>
+              <ul className="space-y-1.5">
+                {course.resources.map((r, i) => (
+                  <li key={i}>
+                    <a
+                      href={r.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 text-brand-gold-secondary hover:text-brand-gold text-sm transition-colors"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                      <span className="underline underline-offset-2">{r.title}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Mobile tabs */}
           <div className="lg:hidden flex border-b border-brand-border">

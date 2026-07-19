@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { Plus, Trash2 } from 'lucide-react'
 import { getPaths } from '@/lib/getPaths'
-import type { Course, LearningPath } from '@/types'
+import type { Course, CourseResource, LearningPath } from '@/types'
 
 const CATEGORY_SUGGESTIONS = ['Scripture', 'Chanting', 'Philosophy', 'Rituals', 'Yoga', 'Puranas', 'Music', 'Language', 'Jyotisha', 'Vastu']
 const LEVELS = ['Beginner', 'Intermediate', 'Advanced']
@@ -41,6 +42,7 @@ export default function CourseForm({ course }: Props) {
     order_index:    course?.order_index ?? 0,
     is_free:        course?.is_free ?? false,
     price:          course?.price ?? 0,
+    resources:      course?.resources ?? [] as CourseResource[],
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -68,6 +70,19 @@ export default function CourseForm({ course }: Props) {
     setForm(f => ({ ...f, [key]: value }))
   }
 
+  function addResource() {
+    setForm(f => ({ ...f, resources: [...f.resources, { title: '', url: '' }] }))
+  }
+  function updateResource(index: number, patch: Partial<CourseResource>) {
+    setForm(f => ({
+      ...f,
+      resources: f.resources.map((r, i) => (i === index ? { ...r, ...patch } : r)),
+    }))
+  }
+  function removeResource(index: number) {
+    setForm(f => ({ ...f, resources: f.resources.filter((_, i) => i !== index) }))
+  }
+
   async function handleSave(publish: boolean) {
     console.log('[CourseForm] handleSave called', { publish, isEdit, slug: form.slug })
     setError('')
@@ -79,7 +94,12 @@ export default function CourseForm({ course }: Props) {
     }
     setSaving(true)
     try {
-      const payload = { ...form, badge: form.badge || null, is_published: publish }
+      const payload = {
+        ...form,
+        badge: form.badge || null,
+        is_published: publish,
+        resources: form.resources.filter(r => r.title.trim() && r.url.trim()),
+      }
       const url = isEdit ? `/api/admin/courses/${course!.id}` : '/api/admin/courses'
       const method = isEdit ? 'PUT' : 'POST'
       console.log('[CourseForm] Sending request', { method, url, payload })
@@ -266,6 +286,47 @@ export default function CourseForm({ course }: Props) {
               min={0} step={1} className={inputCls} placeholder="799" />
           </div>
         )}
+      </div>
+
+      {/* Additional Resources */}
+      <div className={sectionCls}>
+        <h3 className="text-brand-gold text-sm font-semibold">Additional Resources</h3>
+        <p className="text-brand-gold-muted text-xs -mt-2">Links to supplementary books or materials, shown to enrolled students on the watch page.</p>
+        {form.resources.length > 0 && (
+          <div className="space-y-2">
+            {form.resources.map((r, i) => (
+              <div key={i} className="flex gap-2 items-center">
+                <input
+                  value={r.title}
+                  onChange={e => updateResource(i, { title: e.target.value })}
+                  placeholder="Resource title"
+                  className={`${inputCls} flex-1`}
+                />
+                <input
+                  value={r.url}
+                  onChange={e => updateResource(i, { url: e.target.value })}
+                  placeholder="https://…"
+                  className={`${inputCls} flex-1`}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeResource(i)}
+                  aria-label="Remove resource"
+                  className="p-2 text-brand-gold-muted hover:text-brand-error transition-colors shrink-0"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={addResource}
+          className="flex items-center gap-1.5 px-3 py-1.5 border border-brand-border rounded-lg text-brand-gold-muted hover:text-brand-gold hover:border-brand-gold text-sm transition-colors"
+        >
+          <Plus className="w-4 h-4" /> Add Resource
+        </button>
       </div>
 
       {/* Actions */}

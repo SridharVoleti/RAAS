@@ -67,6 +67,7 @@ export async function POST(req: Request) {
       has_quiz:       body.has_quiz ?? false,
       order_index:    Number(body.order_index ?? 0),
       is_published:   body.is_published ?? false,
+      resources:      body.resources ?? [],
     })
     .select()
     .single()

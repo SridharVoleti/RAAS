@@ -203,57 +203,55 @@ export default function HomeContent({ courses, paths, stats, testimonials, widge
 
           return (
             <div className="flex flex-col md:flex-row items-stretch gap-5 mb-10">
-              {isLoggedIn === false && (
-                <div className="w-full md:w-72 lg:w-80 shrink-0 rounded-2xl border-2 border-brand-border bg-brand-card p-5">
-                  <ul className="space-y-3.5">
-                    <li>
-                      <button
-                        onClick={() => setVideoSignal(s => s + 1)}
-                        className="flex items-start gap-2.5 text-left text-brand-gold-muted hover:text-brand-gold text-sm leading-snug transition-colors"
-                      >
-                        <span aria-hidden className="mt-0.5">🎧</span>
-                        <span>{t.home.listenPrompt}</span>
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        onClick={() => router.push('/register')}
-                        className="flex items-start gap-2.5 text-left text-brand-gold-muted hover:text-brand-gold text-sm leading-snug transition-colors"
-                      >
-                        <span aria-hidden className="mt-0.5">📝</span>
-                        <span>{t.home.enrollCta}</span>
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        onClick={() => router.push('/login')}
-                        className="flex items-start gap-2.5 text-left text-brand-gold-muted hover:text-brand-gold text-sm leading-snug transition-colors"
-                      >
-                        <span aria-hidden className="mt-0.5">🔑</span>
-                        <span>{t.home.loginCta}</span>
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        onClick={handleGuruRegister}
-                        className="flex items-start gap-2.5 text-left text-brand-gold-muted hover:text-brand-gold text-sm leading-snug transition-colors"
-                      >
-                        <span aria-hidden className="mt-0.5">🎓</span>
-                        <span>{t.home.guruPrompt}</span>
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        onClick={handleGuruRegister}
-                        className="flex items-start gap-2.5 text-left text-brand-gold-muted hover:text-brand-gold text-sm leading-snug transition-colors"
-                      >
-                        <span aria-hidden className="mt-0.5">📜</span>
-                        <span>{t.home.examCta}</span>
-                      </button>
-                    </li>
-                  </ul>
-                </div>
-              )}
+              <div className="w-full md:w-72 lg:w-80 shrink-0 rounded-2xl border-2 border-brand-border bg-brand-card p-5">
+                <ul className="space-y-3.5">
+                  <li>
+                    <button
+                      onClick={() => setVideoSignal(s => s + 1)}
+                      className="flex items-start gap-2.5 text-left text-brand-gold-muted hover:text-brand-gold text-sm leading-snug transition-colors"
+                    >
+                      <span aria-hidden className="mt-0.5">🎧</span>
+                      <span>{t.home.listenPrompt}</span>
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() => router.push('/register')}
+                      className="flex items-start gap-2.5 text-left text-brand-gold-muted hover:text-brand-gold text-sm leading-snug transition-colors"
+                    >
+                      <span aria-hidden className="mt-0.5">📝</span>
+                      <span>{t.home.enrollCta}</span>
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() => router.push('/login')}
+                      className="flex items-start gap-2.5 text-left text-brand-gold-muted hover:text-brand-gold text-sm leading-snug transition-colors"
+                    >
+                      <span aria-hidden className="mt-0.5">🔑</span>
+                      <span>{t.home.loginCta}</span>
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={handleGuruRegister}
+                      className="flex items-start gap-2.5 text-left text-brand-gold-muted hover:text-brand-gold text-sm leading-snug transition-colors"
+                    >
+                      <span aria-hidden className="mt-0.5">🎓</span>
+                      <span>{t.home.guruPrompt}</span>
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={handleGuruRegister}
+                      className="flex items-start gap-2.5 text-left text-brand-gold-muted hover:text-brand-gold text-sm leading-snug transition-colors"
+                    >
+                      <span aria-hidden className="mt-0.5">📜</span>
+                      <span>{t.home.examCta}</span>
+                    </button>
+                  </li>
+                </ul>
+              </div>
 
               <button
                 onClick={() => router.push(`/explore?path=${raasPath.slug}`)}

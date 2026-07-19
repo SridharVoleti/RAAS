@@ -127,4 +127,43 @@ describe('POST /api/admin/courses', () => {
     await POST(makePostRequest({ ...validCourseBody, is_free: true, price: 999 }))
     expect(insertedData.price).toBe(0)
   })
+
+  it('defaults resources to an empty array when omitted', async () => {
+    let insertedData: Record<string, unknown> = {}
+    vi.mocked(createAdminClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        insert: vi.fn((row: Record<string, unknown>) => {
+          insertedData = row
+          return { select: vi.fn().mockReturnThis(), single: vi.fn().mockResolvedValue({ data: row, error: null }) }
+        }),
+      }),
+    } as any)
+
+    await POST(makePostRequest(validCourseBody))
+    expect(insertedData.resources).toEqual([])
+  })
+
+  it('passes through valid additional-resource links', async () => {
+    let insertedData: Record<string, unknown> = {}
+    vi.mocked(createAdminClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        insert: vi.fn((row: Record<string, unknown>) => {
+          insertedData = row
+          return { select: vi.fn().mockReturnThis(), single: vi.fn().mockResolvedValue({ data: row, error: null }) }
+        }),
+      }),
+    } as any)
+
+    const resources = [{ title: 'Bhagavad Gita PDF', url: 'https://example.com/gita.pdf' }]
+    await POST(makePostRequest({ ...validCourseBody, resources }))
+    expect(insertedData.resources).toEqual(resources)
+  })
+
+  it('rejects a resource with an invalid URL', async () => {
+    const res = await POST(makePostRequest({
+      ...validCourseBody,
+      resources: [{ title: 'Bad Link', url: 'not-a-url' }],
+    }))
+    expect(res.status).toBe(400)
+  })
 })

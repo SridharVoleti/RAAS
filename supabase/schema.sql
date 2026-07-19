@@ -66,6 +66,7 @@ create table if not exists courses (
   has_quiz       boolean not null default false,
   order_index    int not null default 0,
   is_published   boolean not null default true,
+  resources      jsonb not null default '[]'::jsonb,
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now()
 );
@@ -173,10 +174,10 @@ create index if not exists idx_user_progress_user_course on user_progress(user_i
 -- ─── USER NOTES ─────────────────────────────────────────────
 create table if not exists user_notes (
   user_id    uuid not null references auth.users(id) on delete cascade,
-  course_id  int not null references courses(id) on delete cascade,
+  lesson_id  int not null references lessons(id) on delete cascade,
   content    text not null default '',
   updated_at timestamptz not null default now(),
-  primary key (user_id, course_id)
+  primary key (user_id, lesson_id)
 );
 
 -- ─── PAYMENT LOGS ───────────────────────────────────────────

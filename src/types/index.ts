@@ -54,6 +54,12 @@ export interface Course {
   order_index: number
   is_published: boolean
   curriculum?: string[]
+  resources?: CourseResource[]
+}
+
+export interface CourseResource {
+  title: string
+  url: string
 }
 
 export interface Chapter {
