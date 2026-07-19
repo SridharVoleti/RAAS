@@ -196,12 +196,9 @@ export const translations = {
       backToCourse: 'Back to Course',
       beforeElevenPm: 'Pay before 11 PM IST for instant enrollment confirmation.',
       afterElevenPm: 'Payments after 11 PM IST are confirmed by 8 AM IST the next morning.',
-      optionPay: 'Donate ₹100 for the course',
-      optionPaySub: 'Your contribution keeps this learning platform alive',
-      optionCannotPay: 'I cannot pay',
-      optionCannotPaySub: 'Enroll for free — access this course at no cost',
+      optionPay: 'Donate Rs 100 to SriKrishnaMargam Trust',
+      optionCannotPay: 'I want to access this course for free',
       optionDoNotWantPay: 'I don\'t want to pay',
-      optionDoNotWantPaySub: 'Go back to the course page',
     },
     confirmation: {
       instant: {
@@ -529,12 +526,9 @@ export const translations = {
       backToCourse: 'కోర్సుకు తిరిగి వెళ్ళు',
       beforeElevenPm: 'తక్షణ నమోదు నిర్ధారణ కోసం రాత్రి 11 గంటల లోపు చెల్లించండి.',
       afterElevenPm: 'రాత్రి 11 తర్వాత చెల్లింపులు తెల్లవారు జామున 8 గంటలకు నిర్ధారించబడతాయి.',
-      optionPay: 'కోర్సు కోసం ₹100 Donate',
-      optionPaySub: 'మీ సహకారం ఈ అభ్యాస వేదికను జీవంతంగా ఉంచుతుంది',
-      optionCannotPay: 'నాకు చెల్లించే స్తోమత లేదు',
-      optionCannotPaySub: 'ఉచితంగా నమోదు అవ్వండి — ఏ ఖర్చు లేకుండా ఈ కోర్సు చేయండి',
+      optionPay: 'Donate Rs 100 to SriKrishnaMargam Trust',
+      optionCannotPay: 'I want to access this course for free',
       optionDoNotWantPay: 'నేను చెల్లించాలని అనుకోవడం లేదు',
-      optionDoNotWantPaySub: 'కోర్సు పేజీకి తిరిగి వెళ్ళు',
     },
     confirmation: {
       instant: {

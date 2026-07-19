@@ -158,7 +158,6 @@ export default function PaymentPage() {
               className="w-full p-4 bg-brand-gold text-brand-bg rounded-xl text-left hover:bg-yellow-400 transition-colors disabled:opacity-60 group"
             >
               <div className="font-bold text-sm">{t.payment.optionPay}</div>
-              <div className="text-brand-bg/70 text-xs mt-0.5">{t.payment.optionPaySub}</div>
               {loading === 'pay' && <div className="text-brand-bg/70 text-xs mt-1">Loading…</div>}
             </button>
 
@@ -169,7 +168,6 @@ export default function PaymentPage() {
               className="w-full p-4 bg-brand-bg border border-brand-border rounded-xl text-left hover:border-brand-gold transition-colors disabled:opacity-60"
             >
               <div className="text-brand-body font-semibold text-sm">{t.payment.optionCannotPay}</div>
-              <div className="text-brand-gold-muted text-xs mt-0.5">{t.payment.optionCannotPaySub}</div>
               {loading === 'scholarship' && <div className="text-brand-gold-muted text-xs mt-1">Loading…</div>}
             </button>
 
@@ -180,7 +178,6 @@ export default function PaymentPage() {
               className="w-full p-4 bg-brand-bg border border-brand-border rounded-xl text-left hover:border-brand-border/60 transition-colors disabled:opacity-60 opacity-70 hover:opacity-100"
             >
               <div className="text-brand-gold-muted font-medium text-sm">{t.payment.optionDoNotWantPay}</div>
-              <div className="text-brand-gold-muted/60 text-xs mt-0.5">{t.payment.optionDoNotWantPaySub}</div>
             </button>
           </div>
         </div>
