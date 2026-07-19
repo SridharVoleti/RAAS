@@ -194,7 +194,7 @@ export async function POST(req: Request) {
     description_te: first.description_te || '',
     instructor_en:  first.instructor_en || '',
     instructor_te:  first.instructor_te || '',
-    category:       first.category || 'Scripture',
+    category:       first.category || 'Grantha',
     level,
     duration:       first.duration || '4 weeks',
     is_free:        first.is_free?.toLowerCase() === 'true',

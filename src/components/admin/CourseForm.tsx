@@ -6,7 +6,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import { getPaths } from '@/lib/getPaths'
 import type { Course, CourseResource, LearningPath } from '@/types'
 
-const CATEGORY_SUGGESTIONS = ['Scripture', 'Chanting', 'Philosophy', 'Rituals', 'Yoga', 'Puranas', 'Music', 'Language', 'Jyotisha', 'Vastu']
+const CATEGORY_SUGGESTIONS = ['Grantha', 'Chanting', 'Philosophy', 'Rituals', 'Yoga', 'Puranas', 'Music', 'Language', 'Jyotisha', 'Vastu']
 const LEVELS = ['Beginner', 'Intermediate', 'Advanced']
 
 function toSlug(s: string) {
@@ -32,7 +32,7 @@ export default function CourseForm({ course }: Props) {
     description_te: course?.description_te ?? '',
     instructor_en:  course?.instructor_en ?? 'Rama Krishnamaa Charyulu Voleti',
     instructor_te:  course?.instructor_te ?? 'రామ కృష్ణమామా చార్యులుఓలేటి',
-    category:       course?.category ?? 'Scripture',
+    category:       course?.category ?? 'Grantha',
     level:          course?.level ?? 'Beginner',
     duration:       course?.duration ?? '4 weeks',
     has_quiz:       course?.has_quiz ?? false,
@@ -230,7 +230,7 @@ export default function CourseForm({ course }: Props) {
               value={form.category}
               onChange={e => set('category', e.target.value)}
               className={inputCls}
-              placeholder="e.g. Scripture"
+              placeholder="e.g. Grantha"
             />
             <datalist id="category-suggestions">
               {CATEGORY_SUGGESTIONS.map(c => <option key={c} value={c} />)}

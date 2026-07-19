@@ -215,6 +215,7 @@ export const STATS = {
 }
 
 export const CATEGORY_ICONS: Record<string, string> = {
+  Grantha: '📜',
   'Bhagavad Gita': '📖',
   Mantras: '🕉',
   Upanishads: '🪔',

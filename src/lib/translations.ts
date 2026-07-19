@@ -221,6 +221,7 @@ export const translations = {
       Advanced: 'Advanced',
     },
     categories: {
+      Grantha: 'Grantha',
       'Bhagavad Gita': 'Bhagavad Gita',
       Mantras: 'Mantras',
       Upanishads: 'Upanishads',
@@ -548,6 +549,7 @@ export const translations = {
       Advanced: 'అధునాతనం',
     },
     categories: {
+      Grantha: 'గ్రంథము',
       'Bhagavad Gita': 'భగవద్గీత',
       Mantras: 'మంత్రాలు',
       Upanishads: 'ఉపనిషత్తులు',
