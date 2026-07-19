@@ -5,6 +5,7 @@ import {
   COOLDOWN_HOURS,
   EXAM_ONLY_DURATION_MINUTES,
   EXAM_ONLY_QUESTION_TARGET,
+  ensureExamOnlyEnrollment,
   fetchQuestionPage,
 } from '@/lib/exam'
 
@@ -34,13 +35,9 @@ export async function POST(
     return NextResponse.json({ error: 'Course not found' }, { status: 404 })
   }
 
-  // Verify enrollment
-  const { data: enrollment } = await supabase
-    .from('enrollments')
-    .select('is_active, exam_only')
-    .eq('user_id', user.id)
-    .eq('course_id', courseIdNum)
-    .maybeSingle()
+  // Verify enrollment (self-heals a missing exam_only enrollment if the student
+  // declared prior learning before the course's has_exam flag was turned on)
+  const enrollment = await ensureExamOnlyEnrollment(adminSupabase, user.id, courseIdNum)
 
   if (!enrollment?.is_active) {
     return NextResponse.json({ error: 'Not enrolled in this course' }, { status: 403 })

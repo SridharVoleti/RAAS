@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import { COOLDOWN_HOURS, EXAM_ONLY_QUESTION_TARGET, fetchQuestionPage, gradeAndFinalize, isExpired } from '@/lib/exam'
+import { COOLDOWN_HOURS, EXAM_ONLY_QUESTION_TARGET, ensureExamOnlyEnrollment, fetchQuestionPage, gradeAndFinalize, isExpired } from '@/lib/exam'
 import type { ExamQuestionPage } from '@/types'
 
 export async function GET(
@@ -22,13 +22,9 @@ export async function GET(
     .select('id', { count: 'exact', head: true })
     .eq('course_id', courseIdNum)
 
-  // Check enrollment
-  const { data: enrollment } = await supabase
-    .from('enrollments')
-    .select('is_active, exam_only')
-    .eq('user_id', user.id)
-    .eq('course_id', courseIdNum)
-    .maybeSingle()
+  // Check enrollment (self-heals a missing exam_only enrollment if the student
+  // declared prior learning before the course's has_exam flag was turned on)
+  const enrollment = await ensureExamOnlyEnrollment(adminSupabase, user.id, courseIdNum)
 
   const examOnly = enrollment?.exam_only ?? false
 

@@ -7,6 +7,56 @@ export const EXAM_ONLY_QUESTION_TARGET = 100
 export const EXAM_ONLY_DURATION_MINUTES = 100
 export const COOLDOWN_HOURS = 48
 
+/**
+ * A prior-learning declaration only creates an exam_only enrollment at the moment
+ * it's submitted — if a course's `has_exam` flag is turned on later (e.g. the admin
+ * finishes loading questions after a student already declared), that student is left
+ * with a declaration but no enrollment and no way to retrigger it (the dialog disables
+ * the checkbox once declared). Called from the exam routes to self-heal that gap.
+ */
+export async function ensureExamOnlyEnrollment(
+  adminSupabase: SupabaseClient,
+  userId: string,
+  courseId: number
+): Promise<{ is_active: boolean; exam_only: boolean } | null> {
+  const { data: existing } = await adminSupabase
+    .from('enrollments')
+    .select('is_active, exam_only')
+    .eq('user_id', userId)
+    .eq('course_id', courseId)
+    .maybeSingle()
+
+  if (existing?.is_active) return existing
+
+  const { data: declaration } = await adminSupabase
+    .from('prior_learning_declarations')
+    .select('course_id')
+    .eq('user_id', userId)
+    .eq('course_id', courseId)
+    .maybeSingle()
+
+  if (!declaration) return existing ?? null
+
+  const { data: course } = await adminSupabase
+    .from('courses')
+    .select('has_exam')
+    .eq('id', courseId)
+    .single()
+
+  if (!course?.has_exam) return existing ?? null
+
+  const { data: healed } = await adminSupabase
+    .from('enrollments')
+    .upsert(
+      { user_id: userId, course_id: courseId, is_active: true, exam_only: true, activated_at: new Date().toISOString() },
+      { onConflict: 'user_id,course_id' }
+    )
+    .select('is_active, exam_only')
+    .single()
+
+  return healed ?? { is_active: true, exam_only: true }
+}
+
 /** Fetch one page of questions (correct_option stripped) for a pre-built sequence. */
 export async function fetchQuestionPage(
   adminSupabase: SupabaseClient,
