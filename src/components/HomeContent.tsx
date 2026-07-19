@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { Star } from 'lucide-react'
 import { useLang } from '@/contexts/LanguageContext'
-import CourseCard from '@/components/CourseCard'
 import CourseDetailOverlay from '@/components/CourseDetailOverlay'
 import PriorLearningDialog from '@/components/PriorLearningDialog'
 import TestimonialDialog from '@/components/TestimonialDialog'
@@ -99,8 +98,6 @@ export default function HomeContent({ courses, paths, stats, testimonials, widge
     return () => subscription.unsubscribe()
   }, [])
 
-  const topCourses = [...courses].sort((a, b) => b.student_count - a.student_count).slice(0, 6)
-
   const raasPath = paths.find(p => p.slug === 'raas')
   const otherPaths = paths.filter(p => p.slug !== 'raas')
 
@@ -130,37 +127,6 @@ export default function HomeContent({ courses, paths, stats, testimonials, widge
           Verification link is invalid or expired. Please request a new one.
         </div>
       )}
-      {/* Sign-up / Sign-in nudge — shown only to guests */}
-      {isLoggedIn === false && (
-        <div className="max-w-xl mx-auto px-4 pt-8 pb-0">
-          <div className="relative flex items-center justify-center gap-3 rounded-xl border border-brand-gold/40 bg-brand-gold/5 px-5 py-3 text-center overflow-hidden">
-            {/* twinkling star particles */}
-            <span className="absolute left-3 top-2 text-brand-gold text-xs animate-[twinkle_1.6s_ease-in-out_infinite]">✦</span>
-            <span className="absolute right-5 bottom-2 text-brand-gold text-[10px] animate-[twinkle_2.1s_ease-in-out_0.4s_infinite]">✦</span>
-            <span className="absolute left-[40%] top-1.5 text-brand-gold text-[8px] animate-[twinkle_1.9s_ease-in-out_0.8s_infinite]">✦</span>
-            <p className="text-brand-gold text-sm font-medium">
-              {lang === 'te'
-                ? 'కొత్త వినియోగదారులు '
-                : 'New here? '}
-              <button
-                onClick={() => router.push('/register')}
-                className="underline underline-offset-2 hover:text-yellow-300 transition-colors font-semibold"
-              >
-                {lang === 'te' ? 'నమోదు చేసుకోండి' : 'Sign up'}
-              </button>
-              {lang === 'te' ? ' లేదా ' : ' or '}
-              <button
-                onClick={() => router.push('/login')}
-                className="underline underline-offset-2 hover:text-yellow-300 transition-colors font-semibold"
-              >
-                {lang === 'te' ? 'లాగిన్ అవ్వండి' : 'Sign in'}
-              </button>
-              {lang === 'te' ? ' చేసి మీ అభ్యాసాన్ని ప్రారంభించండి' : ' to start your journey'}
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* Guru-learning marquee: Login + register links rolling above Choose Your Path */}
       <div className="pl-marquee overflow-hidden border-y border-brand-gold/25 bg-brand-gold/5 py-2.5">
         <div className="pl-marquee-track" style={{ animationDuration: '28s' }}>
@@ -364,7 +330,7 @@ export default function HomeContent({ courses, paths, stats, testimonials, widge
 
       {/* Stats bar — live data cached 24h */}
       <section className="border-y border-brand-border bg-brand-card py-6 px-4">
-        <div className="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
+        <div className="max-w-4xl mx-auto grid grid-cols-3 gap-6 text-center">
           <div>
             <div className="text-brand-gold font-bold text-2xl">{stats.studentsEnrolled.toLocaleString()}+</div>
             <div className="text-brand-gold-muted text-xs mt-1">{t.stats.enrolled}</div>
@@ -377,74 +343,47 @@ export default function HomeContent({ courses, paths, stats, testimonials, widge
             <div className="text-brand-gold font-bold text-2xl">{stats.averageRating} ⭐</div>
             <div className="text-brand-gold-muted text-xs mt-1">{t.stats.rating}</div>
           </div>
-          <div>
-            <div className="text-brand-gold font-bold text-2xl">{stats.languages}</div>
-            <div className="text-brand-gold-muted text-xs mt-1">{t.stats.languages}</div>
-          </div>
         </div>
       </section>
 
-      {/* Courses + Testimonials */}
-      <section className="max-w-7xl mx-auto px-4 py-10">
-        <div className="flex flex-col lg:flex-row gap-8">
-          <div className="lg:w-[65%]">
-            <h2 className="text-brand-gold font-bold text-xl mb-6">{t.home.featuredCourses}</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {topCourses.map(course => (
-                <CourseCard key={course.id} course={course} onClick={setSelectedCourse} />
+      {/* Testimonials */}
+      <section className="max-w-3xl mx-auto px-4 py-10">
+        <h2 className="text-brand-gold font-bold text-xl mb-6">{t.home.studentVoices}</h2>
+        {testimonials.length > 1 ? (
+          <div className="voices-marquee relative overflow-hidden max-h-[600px] lg:max-h-[70vh]">
+            {/* List rendered twice so the -50% translate loops seamlessly */}
+            <div
+              className="voices-marquee-track"
+              style={{ animationDuration: `${testimonials.length * 7}s` }}
+            >
+              {[...testimonials, ...testimonials].map((testimonial, i) => (
+                <div key={`${testimonial.id}-${i}`} className="pb-4">
+                  <TestimonialCard
+                    testimonial={testimonial}
+                    lang={lang}
+                    courseTitle={courses.find(c => c.id === testimonial.course_id)?.title_en}
+                  />
+                </div>
               ))}
             </div>
-            <div className="mt-6 text-center">
-              <button
-                onClick={() => router.push('/explore')}
-                className="px-6 py-2.5 border border-brand-gold text-brand-gold rounded-lg hover:bg-brand-gold hover:text-brand-bg transition-colors font-medium"
-              >
-                {t.explore.title} →
-              </button>
-            </div>
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-brand-bg to-transparent" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-brand-bg to-transparent" />
           </div>
-
-          <div className="lg:w-[35%]">
-            <div className="lg:sticky lg:top-20">
-              <h2 className="text-brand-gold font-bold text-xl mb-6">{t.home.studentVoices}</h2>
-              {testimonials.length > 1 ? (
-                <div className="voices-marquee relative overflow-hidden max-h-[600px] lg:max-h-[70vh]">
-                  {/* List rendered twice so the -50% translate loops seamlessly */}
-                  <div
-                    className="voices-marquee-track"
-                    style={{ animationDuration: `${testimonials.length * 7}s` }}
-                  >
-                    {[...testimonials, ...testimonials].map((testimonial, i) => (
-                      <div key={`${testimonial.id}-${i}`} className="pb-4">
-                        <TestimonialCard
-                          testimonial={testimonial}
-                          lang={lang}
-                          courseTitle={courses.find(c => c.id === testimonial.course_id)?.title_en}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  <div className="pointer-events-none absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-brand-bg to-transparent" />
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-brand-bg to-transparent" />
-                </div>
-              ) : testimonials.length === 1 ? (
-                <TestimonialCard
-                  testimonial={testimonials[0]}
-                  lang={lang}
-                  courseTitle={courses.find(c => c.id === testimonials[0].course_id)?.title_en}
-                />
-              ) : null}
-              {isLoggedIn && (
-                <button
-                  onClick={() => setVoiceDialogOpen(true)}
-                  className="w-full mt-4 py-2.5 border border-brand-gold text-brand-gold rounded-lg hover:bg-brand-gold hover:text-brand-bg transition-colors font-medium text-sm"
-                >
-                  {t.voices.shareButton}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+        ) : testimonials.length === 1 ? (
+          <TestimonialCard
+            testimonial={testimonials[0]}
+            lang={lang}
+            courseTitle={courses.find(c => c.id === testimonials[0].course_id)?.title_en}
+          />
+        ) : null}
+        {isLoggedIn && (
+          <button
+            onClick={() => setVoiceDialogOpen(true)}
+            className="w-full mt-4 py-2.5 border border-brand-gold text-brand-gold rounded-lg hover:bg-brand-gold hover:text-brand-bg transition-colors font-medium text-sm"
+          >
+            {t.voices.shareButton}
+          </button>
+        )}
       </section>
 
       {/* Dialog box opened from a widget dialog-link */}
