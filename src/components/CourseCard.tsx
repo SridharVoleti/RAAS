@@ -12,12 +12,6 @@ interface CourseCardProps {
   isEnrolled?: boolean
 }
 
-const LEVEL_COLORS = {
-  Beginner: 'text-brand-success border-brand-success',
-  Intermediate: 'text-brand-gold border-brand-gold',
-  Advanced: 'text-brand-error border-brand-error',
-}
-
 export default function CourseCard({ course, onClick, isEnrolled }: CourseCardProps) {
   const { lang, t } = useLang()
   const title = lang === 'te' ? course.title_te : course.title_en
@@ -58,11 +52,6 @@ export default function CourseCard({ course, onClick, isEnrolled }: CourseCardPr
 
       {/* Card body */}
       <div className="p-4">
-        {/* Level badge */}
-        <span className={`inline-block text-xs font-medium border rounded-full px-2 py-0.5 mb-2 ${LEVEL_COLORS[course.level]}`}>
-          {t.levels[course.level]}
-        </span>
-
         {/* Title */}
         <h3 className="text-brand-gold font-semibold text-sm leading-snug mb-0.5 line-clamp-2">
           {title}
