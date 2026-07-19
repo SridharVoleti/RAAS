@@ -361,7 +361,7 @@ export const translations = {
       enroll: 'నమోదు చేయండి',
       enrollFree: 'ఉచితంగా నమోదు చేయండి',
       enrolled: 'నమోదైంది',
-      continueLearning: 'నేర్చుకోవడం కొనసాగించు',
+      continueLearning: 'నేర్చుకోవటం కొనసాగించండి',
       startLearning: 'నేర్చుకోవడం ప్రారంభించు',
       reviewCourse: 'కోర్సు సమీక్షించు',
       instructor: 'కోర్సు బోధకుడు',

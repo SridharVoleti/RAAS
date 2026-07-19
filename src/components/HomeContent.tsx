@@ -237,7 +237,7 @@ export default function HomeContent({ courses, paths, stats, testimonials, widge
                     {count} {lang === 'te' ? 'కోర్సులు' : 'courses'}
                   </span>
                   <span className="text-brand-gold-muted text-sm group-hover:text-brand-gold transition-colors">
-                    {lang === 'te' ? 'వీక్షించు →' : 'View →'}
+                    {lang === 'te' ? 'వీక్షించండి →' : 'View →'}
                   </span>
                 </div>
               </button>
@@ -297,7 +297,7 @@ export default function HomeContent({ courses, paths, stats, testimonials, widge
                         {count} {lang === 'te' ? 'కోర్సులు' : 'courses'}
                       </span>
                       <span className="text-brand-gold-muted text-xs group-hover:text-brand-gold transition-colors">
-                        {lang === 'te' ? 'వీక్షించు →' : 'View →'}
+                        {lang === 'te' ? 'వీక్షించండి →' : 'View →'}
                       </span>
                     </div>
                   </button>
