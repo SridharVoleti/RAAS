@@ -37,16 +37,6 @@ interface Props {
   widgets: TextWidget[]
 }
 
-interface PriorLearningDeclaration {
-  course_id: number
-}
-
-interface ExamLink {
-  courseId: number
-  title_en: string
-  title_te: string | null
-}
-
 export default function HomeContent({ courses, paths, stats, testimonials, widgets }: Props) {
   const { lang, t } = useLang()
   const router = useRouter()
@@ -107,25 +97,6 @@ export default function HomeContent({ courses, paths, stats, testimonials, widge
     })
     return () => subscription.unsubscribe()
   }, [])
-
-  // Subjects this student has already declared prior learning for and that now
-  // have a final exam — these get a direct link instead of reopening the dialog.
-  const [examLinks, setExamLinks] = useState<ExamLink[]>([])
-  useEffect(() => {
-    if (!isLoggedIn) { setExamLinks([]); return }
-    fetch('/api/prior-learning')
-      .then(res => (res.ok ? res.json() : { declarations: [] }))
-      .then((data: { declarations: PriorLearningDeclaration[] }) => {
-        const links = data.declarations
-          .map(d => courses.find(c => c.id === d.course_id))
-          .filter((c): c is Course => !!c && !!c.has_exam)
-          .map(c => ({ courseId: c.id, title_en: c.title_en, title_te: c.title_te }))
-        setExamLinks(links)
-      })
-      .catch(() => setExamLinks([]))
-  // courses is a stable prop from the server-rendered page
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoggedIn])
 
   const raasPath = paths.find(p => p.slug === 'raas')
   const otherPaths = paths.filter(p => p.slug !== 'raas')
@@ -240,33 +211,15 @@ export default function HomeContent({ courses, paths, stats, testimonials, widge
                       <span>{t.home.guruPrompt}</span>
                     </button>
                   </li>
-                  {examLinks.length > 0 ? (
-                    examLinks.map(link => (
-                      <li key={link.courseId}>
-                        <button
-                          onClick={() => router.push(`/exam/${link.courseId}`)}
-                          className="flex items-start gap-2.5 text-left text-brand-gold-muted hover:text-brand-gold text-sm leading-snug transition-colors"
-                        >
-                          <span aria-hidden className="mt-0.5">📜</span>
-                          <span>
-                            {t.priorLearning.takeFinalTest}
-                            {': '}
-                            {lang === 'te' && link.title_te ? link.title_te : link.title_en}
-                          </span>
-                        </button>
-                      </li>
-                    ))
-                  ) : (
-                    <li>
-                      <button
-                        onClick={handleGuruRegister}
-                        className="flex items-start gap-2.5 text-left text-brand-gold-muted hover:text-brand-gold text-sm leading-snug transition-colors"
-                      >
-                        <span aria-hidden className="mt-0.5">📜</span>
-                        <span>{t.home.examCta}</span>
-                      </button>
-                    </li>
-                  )}
+                  <li>
+                    <button
+                      onClick={handleGuruRegister}
+                      className="flex items-start gap-2.5 text-left text-brand-gold-muted hover:text-brand-gold text-sm leading-snug transition-colors"
+                    >
+                      <span aria-hidden className="mt-0.5">📜</span>
+                      <span>{t.home.examCta}</span>
+                    </button>
+                  </li>
                 </ul>
               </div>
 
