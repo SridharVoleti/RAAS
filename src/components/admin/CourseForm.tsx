@@ -291,11 +291,19 @@ export default function CourseForm({ course }: Props) {
       {/* Additional Resources */}
       <div className={sectionCls}>
         <h3 className="text-brand-gold text-sm font-semibold">Additional Resources</h3>
-        <p className="text-brand-gold-muted text-xs -mt-2">Links to supplementary books or materials, shown to enrolled students on the watch page.</p>
+        <p className="text-brand-gold-muted text-xs -mt-2">Links to supplementary books or materials, shown to enrolled students on the watch page. The first link also becomes the course card&apos;s book-icon link.</p>
         {form.resources.length > 0 && (
           <div className="space-y-2">
             {form.resources.map((r, i) => (
               <div key={i} className="flex gap-2 items-center">
+                {i === 0 && (
+                  <span
+                    title="This link is used for the course card's book icon"
+                    className="text-lg shrink-0"
+                  >
+                    📖
+                  </span>
+                )}
                 <input
                   value={r.title}
                   onChange={e => updateResource(i, { title: e.target.value })}

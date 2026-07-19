@@ -9,6 +9,7 @@ import { Star } from 'lucide-react'
 interface CourseCardProps {
   course: Course
   onClick: (course: Course) => void
+  isEnrolled?: boolean
 }
 
 const LEVEL_COLORS = {
@@ -17,7 +18,7 @@ const LEVEL_COLORS = {
   Advanced: 'text-brand-error border-brand-error',
 }
 
-export default function CourseCard({ course, onClick }: CourseCardProps) {
+export default function CourseCard({ course, onClick, isEnrolled }: CourseCardProps) {
   const { lang, t } = useLang()
   const title = lang === 'te' ? course.title_te : course.title_en
   const subtitle = lang === 'te' ? course.title_en : course.title_te
@@ -33,7 +34,20 @@ export default function CourseCard({ course, onClick }: CourseCardProps) {
         className="h-32 flex items-center justify-center text-6xl relative overflow-hidden"
         style={{ backgroundColor: course.bg_color }}
       >
-        <span className="group-hover:scale-110 transition-transform duration-200">{course.emoji}</span>
+        {course.resources?.[0]?.url ? (
+          <a
+            href={course.resources[0].url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            className="group-hover:scale-110 transition-transform duration-200"
+            title={course.resources[0].title}
+          >
+            {course.emoji}
+          </a>
+        ) : (
+          <span className="group-hover:scale-110 transition-transform duration-200">{course.emoji}</span>
+        )}
         {/* Badge */}
         {course.badge && (
           <div className={`absolute top-3 left-3 px-2 py-0.5 rounded-full text-xs font-bold ${BADGE_STYLES[course.badge]}`}>
@@ -81,7 +95,7 @@ export default function CourseCard({ course, onClick }: CourseCardProps) {
             {formatPrice(course.price)}
           </span>
           <button className="px-3 py-1 bg-brand-gold text-brand-bg text-xs font-semibold rounded-lg hover:bg-yellow-400 transition-colors">
-            {t.course.enroll}
+            {isEnrolled ? t.course.continueLearning : t.course.enroll}
           </button>
         </div>
       </div>
