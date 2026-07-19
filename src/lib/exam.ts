@@ -6,6 +6,25 @@ export const PASS_THRESHOLD = 0.60
 export const EXAM_ONLY_QUESTION_TARGET = 100
 export const EXAM_ONLY_DURATION_MINUTES = 100
 export const COOLDOWN_HOURS = 48
+export const EXAM_ONLY_MAX_ATTEMPTS = 2
+
+/** Count of this student's failed, submitted exam-only attempts for a course. */
+export async function countExamOnlyFailedAttempts(
+  supabase: SupabaseClient,
+  userId: string,
+  courseId: number
+): Promise<number> {
+  const { data } = await supabase
+    .from('exam_sessions')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('course_id', courseId)
+    .eq('session_type', 'exam_only')
+    .eq('status', 'submitted')
+    .eq('passed', false)
+
+  return data?.length ?? 0
+}
 
 /**
  * A prior-learning declaration only creates an exam_only enrollment at the moment

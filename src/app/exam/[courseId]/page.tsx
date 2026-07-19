@@ -37,6 +37,7 @@ interface ResultState {
   passed: boolean
   expired: boolean
   mustTakeCourse: boolean
+  examOnly: boolean
 }
 
 const OPTION_LABELS = ['A', 'B', 'C', 'D'] as const
@@ -209,6 +210,7 @@ export default function ExamPage() {
         passed:         data.passed,
         expired:        !!data.expired,
         mustTakeCourse: !!data.must_take_course,
+        examOnly:       !!data.exam_only,
       })
       setPhase('result')
     } else {
@@ -243,7 +245,7 @@ export default function ExamPage() {
     )
   }
 
-  // ─── Blocked: one attempt used, must take the course ─────
+  // ─── Blocked: attempts exhausted, must take the course ───
   if (phase === 'blocked') {
     return (
       <div className="min-h-screen bg-brand-bg flex items-center justify-center px-4">
@@ -471,6 +473,25 @@ export default function ExamPage() {
                     </button>
                   </div>
                 </>
+              ) : result.examOnly ? (
+                <>
+                  <p className="text-brand-gold-muted text-sm mb-6">{tx.attemptsRemainingBody}</p>
+                  <div className="flex flex-col gap-3">
+                    <button
+                      onClick={handleStart}
+                      className="flex items-center justify-center gap-2 py-3 bg-brand-gold text-brand-bg font-semibold rounded-xl hover:bg-yellow-400 transition-colors"
+                    >
+                      {tx.retryNow}
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => router.push('/my-courses')}
+                      className="py-2.5 border border-brand-border text-brand-gold-muted rounded-xl hover:text-brand-gold hover:border-brand-gold transition-colors text-sm"
+                    >
+                      {tx.backToMyCourses}
+                    </button>
+                  </div>
+                </>
               ) : (
                 <>
                   <p className="text-brand-gold-muted text-sm mb-6">{tx.cooldownBody}</p>
@@ -509,7 +530,7 @@ export default function ExamPage() {
         {[
           fill(tx.disclaimerQuestions, { count: questionCount }),
           tx.disclaimerPass,
-          tx.disclaimerOneAttempt,
+          tx.disclaimerAttempts,
           tx.disclaimerFail,
         ].map((line, i) => (
           <li key={i} className="flex items-start gap-2 text-brand-body text-sm">

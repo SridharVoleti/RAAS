@@ -4,7 +4,9 @@ import { logger } from '@/lib/logger'
 import {
   COOLDOWN_HOURS,
   EXAM_ONLY_DURATION_MINUTES,
+  EXAM_ONLY_MAX_ATTEMPTS,
   EXAM_ONLY_QUESTION_TARGET,
+  countExamOnlyFailedAttempts,
   ensureExamOnlyEnrollment,
   fetchQuestionPage,
 } from '@/lib/exam'
@@ -44,23 +46,14 @@ export async function POST(
   }
 
   if (enrollment.exam_only) {
-    // Prior-learning students get exactly ONE attempt: a failed submitted session
-    // permanently blocks re-attempts until they take the course (exam_only → false).
-    const { data: failedAttempt } = await supabase
-      .from('exam_sessions')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('course_id', courseIdNum)
-      .eq('session_type', 'exam_only')
-      .eq('status', 'submitted')
-      .eq('passed', false)
-      .limit(1)
-      .maybeSingle()
+    // Prior-learning students get up to EXAM_ONLY_MAX_ATTEMPTS attempts: once that many
+    // submitted sessions have failed, re-attempts are blocked until they take the course.
+    const failedCount = await countExamOnlyFailedAttempts(supabase, user.id, courseIdNum)
 
-    if (failedAttempt) {
+    if (failedCount >= EXAM_ONLY_MAX_ATTEMPTS) {
       return NextResponse.json({
         error:   'must_take_course',
-        message: 'You have used your one attempt at the final test. We kindly request you to take this course on the site before attempting the exam again.',
+        message: `You have used your ${EXAM_ONLY_MAX_ATTEMPTS} attempts at the final test. We kindly request you to take this course on the site before attempting the exam again.`,
       }, { status: 403 })
     }
   } else {

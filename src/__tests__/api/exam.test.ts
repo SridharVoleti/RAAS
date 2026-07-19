@@ -103,18 +103,23 @@ describe('POST /api/exam/[courseId]/start', () => {
   })
 
   it('returns 403 when not enrolled', async () => {
-    mockUser(makeFrom({ enrollments: chain({ data: null }) }))
-    mockAdmin(makeFrom({ courses: chain({ data: { id: 1, title_en: 'X' } }) }))
+    mockUser(makeFrom({}))
+    mockAdmin(makeFrom({
+      enrollments: chain({ data: null }),
+      courses: chain({ data: { id: 1, title_en: 'X' } }),
+    }))
     const res = await startExam(new Request('http://localhost/'), courseParams)
     expect(res.status).toBe(403)
   })
 
-  it('blocks a second attempt for exam-only students with must_take_course', async () => {
+  it('blocks after two failed attempts for exam-only students with must_take_course', async () => {
     mockUser(makeFrom({
-      enrollments: chain({ data: { is_active: true, exam_only: true } }),
-      exam_sessions: chain({ data: { id: 'failed-sess' } }),
+      exam_sessions: chain({ data: [{ id: 'f1' }, { id: 'f2' }] }),
     }))
-    mockAdmin(makeFrom({ courses: chain({ data: { id: 1, title_en: 'X' } }) }))
+    mockAdmin(makeFrom({
+      enrollments: chain({ data: { is_active: true, exam_only: true } }),
+      courses: chain({ data: { id: 1, title_en: 'X' } }),
+    }))
     const res = await startExam(new Request('http://localhost/'), courseParams)
     expect(res.status).toBe(403)
     const data = await res.json()
@@ -122,13 +127,34 @@ describe('POST /api/exam/[courseId]/start', () => {
     expect(data.message).toContain('take this course')
   })
 
+  it('allows a second attempt after exactly one failed attempt', async () => {
+    const insertChain = chain({ data: { id: 'sess-retry' }, error: null })
+    mockUser(makeFrom({
+      exam_sessions: [chain({ data: [{ id: 'f1' }] }), insertChain],
+    }))
+    mockAdmin(makeFrom({
+      enrollments: chain({ data: { is_active: true, exam_only: true } }),
+      courses: chain({ data: { id: 1, title_en: 'X' } }),
+      exam_sessions: chain(),
+      exam_questions: [
+        chain({ data: makeBankRows(40, 4) }),
+        questionRowsChain(() => 'a'),
+      ],
+    }))
+
+    const res = await startExam(new Request('http://localhost/'), courseParams)
+    expect(res.status).toBe(200)
+    const inserted = insertChain.insert.mock.calls[0][0]
+    expect(inserted.session_type).toBe('exam_only')
+  })
+
   it('creates a 100-question timed session for exam-only students with a large bank', async () => {
     const insertChain = chain({ data: { id: 'sess-1' }, error: null })
     mockUser(makeFrom({
-      enrollments: chain({ data: { is_active: true, exam_only: true } }),
       exam_sessions: [chain({ data: null }), insertChain],
     }))
     mockAdmin(makeFrom({
+      enrollments: chain({ data: { is_active: true, exam_only: true } }),
       courses: chain({ data: { id: 1, title_en: 'X' } }),
       exam_sessions: chain(),
       exam_questions: [
@@ -160,10 +186,10 @@ describe('POST /api/exam/[courseId]/start', () => {
   it('uses the whole bank when it has fewer than 100 questions', async () => {
     const insertChain = chain({ data: { id: 'sess-2' }, error: null })
     mockUser(makeFrom({
-      enrollments: chain({ data: { is_active: true, exam_only: true } }),
       exam_sessions: [chain({ data: null }), insertChain],
     }))
     mockAdmin(makeFrom({
+      enrollments: chain({ data: { is_active: true, exam_only: true } }),
       courses: chain({ data: { id: 1, title_en: 'X' } }),
       exam_sessions: chain(),
       exam_questions: [
@@ -181,10 +207,10 @@ describe('POST /api/exam/[courseId]/start', () => {
   it('creates an untimed 5-per-chapter session for regular course students', async () => {
     const insertChain = chain({ data: { id: 'sess-3' }, error: null })
     mockUser(makeFrom({
-      enrollments: chain({ data: { is_active: true, exam_only: false } }),
       exam_sessions: [chain({ data: null }), insertChain],
     }))
     mockAdmin(makeFrom({
+      enrollments: chain({ data: { is_active: true, exam_only: false } }),
       courses: chain({ data: { id: 1, title_en: 'X' } }),
       exam_sessions: chain(),
       exam_questions: [
@@ -203,10 +229,12 @@ describe('POST /api/exam/[courseId]/start', () => {
 
   it('applies the 48h cooldown to regular students only', async () => {
     mockUser(makeFrom({
-      enrollments: chain({ data: { is_active: true, exam_only: false } }),
       exam_sessions: chain({ data: { submitted_at: new Date().toISOString() } }),
     }))
-    mockAdmin(makeFrom({ courses: chain({ data: { id: 1, title_en: 'X' } }) }))
+    mockAdmin(makeFrom({
+      enrollments: chain({ data: { is_active: true, exam_only: false } }),
+      courses: chain({ data: { id: 1, title_en: 'X' } }),
+    }))
     const res = await startExam(new Request('http://localhost/'), courseParams)
     expect(res.status).toBe(429)
     const data = await res.json()
@@ -257,8 +285,32 @@ describe('POST /api/exam/[courseId]/answer', () => {
     expect(data.must_take_course).toBeUndefined()
   })
 
-  it('fails below 60% and asks exam-only students to take the course', async () => {
-    mockUser(makeFrom({ exam_sessions: chain({ data: session() }) }))
+  it('fails below 60% on the first attempt and allows an immediate retry', async () => {
+    mockUser(makeFrom({
+      // 1st call: load the in-progress session. 2nd call: count of failed attempts
+      // so far (this one included) — only 1, so the 2-attempt limit isn't hit yet.
+      exam_sessions: [chain({ data: session() }), chain({ data: [{ id: 'this-one' }] })],
+    }))
+    mockAdmin(makeFrom({
+      exam_questions: questionRowsChain(() => 'a'),
+      exam_sessions: chain(),
+    }))
+    // 5 of 10 correct
+    const res = await answerExam(
+      jsonRequest(pageBody(id => (id <= 5 ? 'a' : 'b'))), courseParams
+    )
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.passed).toBe(false)
+    expect(data.exam_only).toBe(true)
+    expect(data.must_take_course).toBeUndefined()
+  })
+
+  it('blocks with must_take_course after the second failed attempt', async () => {
+    mockUser(makeFrom({
+      // 2nd call: count of failed attempts now includes a prior failure plus this one.
+      exam_sessions: [chain({ data: session() }), chain({ data: [{ id: 'prior' }, { id: 'this-one' }] })],
+    }))
     mockAdmin(makeFrom({
       exam_questions: questionRowsChain(() => 'a'),
       exam_sessions: chain(),
@@ -275,13 +327,18 @@ describe('POST /api/exam/[courseId]/answer', () => {
 
   it('finalizes an expired session with previously saved answers only', async () => {
     mockUser(makeFrom({
-      exam_sessions: chain({
-        data: session({
-          expires_at: new Date(Date.now() - 1000).toISOString(),
-          answers: { '1': 'a', '2': 'a' },
-          questions_answered: 2,
+      exam_sessions: [
+        chain({
+          data: session({
+            expires_at: new Date(Date.now() - 1000).toISOString(),
+            answers: { '1': 'a', '2': 'a' },
+            questions_answered: 2,
+          }),
         }),
-      }),
+        // Count of failed attempts including this one — a prior failure plus this
+        // one hits the 2-attempt limit, so this test still exercises must_take_course.
+        chain({ data: [{ id: 'prior' }, { id: 'this-one' }] }),
+      ],
     }))
     mockAdmin(makeFrom({
       exam_questions: questionRowsChain(() => 'a'),

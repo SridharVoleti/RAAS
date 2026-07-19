@@ -16,6 +16,35 @@ Format: newest defects at the top within each section.
 
 ---
 
+## EXAM — Final Test & Prior Learning
+
+---
+
+### EXAM-001 · Guru-declared student saw no link to the final exam; enrollment couldn't self-heal after `has_exam` was turned on late
+| | |
+|---|---|
+| **Date** | 2026-07-19 |
+| **Severity** | P1 |
+| **Status** | Fixed |
+| **Commit** | _(pending commit)_ |
+
+**Issue**
+A student registered a prior-learning (external guru) declaration for a RAAS course but saw no link to the 100-question final exam anywhere — neither in the `PriorLearningDialog` post-submit view nor on the student home page.
+
+**Root Cause**
+Every RAAS course had `courses.has_exam = false` in the database, including the one the student declared (which already had 197 exam questions loaded — an admin had loaded the question bank but never flipped the "Has Certification Exam" toggle in `CourseForm`). Both the dialog and the exam link on the student home page correctly gate on `has_exam`, so nothing showed.
+Separately, `POST /api/prior-learning` only creates the `exam_only` enrollment row as a one-time snapshot at declaration time, gated on `has_exam` being true *at that moment*. Since the declaration checkbox is permanently disabled once submitted, there was no client path to retroactively create the enrollment even after an admin later turned `has_exam` on — any student who declared before the course was fully configured would be stuck forever with a declaration but no exam access.
+
+**Solution**
+- Set `has_exam = true` on the affected course (data fix).
+- Added `ensureExamOnlyEnrollment()` (`src/lib/exam.ts`) and wired it into `GET /api/exam/[courseId]/session` and `POST /api/exam/[courseId]/start`: if a student has no active enrollment but does have a `prior_learning_declarations` row and the course now has `has_exam = true`, the enrollment is created on the fly the next time they load or start the exam. No manual backfill needed for future occurrences of this gap.
+
+**Prevention for Future Projects**
+- Whenever a "feature flag" column (like `has_exam`) gates access that was already granted through a separate declaration/registration flow, don't assume the flag and the grant happen in the same transaction — write the downstream check to self-heal (create the missing grant on read) rather than only creating it once at declaration time.
+- Admin forms that have two independent manual steps to fully enable a feature (here: toggle `has_exam` + separately upload `exam_questions`) should cross-validate or at least warn when one is set without the other.
+
+---
+
 ## UI — Admin Content Widgets
 
 ---

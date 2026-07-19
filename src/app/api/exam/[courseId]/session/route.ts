@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import { COOLDOWN_HOURS, EXAM_ONLY_QUESTION_TARGET, ensureExamOnlyEnrollment, fetchQuestionPage, gradeAndFinalize, isExpired } from '@/lib/exam'
+import { COOLDOWN_HOURS, EXAM_ONLY_MAX_ATTEMPTS, EXAM_ONLY_QUESTION_TARGET, countExamOnlyFailedAttempts, ensureExamOnlyEnrollment, fetchQuestionPage, gradeAndFinalize, isExpired } from '@/lib/exam'
 import type { ExamQuestionPage } from '@/types'
 
 export async function GET(
@@ -28,20 +28,12 @@ export async function GET(
 
   const examOnly = enrollment?.exam_only ?? false
 
-  // Exam-only students: a failed submitted attempt permanently blocks re-attempts
+  // Exam-only students: once EXAM_ONLY_MAX_ATTEMPTS submitted sessions have failed,
+  // re-attempts are permanently blocked until they take the course.
   let mustTakeCourse = false
   if (examOnly) {
-    const { data: failedAttempt } = await supabase
-      .from('exam_sessions')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('course_id', courseIdNum)
-      .eq('session_type', 'exam_only')
-      .eq('status', 'submitted')
-      .eq('passed', false)
-      .limit(1)
-      .maybeSingle()
-    mustTakeCourse = !!failedAttempt
+    const failedCount = await countExamOnlyFailedAttempts(supabase, user.id, courseIdNum)
+    mustTakeCourse = failedCount >= EXAM_ONLY_MAX_ATTEMPTS
   }
 
   // Regular students: cooldown from last failed attempt
@@ -89,14 +81,16 @@ export async function GET(
   if (activeSession) {
     // Auto-finalize a session found past its 100-minute window
     if (isExpired(activeSession.expires_at)) {
-      await gradeAndFinalize(
+      const outcome = await gradeAndFinalize(
         adminSupabase,
         activeSession.id,
         activeSession.question_sequence,
         activeSession.answers as Record<string, string>,
         activeSession.questions_answered as number
       )
-      if (examOnly) mustTakeCourse = true
+      if (examOnly && !outcome.passed) {
+        mustTakeCourse = (await countExamOnlyFailedAttempts(supabase, user.id, courseIdNum)) >= EXAM_ONLY_MAX_ATTEMPTS
+      }
       liveSession = null
     } else if (activeSession.question_sequence.length > 0) {
       currentPage = await fetchQuestionPage(

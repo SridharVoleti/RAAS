@@ -279,6 +279,7 @@ export interface ExamComplete {
   session_id: string
   expired?: boolean
   must_take_course?: boolean
+  exam_only?: boolean
 }
 
 export type ExamNextResponse = ExamQuestionPage | ExamComplete

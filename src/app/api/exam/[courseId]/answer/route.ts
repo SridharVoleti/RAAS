@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { parseBody, ExamPageAnswerSchema } from '@/lib/validation'
 import { logger } from '@/lib/logger'
-import { fetchQuestionPage, gradeAndFinalize, isExpired } from '@/lib/exam'
+import { EXAM_ONLY_MAX_ATTEMPTS, countExamOnlyFailedAttempts, fetchQuestionPage, gradeAndFinalize, isExpired } from '@/lib/exam'
 import type { ExamComplete } from '@/types'
 
 export async function POST(
@@ -46,10 +46,13 @@ export async function POST(
       adminSupabase, session_id, seq, finalAnswers, currentIdx
     )
     logger.info({ userId: user.id, courseId: courseIdNum, sessionId: session_id, score, total, passed }, 'exam.session.expired')
+    const mustTakeCourse = isExamOnly && !passed &&
+      (await countExamOnlyFailedAttempts(supabase, user.id, courseIdNum)) >= EXAM_ONLY_MAX_ATTEMPTS
     const result: ExamComplete = {
       done: true, score, total, passed, session_id,
       expired: true,
-      ...(isExamOnly && !passed ? { must_take_course: true } : {}),
+      ...(isExamOnly ? { exam_only: true } : {}),
+      ...(mustTakeCourse ? { must_take_course: true } : {}),
     }
     return NextResponse.json(result)
   }
@@ -75,9 +78,12 @@ export async function POST(
       adminSupabase, session_id, seq, newAnswers, newAnswered
     )
     logger.info({ userId: user.id, courseId: courseIdNum, sessionId: session_id, score, total, passed }, 'exam.session.submitted')
+    const mustTakeCourse = isExamOnly && !passed &&
+      (await countExamOnlyFailedAttempts(supabase, user.id, courseIdNum)) >= EXAM_ONLY_MAX_ATTEMPTS
     const result: ExamComplete = {
       done: true, score, total, passed, session_id,
-      ...(isExamOnly && !passed ? { must_take_course: true } : {}),
+      ...(isExamOnly ? { exam_only: true } : {}),
+      ...(mustTakeCourse ? { must_take_course: true } : {}),
     }
     return NextResponse.json(result)
   }
