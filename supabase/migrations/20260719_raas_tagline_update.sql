@@ -3,5 +3,5 @@
 UPDATE paths
 SET
   tagline_en = 'Learn Ramanuja Granthas',
-  tagline_te = 'రామానుజ గ్రంథములనును పంక్తి పాఠముగా నేర్చుకోండి'
+  tagline_te = 'రామానుజ గ్రంథములను పంక్తి పాఠముగా నేర్చుకోండి'
 WHERE slug = 'raas';
