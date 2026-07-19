@@ -36,14 +36,6 @@ export const translations = {
     },
     explore: {
       title: 'Explore Courses',
-      byCategory: 'By Category',
-      byLevel: 'By Level',
-      sortBy: 'Sort By',
-      mostPopular: 'Most Popular',
-      newest: 'Newest',
-      priceLowHigh: 'Price: Low to High',
-      priceHighLow: 'Price: High to Low',
-      highestRated: 'Highest Rated',
     },
     course: {
       enroll: 'Enroll Now',
@@ -364,14 +356,6 @@ export const translations = {
     },
     explore: {
       title: 'కోర్సులు అన్వేషించు',
-      byCategory: 'వర్గం వారీగా',
-      byLevel: 'స్థాయి వారీగా',
-      sortBy: 'క్రమపరచు',
-      mostPopular: 'అత్యంత ప్రాచుర్యం',
-      newest: 'కొత్తవి',
-      priceLowHigh: 'ధర: తక్కువ నుండి ఎక్కువ',
-      priceHighLow: 'ధర: ఎక్కువ నుండి తక్కువ',
-      highestRated: 'అత్యధిక రేటింగ్',
     },
     course: {
       enroll: 'నమోదు చేయండి',

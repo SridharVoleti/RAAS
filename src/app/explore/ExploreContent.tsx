@@ -10,18 +10,11 @@ import { getCourses } from '@/lib/getCourses'
 import { getPaths } from '@/lib/getPaths'
 import type { Course, LearningPath } from '@/types'
 
-type ViewMode = 'category' | 'level'
-type SortMode = 'popular' | 'newest' | 'price-asc' | 'price-desc' | 'rated'
-
-const LEVEL_EMOJIS = { Beginner: '🌱', Intermediate: '🌿', Advanced: '🌳' }
-
 export default function ExploreContent() {
   const { lang, t } = useLang()
   const searchParams = useSearchParams()
   const pathParam = searchParams.get('path')?.toLowerCase() ?? null
 
-  const [view, setView]   = useState<ViewMode>('category')
-  const [sort, setSort]   = useState<SortMode>('popular')
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
   const [courses, setCourses] = useState<Course[]>([])
   const [paths, setPaths] = useState<LearningPath[]>([])
@@ -54,17 +47,7 @@ export default function ExploreContent() {
     return c
   }, [courses, pathId])
 
-  const sorted = useMemo(() => {
-    const c = [...filtered]
-    switch (sort) {
-      case 'popular':    return c.sort((a, b) => b.student_count - a.student_count)
-      case 'newest':     return c.sort((a, b) => b.id - a.id)
-      case 'price-asc':  return c.sort((a, b) => a.price - b.price)
-      case 'price-desc': return c.sort((a, b) => b.price - a.price)
-      case 'rated':      return c.sort((a, b) => b.rating - a.rating)
-      default:           return c
-    }
-  }, [filtered, sort])
+  const sorted = useMemo(() => [...filtered].sort((a, b) => b.student_count - a.student_count), [filtered])
 
   const categories = useMemo(() => {
     const cats: Record<string, Course[]> = {}
@@ -73,12 +56,6 @@ export default function ExploreContent() {
       cats[c.category].push(c)
     })
     return cats
-  }, [sorted])
-
-  const levels = useMemo(() => {
-    const lvls: Record<string, Course[]> = { Beginner: [], Intermediate: [], Advanced: [] }
-    sorted.forEach(c => lvls[c.level].push(c))
-    return lvls
   }, [sorted])
 
   return (
@@ -93,46 +70,13 @@ export default function ExploreContent() {
             </p>
           </div>
         ) : (
-          <h1 className="text-brand-gold font-bold text-2xl mb-6">{t.explore.title}</h1>
-        )}
-
-        {/* Controls */}
-        <div className="flex flex-wrap items-center gap-4 mb-8 p-4 bg-brand-card border border-brand-border rounded-xl">
-          <div className="flex bg-brand-bg rounded-lg border border-brand-border overflow-hidden">
-            <button
-              onClick={() => setView('category')}
-              className={`px-4 py-2 text-sm font-medium transition-colors ${
-                view === 'category' ? 'bg-brand-gold text-brand-bg' : 'text-brand-gold-muted hover:text-brand-gold'
-              }`}
-            >
-              {t.explore.byCategory}
-            </button>
-            <button
-              onClick={() => setView('level')}
-              className={`px-4 py-2 text-sm font-medium transition-colors ${
-                view === 'level' ? 'bg-brand-gold text-brand-bg' : 'text-brand-gold-muted hover:text-brand-gold'
-              }`}
-            >
-              {t.explore.byLevel}
-            </button>
+          <div className="mb-8">
+            <h1 className="text-brand-gold font-bold text-2xl">{t.explore.title}</h1>
+            <p className="text-brand-gold-muted text-sm mt-1">
+              {sorted.length} {lang === 'te' ? 'కోర్సులు' : 'courses'}
+            </p>
           </div>
-
-          <select
-            value={sort}
-            onChange={e => setSort(e.target.value as SortMode)}
-            className="px-3 py-2 bg-brand-bg border border-brand-border rounded-lg text-brand-body text-sm focus:outline-none focus:border-brand-gold"
-          >
-            <option value="popular">{t.explore.mostPopular}</option>
-            <option value="newest">{t.explore.newest}</option>
-            <option value="price-asc">{t.explore.priceLowHigh}</option>
-            <option value="price-desc">{t.explore.priceHighLow}</option>
-            <option value="rated">{t.explore.highestRated}</option>
-          </select>
-
-          <span className="text-brand-gold-muted text-sm ml-auto">
-            {sorted.length} {lang === 'te' ? 'కోర్సులు' : 'courses'}
-          </span>
-        </div>
+        )}
 
         {sorted.length === 0 && (
           <div className="text-center py-16 text-brand-gold-muted">
@@ -140,7 +84,7 @@ export default function ExploreContent() {
           </div>
         )}
 
-        {view === 'category' && sorted.length > 0 && (
+        {sorted.length > 0 && (
           <div className="space-y-10">
             {Object.entries(categories).map(([cat, catCourses]) => (
               <section key={cat}>
@@ -158,29 +102,6 @@ export default function ExploreContent() {
                 </div>
               </section>
             ))}
-          </div>
-        )}
-
-        {view === 'level' && sorted.length > 0 && (
-          <div className="space-y-10">
-            {(Object.entries(levels) as [string, Course[]][])
-              .filter(([, c]) => c.length > 0)
-              .map(([level, lvlCourses]) => (
-                <section key={level}>
-                  <div className="flex items-center gap-3 mb-4">
-                    <span className="text-2xl">{LEVEL_EMOJIS[level as keyof typeof LEVEL_EMOJIS]}</span>
-                    <h2 className="text-brand-gold font-bold text-lg">
-                      {t.levels[level as keyof typeof t.levels]}
-                    </h2>
-                    <span className="text-brand-gold-muted text-sm">({lvlCourses.length})</span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {lvlCourses.map(c => (
-                      <CourseCard key={c.id} course={c} onClick={setSelectedCourse} isEnrolled={enrolledIds.has(c.id)} />
-                    ))}
-                  </div>
-                </section>
-              ))}
           </div>
         )}
       </div>
