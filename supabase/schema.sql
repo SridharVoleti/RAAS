@@ -180,6 +180,29 @@ create table if not exists user_notes (
   primary key (user_id, lesson_id)
 );
 
+-- ─── COURSE Q&A ─────────────────────────────────────────────
+create table if not exists course_questions (
+  id         serial primary key,
+  course_id  int not null references courses(id) on delete cascade,
+  lesson_id  int not null references lessons(id) on delete cascade,
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  body       text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_course_questions_course_id on course_questions(course_id);
+create index if not exists idx_course_questions_lesson_id on course_questions(lesson_id);
+
+create table if not exists course_answers (
+  id          serial primary key,
+  question_id int not null references course_questions(id) on delete cascade,
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  body        text not null,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists idx_course_answers_question_id on course_answers(question_id);
+
 -- ─── PAYMENT LOGS ───────────────────────────────────────────
 create table if not exists payment_logs (
   id                   serial primary key,
@@ -379,6 +402,8 @@ alter table profiles      enable row level security;
 alter table enrollments   enable row level security;
 alter table user_progress enable row level security;
 alter table user_notes    enable row level security;
+alter table course_questions enable row level security;
+alter table course_answers   enable row level security;
 alter table payment_logs  enable row level security;
 alter table testimonials  enable row level security;
 
@@ -428,6 +453,20 @@ create policy "notes_own_upsert" on user_notes for insert with check (auth.uid()
 
 drop policy if exists "notes_own_update" on user_notes;
 create policy "notes_own_update" on user_notes for update using (auth.uid() = user_id);
+
+-- course_questions / course_answers: any authenticated user can read; own-row insert only.
+-- Deletion (admin moderation) happens via the service-role client in the app layer.
+drop policy if exists "course_questions_authenticated_read" on course_questions;
+create policy "course_questions_authenticated_read" on course_questions for select using (auth.role() = 'authenticated');
+
+drop policy if exists "course_questions_own_insert" on course_questions;
+create policy "course_questions_own_insert" on course_questions for insert with check (auth.uid() = user_id);
+
+drop policy if exists "course_answers_authenticated_read" on course_answers;
+create policy "course_answers_authenticated_read" on course_answers for select using (auth.role() = 'authenticated');
+
+drop policy if exists "course_answers_own_insert" on course_answers;
+create policy "course_answers_own_insert" on course_answers for insert with check (auth.uid() = user_id);
 
 -- payment_logs: user reads own rows; insert via authenticated
 drop policy if exists "payments_own_read" on payment_logs;

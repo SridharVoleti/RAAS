@@ -281,6 +281,16 @@ export const TestimonialSubmitSchema = z.object({
   courseId:     z.number().int().positive().optional(),
 })
 
+// ── Course Q&A ───────────────────────────────────────────────────────────────
+
+export const CreateQuestionSchema = z.object({
+  body: z.string().trim().min(1, 'Question cannot be empty').max(2000),
+})
+
+export const CreateAnswerSchema = z.object({
+  body: z.string().trim().min(1, 'Answer cannot be empty').max(2000),
+})
+
 // ── Email templates ───────────────────────────────────────────────────────────
 
 export const EmailTemplateSchema = z.object({

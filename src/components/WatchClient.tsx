@@ -3,11 +3,11 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
-import { CheckCircle2, ChevronLeft, ChevronRight, BookOpen, ExternalLink, FileText, HelpCircle, Layers, Loader2 } from 'lucide-react'
+import { CheckCircle2, ChevronLeft, ChevronRight, BookOpen, ExternalLink, FileText, HelpCircle, Layers, Loader2, MessageSquare, Trash2 } from 'lucide-react'
 import { useLang } from '@/contexts/LanguageContext'
 import { allCompleteInLanguage } from '@/lib/quiz-languages'
 import { LanguageUnavailableModal } from '@/components/LanguageUnavailableModal'
-import type { Chapter, Course, Lesson, QuizQuestion_Public, QuizSubmission, QuizResult } from '@/types'
+import type { Chapter, Course, CourseAnswer, CourseQuestion, Lesson, QuizQuestion_Public, QuizSubmission, QuizResult } from '@/types'
 
 // ── YouTube IFrame API types ─────────────────────────────────────────────────
 declare global {
@@ -64,9 +64,11 @@ interface Props {
   chapters?: Chapter[]
   chapterQuestionCounts?: Record<number, number>
   chapterSubmissions?: QuizSubmission[]
+  isAdmin?: boolean
 }
 
-type TabType = 'lessons' | 'notes'
+type TabType = 'lessons' | 'notes' | 'discussion'
+type DesktopPanelTab = 'notes' | 'discussion'
 
 function loadYTScript(cb: () => void) {
   if (typeof window === 'undefined') return
@@ -91,6 +93,7 @@ export default function WatchClient({
   course, lessons, completedLessonIds, initialLessonIndex, lessonPositions: initialLessonPositions = {},
   quizQuestions = [], quizSubmissions = [],
   chapters = [], chapterQuestionCounts = {}, chapterSubmissions = [],
+  isAdmin = false,
 }: Props) {
   const { lang, t } = useLang()
   const router = useRouter()
@@ -111,6 +114,7 @@ export default function WatchClient({
       .map(s => s.chapter_id as number)
   ))
   const [activeTab, setActiveTab] = useState<TabType>('lessons')
+  const [desktopPanelTab, setDesktopPanelTab] = useState<DesktopPanelTab>('notes')
   const [notes, setNotes] = useState('')
   const [notesStatus, setNotesStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [marking, setMarking] = useState(false)
@@ -605,6 +609,15 @@ export default function WatchClient({
               <FileText className="w-4 h-4" />
               {t.watch.notes}
             </button>
+            <button
+              onClick={() => setActiveTab('discussion')}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors ${
+                activeTab === 'discussion' ? 'text-brand-gold border-b-2 border-brand-gold' : 'text-brand-gold-muted'
+              }`}
+            >
+              <MessageSquare className="w-4 h-4" />
+              {t.watch.discussion}
+            </button>
           </div>
 
           {/* Mobile panel */}
@@ -631,11 +644,38 @@ export default function WatchClient({
             {activeTab === 'notes' && (
               <NotesPanel notes={notes} status={notesStatus} placeholder={t.watch.notesPlaceholder} savingLabel={t.watch.notesSaving} savedLabel={t.watch.notesSaved} label={t.watch.notes} onChange={handleNotesChange} />
             )}
+            {activeTab === 'discussion' && (
+              <DiscussionPanel courseId={course.id} lessonId={currentLesson?.id} isAdmin={isAdmin} tWatch={t.watch} />
+            )}
           </div>
 
-          {/* Desktop: notes always visible */}
+          {/* Desktop: Notes / Discussion tabs */}
+          <div className="hidden lg:flex border-b border-brand-border flex-shrink-0">
+            <button
+              onClick={() => setDesktopPanelTab('notes')}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                desktopPanelTab === 'notes' ? 'text-brand-gold border-brand-gold' : 'text-brand-gold-muted border-transparent'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              {t.watch.notes}
+            </button>
+            <button
+              onClick={() => setDesktopPanelTab('discussion')}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                desktopPanelTab === 'discussion' ? 'text-brand-gold border-brand-gold' : 'text-brand-gold-muted border-transparent'
+              }`}
+            >
+              <MessageSquare className="w-4 h-4" />
+              {t.watch.discussion}
+            </button>
+          </div>
           <div className="hidden lg:block p-4 flex-1">
-            <NotesPanel notes={notes} status={notesStatus} placeholder={t.watch.notesPlaceholder} savingLabel={t.watch.notesSaving} savedLabel={t.watch.notesSaved} label={t.watch.notes} onChange={handleNotesChange} />
+            {desktopPanelTab === 'notes' ? (
+              <NotesPanel notes={notes} status={notesStatus} placeholder={t.watch.notesPlaceholder} savingLabel={t.watch.notesSaving} savedLabel={t.watch.notesSaved} label={t.watch.notes} onChange={handleNotesChange} />
+            ) : (
+              <DiscussionPanel courseId={course.id} lessonId={currentLesson?.id} isAdmin={isAdmin} tWatch={t.watch} />
+            )}
           </div>
         </div>
 
@@ -1258,6 +1298,221 @@ function NotesPanel({ notes, status, placeholder, savingLabel, savedLabel, label
         placeholder={placeholder}
         className="flex-1 min-h-[200px] lg:min-h-0 w-full bg-brand-bg border border-brand-border rounded-xl p-3 text-brand-body text-sm resize-none focus:outline-none focus:border-brand-gold transition-colors placeholder:text-brand-gold-muted"
       />
+    </div>
+  )
+}
+
+// ── Discussion (per-lesson Q&A) ───────────────────────────────────────────────
+type DiscussionMode = 'lesson' | 'all'
+
+function DiscussionPanel({ courseId, lessonId, isAdmin, tWatch }: {
+  courseId: number
+  lessonId: number | undefined
+  isAdmin: boolean
+  tWatch: typeof import('@/lib/translations').translations.en.watch
+}) {
+  const [mode, setMode] = useState<DiscussionMode>('lesson')
+  const [questions, setQuestions] = useState<CourseQuestion[]>([])
+  const [loading, setLoading] = useState(true)
+  const [newQuestion, setNewQuestion] = useState('')
+  const [posting, setPosting] = useState(false)
+  const [answerDrafts, setAnswerDrafts] = useState<Record<number, string>>({})
+  const [openAnswerBox, setOpenAnswerBox] = useState<Record<number, boolean>>({})
+  const [answering, setAnswering] = useState<Record<number, boolean>>({})
+
+  useEffect(() => {
+    if (mode === 'lesson' && !lessonId) return
+    setLoading(true)
+    const url = mode === 'lesson' ? `/api/qa/lesson/${lessonId}` : `/api/qa/course/${courseId}`
+    fetch(url)
+      .then(r => r.json())
+      .then((data: { questions?: CourseQuestion[] }) => setQuestions(data.questions ?? []))
+      .catch(() => setQuestions([]))
+      .finally(() => setLoading(false))
+  }, [mode, lessonId, courseId])
+
+  async function handleAsk() {
+    const body = newQuestion.trim()
+    if (!body || !lessonId) return
+    setPosting(true)
+    try {
+      const res = await fetch(`/api/qa/lesson/${lessonId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body }),
+      })
+      if (res.ok) {
+        const data: { question: CourseQuestion } = await res.json()
+        setQuestions(prev => [...prev, data.question])
+        setNewQuestion('')
+      }
+    } finally {
+      setPosting(false)
+    }
+  }
+
+  async function handleAnswer(questionId: number) {
+    const body = (answerDrafts[questionId] || '').trim()
+    if (!body) return
+    setAnswering(prev => ({ ...prev, [questionId]: true }))
+    try {
+      const res = await fetch(`/api/qa/question/${questionId}/answer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body }),
+      })
+      if (res.ok) {
+        const data: { answer: CourseAnswer } = await res.json()
+        setQuestions(prev => prev.map(q => q.id === questionId ? { ...q, answers: [...q.answers, data.answer] } : q))
+        setAnswerDrafts(prev => ({ ...prev, [questionId]: '' }))
+        setOpenAnswerBox(prev => ({ ...prev, [questionId]: false }))
+      }
+    } finally {
+      setAnswering(prev => ({ ...prev, [questionId]: false }))
+    }
+  }
+
+  async function handleDeleteQuestion(questionId: number) {
+    if (!window.confirm(tWatch.deleteConfirm)) return
+    const res = await fetch(`/api/admin/qa/question/${questionId}`, { method: 'DELETE' })
+    if (res.ok) setQuestions(prev => prev.filter(q => q.id !== questionId))
+  }
+
+  async function handleDeleteAnswer(questionId: number, answerId: number) {
+    if (!window.confirm(tWatch.deleteConfirm)) return
+    const res = await fetch(`/api/admin/qa/answer/${answerId}`, { method: 'DELETE' })
+    if (res.ok) {
+      setQuestions(prev => prev.map(q => q.id === questionId ? { ...q, answers: q.answers.filter(a => a.id !== answerId) } : q))
+    }
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-brand-gold font-semibold text-sm flex items-center gap-2">
+          <MessageSquare className="w-4 h-4" />
+          {tWatch.discussion}
+        </span>
+        <button
+          onClick={() => setMode(m => (m === 'lesson' ? 'all' : 'lesson'))}
+          className="text-brand-gold-secondary hover:text-brand-gold text-xs underline underline-offset-2"
+        >
+          {mode === 'lesson' ? tWatch.viewAllQuestions : tWatch.backToThisLesson}
+        </button>
+      </div>
+
+      {mode === 'lesson' && (
+        <div className="mb-4">
+          <textarea
+            value={newQuestion}
+            onChange={e => setNewQuestion(e.target.value)}
+            placeholder={tWatch.questionPlaceholder}
+            rows={2}
+            className="w-full bg-brand-bg border border-brand-border rounded-xl p-3 text-brand-body text-sm resize-none focus:outline-none focus:border-brand-gold transition-colors placeholder:text-brand-gold-muted"
+          />
+          <button
+            onClick={handleAsk}
+            disabled={posting || !newQuestion.trim()}
+            className="mt-2 px-4 py-1.5 bg-brand-gold text-brand-bg text-xs font-semibold rounded-lg hover:bg-yellow-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {posting ? tWatch.posting : tWatch.post}
+          </button>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-8 text-brand-gold-muted text-sm">
+          <Loader2 className="w-4 h-4 animate-spin" />
+        </div>
+      ) : questions.length === 0 ? (
+        <p className="text-brand-gold-muted text-sm text-center py-8">{tWatch.noQuestionsYet}</p>
+      ) : (
+        <div className="space-y-3 overflow-y-auto flex-1">
+          {questions.map(q => (
+            <div key={q.id} className="border border-brand-border rounded-xl p-3">
+              <QAAuthorRow
+                name={q.author_name} initials={q.author_initials} createdAt={q.created_at}
+                isAdmin={isAdmin} onDelete={() => handleDeleteQuestion(q.id)}
+              />
+              {mode === 'all' && (q.lesson_title_en || q.lesson_title_te) && (
+                <p className="text-brand-gold-muted text-[11px] mt-1">
+                  {tWatch.askedIn}: {q.lesson_title_en || q.lesson_title_te}
+                </p>
+              )}
+              <p className="text-brand-body text-sm mt-1.5">{q.body}</p>
+
+              {q.answers.length > 0 && (
+                <div className="mt-3 pl-4 border-l-2 border-brand-border space-y-3">
+                  {q.answers.map(a => (
+                    <div key={a.id}>
+                      <QAAuthorRow
+                        name={a.author_name} initials={a.author_initials} createdAt={a.created_at}
+                        isAdmin={isAdmin} onDelete={() => handleDeleteAnswer(q.id, a.id)}
+                      />
+                      <p className="text-brand-body text-sm mt-1">{a.body}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {mode === 'lesson' && (
+                openAnswerBox[q.id] ? (
+                  <div className="mt-3 pl-4">
+                    <textarea
+                      value={answerDrafts[q.id] || ''}
+                      onChange={e => setAnswerDrafts(prev => ({ ...prev, [q.id]: e.target.value }))}
+                      placeholder={tWatch.answerPlaceholder}
+                      rows={2}
+                      className="w-full bg-brand-bg border border-brand-border rounded-lg p-2 text-brand-body text-xs resize-none focus:outline-none focus:border-brand-gold transition-colors placeholder:text-brand-gold-muted"
+                    />
+                    <button
+                      onClick={() => handleAnswer(q.id)}
+                      disabled={answering[q.id] || !(answerDrafts[q.id] || '').trim()}
+                      className="mt-1.5 px-3 py-1 bg-brand-gold text-brand-bg text-xs font-semibold rounded-lg hover:bg-yellow-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {answering[q.id] ? tWatch.posting : tWatch.post}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setOpenAnswerBox(prev => ({ ...prev, [q.id]: true }))}
+                    className="mt-2 pl-4 text-brand-gold-secondary hover:text-brand-gold text-xs underline underline-offset-2"
+                  >
+                    {tWatch.answer}
+                  </button>
+                )
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function QAAuthorRow({ name, initials, createdAt, isAdmin, onDelete }: {
+  name: string
+  initials: string
+  createdAt: string
+  isAdmin: boolean
+  onDelete: () => void
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="w-6 h-6 rounded-full bg-brand-gold/20 text-brand-gold text-[10px] font-semibold flex items-center justify-center flex-shrink-0">
+        {initials}
+      </div>
+      <span className="text-brand-gold text-xs font-medium">{name}</span>
+      <span className="text-brand-gold-muted text-[11px]">{new Date(createdAt).toLocaleDateString()}</span>
+      {isAdmin && (
+        <button
+          onClick={onDelete}
+          aria-label="Delete"
+          className="ml-auto text-brand-gold-muted hover:text-brand-error transition-colors"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      )}
     </div>
   )
 }

@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { GET, POST } from '@/app/api/notes/[courseId]/route'
+import { GET, POST } from '@/app/api/notes/[lessonId]/route'
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 
 import { createClient } from '@/lib/supabase/server'
 
-const courseParams = { params: Promise.resolve({ courseId: '1' }) }
+const lessonParams = { params: Promise.resolve({ lessonId: '1' }) }
 
 function mockSupabase(user: { id: string } | null, noteContent: string | null = null) {
   vi.mocked(createClient).mockResolvedValue({
@@ -21,20 +21,20 @@ function mockSupabase(user: { id: string } | null, noteContent: string | null = 
 
 // ── GET ──────────────────────────────────────────────────────────────────────
 
-describe('GET /api/notes/[courseId]', () => {
+describe('GET /api/notes/[lessonId]', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it('returns 401 when user is not authenticated', async () => {
     mockSupabase(null)
-    const res = await GET(new Request('http://localhost/'), courseParams)
+    const res = await GET(new Request('http://localhost/'), lessonParams)
     expect(res.status).toBe(401)
   })
 
   it('returns note content for authenticated user', async () => {
     mockSupabase({ id: 'u1' }, 'My notes here')
-    const res = await GET(new Request('http://localhost/'), courseParams)
+    const res = await GET(new Request('http://localhost/'), lessonParams)
     expect(res.status).toBe(200)
     const data = await res.json()
     expect(data.content).toBe('My notes here')
@@ -42,7 +42,7 @@ describe('GET /api/notes/[courseId]', () => {
 
   it('returns empty string when no note exists', async () => {
     mockSupabase({ id: 'u1' }, null)
-    const res = await GET(new Request('http://localhost/'), courseParams)
+    const res = await GET(new Request('http://localhost/'), lessonParams)
     expect(res.status).toBe(200)
     const data = await res.json()
     expect(data.content).toBe('')
@@ -51,7 +51,7 @@ describe('GET /api/notes/[courseId]', () => {
 
 // ── POST ─────────────────────────────────────────────────────────────────────
 
-describe('POST /api/notes/[courseId]', () => {
+describe('POST /api/notes/[lessonId]', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -66,13 +66,13 @@ describe('POST /api/notes/[courseId]', () => {
 
   it('returns 401 when user is not authenticated', async () => {
     mockSupabase(null)
-    const res = await POST(makePostRequest({ content: 'notes' }), courseParams)
+    const res = await POST(makePostRequest({ content: 'notes' }), lessonParams)
     expect(res.status).toBe(401)
   })
 
   it('saves note and returns success', async () => {
     mockSupabase({ id: 'u1' })
-    const res = await POST(makePostRequest({ content: 'My updated notes' }), courseParams)
+    const res = await POST(makePostRequest({ content: 'My updated notes' }), lessonParams)
     expect(res.status).toBe(200)
     const data = await res.json()
     expect(data.success).toBe(true)
@@ -85,7 +85,7 @@ describe('POST /api/notes/[courseId]', () => {
       headers: { 'Content-Type': 'application/json' },
       body: 'not-json',
     })
-    const res = await POST(badReq, courseParams)
+    const res = await POST(badReq, lessonParams)
     expect(res.status).toBe(500)
   })
 })

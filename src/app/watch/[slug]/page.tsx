@@ -33,19 +33,26 @@ export default async function WatchPage({
 
   if (!course) redirect('/explore')
 
-  const { data: enrollment } = await supabase
-    .from('enrollments')
-    .select('id, is_active')
-    .eq('user_id', user.id)
-    .eq('course_id', course.id)
-    .maybeSingle()
+  const [{ data: enrollment }, { data: profile }] = await Promise.all([
+    supabase
+      .from('enrollments')
+      .select('id, is_active')
+      .eq('user_id', user.id)
+      .eq('course_id', course.id)
+      .maybeSingle(),
+    supabase.from('profiles').select('is_admin').eq('id', user.id).single(),
+  ])
+  const isAdmin = !!profile?.is_admin
 
-  // Check enrollment status
-  if (!enrollment) {
-    return <NotEnrolledScreen course={course as Course} status="not_enrolled" />
-  }
-  if (!enrollment.is_active) {
-    return <NotEnrolledScreen course={course as Course} status="pending" />
+  // Check enrollment status — admins can open any course to moderate discussions
+  // without being enrolled themselves.
+  if (!isAdmin) {
+    if (!enrollment) {
+      return <NotEnrolledScreen course={course as Course} status="not_enrolled" />
+    }
+    if (!enrollment.is_active) {
+      return <NotEnrolledScreen course={course as Course} status="pending" />
+    }
   }
 
   // Fetch lessons + progress + chapters + playback positions in parallel
@@ -156,6 +163,7 @@ export default async function WatchPage({
       chapters={allChapters}
       chapterQuestionCounts={chapterQuestionCounts}
       chapterSubmissions={(chapterSubmissions ?? []) as QuizSubmission[]}
+      isAdmin={isAdmin}
     />
   )
 }

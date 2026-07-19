@@ -84,6 +84,30 @@ export interface Lesson {
   is_preview: boolean
 }
 
+export interface CourseAnswer {
+  id: number
+  question_id: number
+  body: string
+  created_at: string
+  author_name: string
+  author_initials: string
+  is_own: boolean
+}
+
+export interface CourseQuestion {
+  id: number
+  course_id: number
+  lesson_id: number
+  body: string
+  created_at: string
+  author_name: string
+  author_initials: string
+  is_own: boolean
+  lesson_title_en?: string
+  lesson_title_te?: string
+  answers: CourseAnswer[]
+}
+
 export interface Profile {
   id: string
   full_name: string
