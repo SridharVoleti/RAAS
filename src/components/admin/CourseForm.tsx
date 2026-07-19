@@ -8,7 +8,6 @@ import type { Course, CourseResource, LearningPath } from '@/types'
 
 const CATEGORY_SUGGESTIONS = ['Scripture', 'Chanting', 'Philosophy', 'Rituals', 'Yoga', 'Puranas', 'Music', 'Language', 'Jyotisha', 'Vastu']
 const LEVELS = ['Beginner', 'Intermediate', 'Advanced']
-const BADGES = ['', 'Popular', 'New', 'Free']
 
 function toSlug(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
@@ -35,7 +34,6 @@ export default function CourseForm({ course }: Props) {
     instructor_te:  course?.instructor_te ?? 'రామ కృష్ణమామా చార్యులుఓలేటి',
     category:       course?.category ?? 'Scripture',
     level:          course?.level ?? 'Beginner',
-    badge:          course?.badge ?? '',
     duration:       course?.duration ?? '4 weeks',
     has_quiz:       course?.has_quiz ?? false,
     has_exam:       course?.has_exam ?? false,
@@ -96,7 +94,6 @@ export default function CourseForm({ course }: Props) {
     try {
       const payload = {
         ...form,
-        badge: form.badge || null,
         is_published: publish,
         resources: form.resources.filter(r => r.title.trim() && r.url.trim()),
       }
@@ -225,7 +222,7 @@ export default function CourseForm({ course }: Props) {
       {/* Classification */}
       <div className={sectionCls}>
         <h3 className="text-brand-gold text-sm font-semibold">Classification</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           <div>
             <label className={labelCls}>Category</label>
             <input
@@ -243,12 +240,6 @@ export default function CourseForm({ course }: Props) {
             <label className={labelCls}>Level</label>
             <select value={form.level} onChange={e => set('level', e.target.value)} className={inputCls}>
               {LEVELS.map(l => <option key={l}>{l}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className={labelCls}>Badge</label>
-            <select value={form.badge} onChange={e => set('badge', e.target.value)} className={inputCls}>
-              {BADGES.map(b => <option key={b} value={b}>{b || '— None —'}</option>)}
             </select>
           </div>
           <div>

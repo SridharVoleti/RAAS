@@ -33,7 +33,6 @@ export async function PUT(
       instructor_te:  body.instructor_te,
       category:       body.category,
       level:          body.level,
-      badge:          body.badge ?? null,
       duration:       body.duration,
       is_free:        body.is_free,
       price:          body.is_free ? 0 : Number(body.price ?? 0),

@@ -69,7 +69,6 @@ const CourseBaseSchema = z.object({
   instructor_te:  z.string().max(100).optional().default(''),
   category:       z.string().min(1).max(100),
   level:          z.enum(['Beginner', 'Intermediate', 'Advanced']),
-  badge:          z.string().max(50).nullable().optional(),
   duration:       z.string().max(50).optional(),
   is_free:        z.boolean().optional(),
   price:          z.number().nonnegative('Price cannot be negative').optional(),

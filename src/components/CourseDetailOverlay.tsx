@@ -6,7 +6,6 @@ import { X, Star, Users, Clock, Check, GraduationCap } from 'lucide-react'
 import { useLang } from '@/contexts/LanguageContext'
 import { createClient } from '@/lib/supabase/client'
 import { formatPrice } from '@/lib/utils'
-import { BADGE_STYLES } from '@/lib/badges'
 import type { Course } from '@/types'
 
 interface Props {
@@ -111,13 +110,8 @@ export default function CourseDetailOverlay({ course, onClose }: Props) {
 
         {/* Content */}
         <div className="flex-1 p-6 pb-24">
-          {/* Badge row */}
+          {/* Level row */}
           <div className="flex items-center gap-2 mb-3">
-            {course.badge && (
-              <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${BADGE_STYLES[course.badge]}`}>
-                {course.badge === 'Free' ? t.course.free : course.badge === 'Coming Soon' ? t.course.comingSoon : course.badge}
-              </span>
-            )}
             <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${LEVEL_COLORS[course.level]}`}>
               {t.levels[course.level]}
             </span>

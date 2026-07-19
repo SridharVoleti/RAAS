@@ -60,7 +60,6 @@ export async function POST(req: Request) {
       instructor_te:  body.instructor_te,
       category:       body.category,
       level:          body.level,
-      badge:          body.badge || null,
       duration:       body.duration ?? '4 weeks',
       is_free:        body.is_free ?? false,
       price:          body.is_free ? 0 : Number(body.price ?? 0),

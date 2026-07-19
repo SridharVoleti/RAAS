@@ -2,7 +2,6 @@
 
 import { useLang } from '@/contexts/LanguageContext'
 import { formatPrice } from '@/lib/utils'
-import { BADGE_STYLES } from '@/lib/badges'
 import type { Course } from '@/types'
 import { Star } from 'lucide-react'
 
@@ -41,12 +40,6 @@ export default function CourseCard({ course, onClick, isEnrolled }: CourseCardPr
           </a>
         ) : (
           <span className="group-hover:scale-110 transition-transform duration-200">{course.emoji}</span>
-        )}
-        {/* Badge */}
-        {course.badge && (
-          <div className={`absolute top-3 left-3 px-2 py-0.5 rounded-full text-xs font-bold ${BADGE_STYLES[course.badge]}`}>
-            {course.badge === 'Free' ? t.course.free : course.badge === 'Coming Soon' ? t.course.comingSoon : course.badge}
-          </div>
         )}
       </div>
 

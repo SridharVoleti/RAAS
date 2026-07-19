@@ -12,10 +12,6 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 
 do $$ begin
-  create type badge_type as enum ('Popular', 'New', 'Free');
-exception when duplicate_object then null; end $$;
-
-do $$ begin
   create type payment_status as enum ('created', 'paid', 'failed');
 exception when duplicate_object then null; end $$;
 
@@ -56,7 +52,6 @@ create table if not exists courses (
   instructor_te  text not null,
   category       text not null,
   level          level_type not null default 'Beginner',
-  badge          badge_type,
   duration       text not null default '4 weeks',
   is_free        boolean not null default false,
   price          numeric(10,2) not null default 0,
@@ -345,7 +340,6 @@ select
   c.instructor_te,
   c.category,
   c.level::text     as level,
-  c.badge::text     as badge,
   c.duration,
   c.is_free,
   c.price,

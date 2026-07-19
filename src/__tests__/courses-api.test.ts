@@ -24,7 +24,6 @@ const mockCourse: Course = {
   instructor_te: 'టెస్ట్ ఇన్‌స్ట్రక్టర్',
   category: 'Test',
   level: 'Beginner',
-  badge: 'New',
   duration: '4 weeks',
   is_free: false,
   price: 799,

@@ -2,7 +2,6 @@ import { unstable_cache } from 'next/cache'
 import { createClient } from '@supabase/supabase-js'
 import type { Course, LearningPath, Testimonial, TextWidget } from '@/types'
 import { COURSES, STATS } from './courseData'
-import { effectiveBadge } from './badges'
 
 export interface HomeStats {
   studentsEnrolled: number
@@ -29,10 +28,7 @@ export const getCachedCourses = unstable_cache(
         .eq('is_published', true)
         .order('order_index')
       if (error || !data?.length) return COURSES
-      return (data as (Course & { lessons?: { id: number }[] })[]).map(({ lessons, ...c }) => ({
-        ...c,
-        badge: effectiveBadge(c.badge, lessons?.length ?? 0),
-      }))
+      return (data as (Course & { lessons?: { id: number }[] })[]).map(({ lessons: _lessons, ...c }) => c)
     } catch {
       return COURSES
     }

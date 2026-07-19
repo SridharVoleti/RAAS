@@ -1,13 +1,12 @@
 import { createClient } from '@/lib/supabase/client'
 import type { Course } from '@/types'
 import { COURSES } from '@/lib/courseData'
-import { effectiveBadge } from '@/lib/badges'
 
 type CourseRow = Course & { lessons?: { id: number }[] }
 
-function withComputedBadge(row: CourseRow): Course {
-  const { lessons, ...course } = row
-  return { ...course, badge: effectiveBadge(course.badge, lessons?.length ?? 0) }
+function stripLessons(row: CourseRow): Course {
+  const { lessons: _lessons, ...course } = row
+  return course
 }
 
 // Simple in-memory cache with TTL
@@ -85,7 +84,7 @@ export async function getCourses(options?: {
       return COURSES as Course[]
     }
 
-    const courses = (data as CourseRow[]).map(withComputedBadge)
+    const courses = (data as CourseRow[]).map(stripLessons)
     setCachedData(cacheKey, courses)
     return courses
   } catch (err) {

@@ -46,8 +46,6 @@ export const translations = {
       highestRated: 'Highest Rated',
     },
     course: {
-      free: 'FREE',
-      comingSoon: 'Coming Soon',
       enroll: 'Enroll Now',
       enrollFree: 'Enroll Now – Free',
       enrolled: 'Enrolled',
@@ -375,8 +373,6 @@ export const translations = {
       highestRated: 'అత్యధిక రేటింగ్',
     },
     course: {
-      free: 'ఉచితం',
-      comingSoon: 'త్వరలో',
       enroll: 'నమోదు చేయండి',
       enrollFree: 'ఉచితంగా నమోదు చేయండి',
       enrolled: 'నమోదైంది',

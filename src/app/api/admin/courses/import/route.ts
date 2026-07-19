@@ -68,7 +68,7 @@ const TEMPLATE_HEADERS = [
   'title_en', 'title_te',
   'description_en', 'description_te',
   'instructor_en', 'instructor_te',
-  'category', 'level', 'badge', 'duration',
+  'category', 'level', 'duration',
   'is_free', 'price', 'has_quiz', 'order_index',
   'section_title', 'lesson_title_en', 'lesson_title_te',
   'youtube_video_id', 'lesson_duration', 'is_preview',
@@ -82,21 +82,21 @@ const TEMPLATE_ROWS = [
     'Learn the foundational techniques of Vedic chanting in this comprehensive beginner course.',
     'ఈ కోర్సులో వైదిక జపం యొక్క ప్రాథమిక పద్ధతులు నేర్చుకోండి.',
     'Instructor Name', 'బోధకుడు పేరు',
-    'Chanting', 'Beginner', 'New', '8 weeks',
+    'Chanting', 'Beginner', '8 weeks',
     'false', '999', 'false', '1',
     'Introduction', 'Welcome & Overview', 'స్వాగతం & అవలోకనం', 'dQw4w9WgXcQ', '5:30', 'true',
   ],
   // Sample rows 2+ — lesson only (course columns left blank)
   [
-    '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
+    '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
     'Introduction', 'Chanting Basics Part 1', 'జపం ప్రాథమికాలు భాగం 1', 'ABC123xyz78', '10:45', 'false',
   ],
   [
-    '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
+    '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
     'Introduction', 'Chanting Basics Part 2', 'జపం ప్రాథమికాలు భాగం 2', 'XYZ789abc12', '12:00', 'false',
   ],
   [
-    '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
+    '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
     'Advanced Techniques', 'Swara Patterns', 'స్వర విన్యాసాలు', 'MNO456pqr34', '15:20', 'false',
   ],
 ]
@@ -196,7 +196,6 @@ export async function POST(req: Request) {
     instructor_te:  first.instructor_te || '',
     category:       first.category || 'Scripture',
     level,
-    badge:          ['Popular', 'New', 'Free'].includes(first.badge) ? first.badge : null,
     duration:       first.duration || '4 weeks',
     is_free:        first.is_free?.toLowerCase() === 'true',
     price:          first.is_free?.toLowerCase() === 'true' ? 0 : (parseFloat(first.price) || 0),

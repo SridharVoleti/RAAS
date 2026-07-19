@@ -42,7 +42,6 @@ export interface Course {
   instructor_te: string
   category: string
   level: 'Beginner' | 'Intermediate' | 'Advanced'
-  badge: 'Popular' | 'New' | 'Free' | 'Coming Soon' | null
   duration: string
   is_free: boolean
   price: number

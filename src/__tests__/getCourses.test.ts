@@ -51,7 +51,6 @@ describe('getCourses', () => {
         instructor_te: 'టెస్ట్ ఇన్ స్ట్రక్టర్',
         category: 'Test',
         level: 'Beginner',
-        badge: 'New',
         duration: '4 weeks',
         is_free: false,
         price: 999,
@@ -77,49 +76,6 @@ describe('getCourses', () => {
 
     const result = await getCourses()
     expect(result).toEqual([expectedCourse])
-  })
-
-  it('marks a course with no lessons as Coming Soon, overriding any badge an admin picked', async () => {
-    const dbRows = [
-      {
-        id: 2,
-        path_id: 1,
-        slug: 'empty-course',
-        emoji: '📖',
-        bg_color: '#1a0f00',
-        title_en: 'Empty Course',
-        title_te: 'టెస్ట్',
-        description_en: 'Test',
-        description_te: 'టెస్ట్',
-        instructor_en: 'Test',
-        instructor_te: 'టెస్ట్',
-        category: 'Test',
-        level: 'Beginner',
-        badge: 'Popular', // admin picked a badge, but there are no lessons yet
-        duration: '4 weeks',
-        is_free: false,
-        price: 999,
-        rating: 4.5,
-        review_count: 10,
-        student_count: 100,
-        has_quiz: false,
-        order_index: 1,
-        is_published: true,
-        lessons: [],
-      },
-    ]
-
-    const mockQuery = {
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      order: vi.fn().mockReturnThis(),
-      range: vi.fn().mockResolvedValue({ data: dbRows, error: null }),
-    }
-
-    vi.mocked(mockSupabaseClient.from).mockReturnValue(mockQuery as any)
-
-    const result = await getCourses()
-    expect(result[0].badge).toBe('Coming Soon')
   })
 
   it('should apply limit and offset for pagination', async () => {
@@ -170,7 +126,6 @@ describe('getCourses', () => {
         instructor_te: 'టెస్ట్',
         category: 'Test',
         level: 'Beginner',
-        badge: 'New',
         duration: '4 weeks',
         is_free: false,
         price: 999,
@@ -260,7 +215,6 @@ describe('getCourseBySlug', () => {
       instructor_te: 'టెస్ట్',
       category: 'Test',
       level: 'Beginner',
-      badge: 'New',
       duration: '4 weeks',
       is_free: false,
       price: 999,
@@ -319,7 +273,6 @@ describe('getCourseById', () => {
       instructor_te: 'టెస్ట్',
       category: 'Test',
       level: 'Beginner',
-      badge: 'New',
       duration: '4 weeks',
       is_free: false,
       price: 999,
@@ -391,7 +344,6 @@ describe('Cache utilities', () => {
         instructor_te: 'టెస్ట్',
         category: 'Test',
         level: 'Beginner',
-        badge: 'New',
         duration: '4 weeks',
         is_free: false,
         price: 999,
