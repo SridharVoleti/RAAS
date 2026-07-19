@@ -100,7 +100,6 @@ export default function StudentHomeContent({ courses, paths }: Props) {
                 onClick={() => router.push(`/explore?path=${raasPath.slug}`)}
                 className="flex-1 p-8 rounded-2xl border-2 border-brand-gold bg-gradient-to-br from-brand-gold/10 via-brand-card to-brand-card hover:shadow-xl hover:shadow-brand-gold/20 cursor-pointer transition-all text-left group"
               >
-                <div className="text-5xl mb-3">{raasPath.emoji}</div>
                 <h2 className="text-brand-gold font-bold text-2xl sm:text-3xl group-hover:text-yellow-300 transition-colors">
                   {raasPath.name}
                 </h2>
@@ -116,13 +115,13 @@ export default function StudentHomeContent({ courses, paths }: Props) {
                 </div>
               </button>
 
-              <div className="relative w-full h-48 md:h-auto md:w-56 lg:w-64 shrink-0 rounded-2xl overflow-hidden border-2 border-brand-gold/40">
+              <div className="relative w-full h-64 sm:h-72 md:h-auto md:w-56 lg:w-64 shrink-0 rounded-2xl overflow-hidden border-2 border-brand-gold/40">
                 <Image
                   src="/ramanuja-acharya.jpg"
                   alt="Sri Ramanujacharya"
                   fill
                   sizes="(min-width: 768px) 256px, 100vw"
-                  className="object-cover"
+                  className="object-cover object-top"
                 />
               </div>
             </div>
@@ -148,7 +147,6 @@ export default function StudentHomeContent({ courses, paths }: Props) {
                           {lang === 'te' ? 'త్వరలో' : 'Coming Soon'}
                         </span>
                       </div>
-                      <div className="text-3xl mb-2">{path.emoji}</div>
                       <h3 className="text-brand-gold-muted font-bold text-lg">{path.name}</h3>
                       {fullName && <p className="text-brand-gold-muted text-[11px] italic leading-snug mb-1.5">{fullName}</p>}
                       <p className="text-brand-gold-muted text-xs">{tagline}</p>
@@ -162,7 +160,6 @@ export default function StudentHomeContent({ courses, paths }: Props) {
                     onClick={() => router.push(`/explore?path=${path.slug}`)}
                     className="p-5 rounded-xl border-2 border-brand-border bg-brand-card hover:border-brand-gold hover:bg-brand-gold/5 hover:shadow-lg hover:shadow-brand-gold/10 cursor-pointer transition-all text-left group"
                   >
-                    <div className="text-3xl mb-2">{path.emoji}</div>
                     <h3 className="text-brand-gold font-bold text-lg group-hover:text-yellow-300 transition-colors">
                       {path.name}
                     </h3>
