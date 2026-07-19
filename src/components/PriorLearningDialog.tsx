@@ -39,6 +39,7 @@ export default function PriorLearningDialog({ open, onClose }: Props) {
 
   const [subjects, setSubjects] = useState<Course[]>([])
   const [declared, setDeclared] = useState<Map<number, Declaration>>(new Map())
+  const [enrolledCourseIds, setEnrolledCourseIds] = useState<Set<number>>(new Set())
   const [selected, setSelected] = useState<Map<number, GuruDetails>>(new Map())
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -57,13 +58,14 @@ export default function PriorLearningDialog({ open, onClose }: Props) {
       // appear here automatically
       getCourses({ limit: 100 }).catch(() => [] as Course[]),
       fetch('/api/prior-learning')
-        .then(res => (res.ok ? res.json() : { declarations: [] }))
-        .catch(() => ({ declarations: [] })),
+        .then(res => (res.ok ? res.json() : { declarations: [], enrolledCourseIds: [] }))
+        .catch(() => ({ declarations: [], enrolledCourseIds: [] })),
     ]).then(([courses, own]) => {
       setSubjects(courses.filter(c => c.path_id === 1 && c.is_published))
       setDeclared(new Map(
         (own.declarations as Declaration[]).map(d => [d.course_id, d])
       ))
+      setEnrolledCourseIds(new Set((own.enrolledCourseIds ?? []) as number[]))
       setLoading(false)
     })
   }, [open])
@@ -188,17 +190,19 @@ export default function PriorLearningDialog({ open, onClose }: Props) {
                 <div className="space-y-2">
                   {subjects.map(c => {
                     const prior = declared.get(c.id)
+                    const enrolled = enrolledCourseIds.has(c.id)
+                    const locked = !!prior || enrolled
                     const isChecked = selected.has(c.id)
                     const guru = selected.get(c.id)
                     return (
                       <div key={c.id} className={`border rounded-xl transition-colors ${
                         isChecked ? 'border-brand-gold bg-brand-gold/5' : 'border-brand-border'
                       }`}>
-                        <label className={`flex items-center gap-3 px-4 py-3 ${prior ? 'opacity-70' : 'cursor-pointer'}`}>
+                        <label className={`flex items-center gap-3 px-4 py-3 ${locked ? 'opacity-70' : 'cursor-pointer'}`}>
                           <input
                             type="checkbox"
-                            checked={!!prior || isChecked}
-                            disabled={!!prior}
+                            checked={locked || isChecked}
+                            disabled={locked}
                             onChange={() => toggle(c.id)}
                             className="accent-[#d4a017] w-4 h-4 shrink-0"
                           />
@@ -206,6 +210,11 @@ export default function PriorLearningDialog({ open, onClose }: Props) {
                           {prior && (
                             <span className="text-xs bg-brand-success/15 text-brand-success px-2 py-0.5 rounded-full shrink-0">
                               {tp.registered} · {prior.teacher_name}
+                            </span>
+                          )}
+                          {!prior && enrolled && (
+                            <span className="text-xs bg-brand-gold/15 text-brand-gold px-2 py-0.5 rounded-full shrink-0">
+                              {tp.alreadyEnrolled}
                             </span>
                           )}
                         </label>

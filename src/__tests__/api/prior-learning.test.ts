@@ -153,36 +153,39 @@ describe('POST /api/prior-learning', () => {
     expect(data.subjects[0].has_exam).toBe(true)
   })
 
-  it('does not downgrade an existing full enrollment to exam-only', async () => {
+  it('rejects subjects the student is already fully enrolled in', async () => {
     const enrollSelectChain = chain({
-      data: [{ course_id: 1, is_active: true, exam_only: false }],
+      data: [{ course_id: 1 }],
     })
-    const enrollUpsertChain = chain({ error: null })
     mockUser()
     mockAdminClient({
       courses: chain({ data: raasCourses }),
       prior_learning_declarations: chain({ error: null }),
-      enrollments: [enrollSelectChain, enrollUpsertChain],
+      enrollments: [enrollSelectChain],
     })
 
     const res = await registerPL(jsonRequest(twoSubjects))
-    expect(res.status).toBe(201)
-    // Course 1 (full enrollment) skipped; course 2 has no exam → no upsert at all
-    expect(enrollUpsertChain.upsert).not.toHaveBeenCalled()
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toContain('already enrolled')
   })
 })
 
 describe('GET /api/prior-learning', () => {
   beforeEach(() => { vi.clearAllMocks() })
 
-  it('returns the caller\'s declarations', async () => {
+  it('returns the caller\'s declarations and enrolled course ids', async () => {
     const own = [{ course_id: 1, teacher_name: 'Guruji', teacher_mobile: '9876543210', created_at: '2026-07-08' }]
-    mockUser({ prior_learning_declarations: chain({ data: own, error: null }) })
+    mockUser({
+      prior_learning_declarations: chain({ data: own, error: null }),
+      enrollments: chain({ data: [{ course_id: 3 }], error: null }),
+    })
     mockAdminClient({})
     const res = await listOwnPL()
     expect(res.status).toBe(200)
     const data = await res.json()
     expect(data.declarations).toEqual(own)
+    expect(data.enrolledCourseIds).toEqual([3])
   })
 })
 

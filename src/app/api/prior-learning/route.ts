@@ -31,18 +31,19 @@ export async function POST(req: Request) {
   }
   const courseById = new Map(courses.map(c => [c.id, c]))
 
-  // Existing enrollments — never downgrade a full enrollment to exam-only
+  // Reject subjects the student is already fully enrolled in — guru-learning
+  // is only for subjects they haven't taken through RAAS
   const { data: existingEnrollments } = await adminSupabase
     .from('enrollments')
-    .select('course_id, is_active, exam_only')
+    .select('course_id')
     .eq('user_id', user.id)
+    .eq('is_active', true)
+    .eq('exam_only', false)
     .in('course_id', courseIds)
 
-  const fullyEnrolled = new Set(
-    (existingEnrollments ?? [])
-      .filter(e => e.is_active && !e.exam_only)
-      .map(e => e.course_id)
-  )
+  if (existingEnrollments && existingEnrollments.length > 0) {
+    return NextResponse.json({ error: 'You are already enrolled in one or more of these subjects' }, { status: 400 })
+  }
 
   const now = new Date().toISOString()
 
@@ -64,7 +65,7 @@ export async function POST(req: Request) {
   }
 
   const enrollments = subjects
-    .filter(s => courseById.get(s.courseId)!.has_exam && !fullyEnrolled.has(s.courseId))
+    .filter(s => courseById.get(s.courseId)!.has_exam)
     .map(s => ({
       user_id:      user.id,
       course_id:    s.courseId,
@@ -93,21 +94,37 @@ export async function POST(req: Request) {
   }, { status: 201 })
 }
 
-// The caller's declarations, so the dialog can mark registered subjects
+// The caller's declarations and course enrollments, so the dialog can mark
+// registered subjects and hide the ones the student is already enrolled in
 export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data, error } = await supabase
-    .from('prior_learning_declarations')
-    .select('course_id, teacher_name, teacher_mobile, created_at')
-    .eq('user_id', user.id)
+  const [{ data, error }, { data: enrollments, error: enrollError }] = await Promise.all([
+    supabase
+      .from('prior_learning_declarations')
+      .select('course_id, teacher_name, teacher_mobile, created_at')
+      .eq('user_id', user.id),
+    supabase
+      .from('enrollments')
+      .select('course_id')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .eq('exam_only', false),
+  ])
 
   if (error) {
     logger.error({ error: error.message, userId: user.id }, 'priorLearning.own.list.failed')
     return NextResponse.json({ error: 'Failed to load your registrations' }, { status: 500 })
   }
+  if (enrollError) {
+    logger.error({ error: enrollError.message, userId: user.id }, 'priorLearning.own.enrollments.failed')
+    return NextResponse.json({ error: 'Failed to load your enrollments' }, { status: 500 })
+  }
 
-  return NextResponse.json({ declarations: data ?? [] })
+  return NextResponse.json({
+    declarations: data ?? [],
+    enrolledCourseIds: (enrollments ?? []).map(e => e.course_id),
+  })
 }
