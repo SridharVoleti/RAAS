@@ -27,6 +27,7 @@ export default function ExploreContent() {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
   const [courses, setCourses] = useState<Course[]>([])
   const [paths, setPaths] = useState<LearningPath[]>([])
+  const [enrolledIds, setEnrolledIds] = useState<Set<number>>(new Set())
 
   // Keep local search box in sync when URL q param changes
   useEffect(() => { setSearch(qParam) }, [qParam])
@@ -37,6 +38,10 @@ export default function ExploreContent() {
       .catch(err => { console.error('Failed to load courses:', err) })
     getPaths()
       .then(data => setPaths(data))
+      .catch(() => {})
+    fetch('/api/my-courses')
+      .then(res => (res.ok ? res.json() : []))
+      .then((data: { course_id: number }[]) => setEnrolledIds(new Set(data.map(c => c.course_id))))
       .catch(() => {})
   }, [])
 
@@ -180,7 +185,7 @@ export default function ExploreContent() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {catCourses.map(c => (
-                    <CourseCard key={c.id} course={c} onClick={setSelectedCourse} />
+                    <CourseCard key={c.id} course={c} onClick={setSelectedCourse} isEnrolled={enrolledIds.has(c.id)} />
                   ))}
                 </div>
               </section>
@@ -203,7 +208,7 @@ export default function ExploreContent() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {lvlCourses.map(c => (
-                      <CourseCard key={c.id} course={c} onClick={setSelectedCourse} />
+                      <CourseCard key={c.id} course={c} onClick={setSelectedCourse} isEnrolled={enrolledIds.has(c.id)} />
                     ))}
                   </div>
                 </section>

@@ -27,7 +27,7 @@ export default function MyCoursesPage() {
       ])
 
       setProfile(prof)
-      setCourses(enrolled || [])
+      setCourses((enrolled || []).map(c => ({ ...c, id: c.course_id })))
       setLoading(false)
     }
     loadData()

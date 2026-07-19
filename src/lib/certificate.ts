@@ -84,7 +84,7 @@ export async function getCertificate(courseId: number): Promise<CertificateResul
       .from('vw_my_courses')
       .select('progress_pct')
       .eq('user_id', user.id)
-      .eq('id', courseId)
+      .eq('course_id', courseId)
       .single()
 
     if (!courseProgress) {
