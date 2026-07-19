@@ -22,6 +22,9 @@ interface SessionInfo {
   nextAllowedAt: string | null
   mustTakeCourse: boolean
   questionCount: number
+  maxAttempts: number | null
+  attemptsUsed: number | null
+  attemptsRemaining: number | null
 }
 
 interface ActiveState {
@@ -515,6 +518,9 @@ export default function ExamPage() {
   const isNewExternal = !info?.enrolled
   const isExamOnly = isNewExternal || !!info?.exam_only
   const questionCount = info?.questionCount || 100
+  const maxAttempts = info?.maxAttempts ?? 2
+  const attemptsUsed = info?.attemptsUsed ?? 0
+  const attemptsRemaining = info?.attemptsRemaining ?? maxAttempts
   const formValid =
     guruName.trim().length > 0 &&
     /^\+?\d{7,15}$/.test(guruMobile.trim()) &&
@@ -530,7 +536,7 @@ export default function ExamPage() {
         {[
           fill(tx.disclaimerQuestions, { count: questionCount }),
           tx.disclaimerPass,
-          tx.disclaimerAttempts,
+          fill(tx.disclaimerAttempts, { max: maxAttempts }),
           tx.disclaimerFail,
         ].map((line, i) => (
           <li key={i} className="flex items-start gap-2 text-brand-body text-sm">
@@ -578,6 +584,24 @@ export default function ExamPage() {
 
         {isExamOnly ? (
           <>
+            {!info?.passed && (
+              <div className={`flex items-center gap-3 rounded-xl px-4 py-3 mb-5 border ${
+                attemptsRemaining <= 1
+                  ? 'bg-brand-error/10 border-brand-error/30'
+                  : 'bg-brand-gold/10 border-brand-gold/30'
+              }`}>
+                <AlertCircle className={`w-5 h-5 shrink-0 ${attemptsRemaining <= 1 ? 'text-brand-error' : 'text-brand-gold'}`} />
+                <div>
+                  <p className={`text-sm font-semibold ${attemptsRemaining <= 1 ? 'text-brand-error' : 'text-brand-gold'}`}>
+                    {fill(tx.attemptsRemainingBanner, { remaining: attemptsRemaining, max: maxAttempts })}
+                  </p>
+                  {attemptsUsed > 0 && (
+                    <p className="text-brand-gold-muted text-xs mt-0.5">{tx.lastAttemptWarning}</p>
+                  )}
+                </div>
+              </div>
+            )}
+
             {isNewExternal && (
               <div className="mb-5">
                 <p className="text-brand-gold font-semibold text-sm mb-3">{tx.guruFormHeading}</p>

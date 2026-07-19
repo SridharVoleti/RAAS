@@ -31,9 +31,10 @@ export async function GET(
   // Exam-only students: once EXAM_ONLY_MAX_ATTEMPTS submitted sessions have failed,
   // re-attempts are permanently blocked until they take the course.
   let mustTakeCourse = false
+  let attemptsUsed = 0
   if (examOnly) {
-    const failedCount = await countExamOnlyFailedAttempts(supabase, user.id, courseIdNum)
-    mustTakeCourse = failedCount >= EXAM_ONLY_MAX_ATTEMPTS
+    attemptsUsed = await countExamOnlyFailedAttempts(supabase, user.id, courseIdNum)
+    mustTakeCourse = attemptsUsed >= EXAM_ONLY_MAX_ATTEMPTS
   }
 
   // Regular students: cooldown from last failed attempt
@@ -89,7 +90,8 @@ export async function GET(
         activeSession.questions_answered as number
       )
       if (examOnly && !outcome.passed) {
-        mustTakeCourse = (await countExamOnlyFailedAttempts(supabase, user.id, courseIdNum)) >= EXAM_ONLY_MAX_ATTEMPTS
+        attemptsUsed = await countExamOnlyFailedAttempts(supabase, user.id, courseIdNum)
+        mustTakeCourse = attemptsUsed >= EXAM_ONLY_MAX_ATTEMPTS
       }
       liveSession = null
     } else if (activeSession.question_sequence.length > 0) {
@@ -128,5 +130,8 @@ export async function GET(
     nextAllowedAt,
     mustTakeCourse,
     questionCount:   Math.min(bankCount ?? 0, EXAM_ONLY_QUESTION_TARGET),
+    maxAttempts:        examOnly ? EXAM_ONLY_MAX_ATTEMPTS : null,
+    attemptsUsed:       examOnly ? attemptsUsed : null,
+    attemptsRemaining:  examOnly ? Math.max(0, EXAM_ONLY_MAX_ATTEMPTS - attemptsUsed) : null,
   })
 }
