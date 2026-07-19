@@ -19,18 +19,13 @@ export default function ExploreContent() {
   const { lang, t } = useLang()
   const searchParams = useSearchParams()
   const pathParam = searchParams.get('path')?.toLowerCase() ?? null
-  const qParam    = searchParams.get('q') ?? ''
 
   const [view, setView]   = useState<ViewMode>('category')
   const [sort, setSort]   = useState<SortMode>('popular')
-  const [search, setSearch] = useState(qParam)
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
   const [courses, setCourses] = useState<Course[]>([])
   const [paths, setPaths] = useState<LearningPath[]>([])
   const [enrolledIds, setEnrolledIds] = useState<Set<number>>(new Set())
-
-  // Keep local search box in sync when URL q param changes
-  useEffect(() => { setSearch(qParam) }, [qParam])
 
   useEffect(() => {
     getCourses({ limit: 100 })
@@ -56,18 +51,8 @@ export default function ExploreContent() {
   const filtered = useMemo(() => {
     let c = courses.filter(x => x.is_published)
     if (pathId !== null) c = c.filter(x => x.path_id === pathId)
-    if (search.trim()) {
-      const q = search.toLowerCase()
-      c = c.filter(x =>
-        x.title_en.toLowerCase().includes(q) ||
-        x.title_te.toLowerCase().includes(q) ||
-        x.description_en.toLowerCase().includes(q) ||
-        x.category.toLowerCase().includes(q) ||
-        x.instructor_en.toLowerCase().includes(q)
-      )
-    }
     return c
-  }, [courses, pathId, search])
+  }, [courses, pathId])
 
   const sorted = useMemo(() => {
     const c = [...filtered]
@@ -144,15 +129,6 @@ export default function ExploreContent() {
             <option value="rated">{t.explore.highestRated}</option>
           </select>
 
-          {/* Inline search filter */}
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder={t.hero.searchPlaceholder}
-            className="flex-1 min-w-[160px] px-3 py-2 bg-brand-bg border border-brand-border rounded-lg text-brand-body text-sm placeholder:text-brand-gold-muted focus:outline-none focus:border-brand-gold"
-          />
-
           <span className="text-brand-gold-muted text-sm ml-auto">
             {sorted.length} {lang === 'te' ? 'కోర్సులు' : 'courses'}
           </span>
@@ -161,14 +137,6 @@ export default function ExploreContent() {
         {sorted.length === 0 && (
           <div className="text-center py-16 text-brand-gold-muted">
             {lang === 'te' ? 'కోర్సులు కనుగొనబడలేదు.' : 'No courses found.'}
-            {search && (
-              <button
-                onClick={() => setSearch('')}
-                className="block mx-auto mt-3 text-brand-gold text-sm hover:underline"
-              >
-                {lang === 'te' ? 'శోధన క్లియర్ చేయండి' : 'Clear search'}
-              </button>
-            )}
           </div>
         )}
 
