@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useLang } from '@/contexts/LanguageContext'
@@ -13,11 +13,37 @@ interface Props {
   paths: LearningPath[]
 }
 
+interface Declaration {
+  course_id: number
+}
+
+interface ExamLink {
+  courseId: number
+  title_en: string
+  title_te: string | null
+}
+
 export default function StudentHomeContent({ courses, paths }: Props) {
   const { lang, t } = useLang()
   const router = useRouter()
   const [plDialogOpen, setPlDialogOpen] = useState(false)
   const [videoSignal, setVideoSignal] = useState(0)
+  const [examLinks, setExamLinks] = useState<ExamLink[]>([])
+
+  useEffect(() => {
+    fetch('/api/prior-learning')
+      .then(res => (res.ok ? res.json() : { declarations: [] }))
+      .then((data: { declarations: Declaration[] }) => {
+        const links = data.declarations
+          .map(d => courses.find(c => c.id === d.course_id))
+          .filter((c): c is Course => !!c && !!c.has_exam)
+          .map(c => ({ courseId: c.id, title_en: c.title_en, title_te: c.title_te }))
+        setExamLinks(links)
+      })
+      .catch(() => setExamLinks([]))
+  // courses is a stable prop from the server-rendered page
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const raasPath = paths.find(p => p.slug === 'raas')
   const otherPaths = paths.filter(p => p.slug !== 'raas')
@@ -52,15 +78,21 @@ export default function StudentHomeContent({ courses, paths }: Props) {
                       <span>{t.home.guruPrompt}</span>
                     </button>
                   </li>
-                  <li>
-                    <button
-                      onClick={() => setPlDialogOpen(true)}
-                      className="flex items-start gap-2.5 text-left text-brand-gold-muted hover:text-brand-gold text-sm leading-snug transition-colors"
-                    >
-                      <span aria-hidden className="mt-0.5">📜</span>
-                      <span>{t.home.examCta}</span>
-                    </button>
-                  </li>
+                  {examLinks.map(link => (
+                    <li key={link.courseId}>
+                      <button
+                        onClick={() => router.push(`/exam/${link.courseId}`)}
+                        className="flex items-start gap-2.5 text-left text-brand-gold-muted hover:text-brand-gold text-sm leading-snug transition-colors"
+                      >
+                        <span aria-hidden className="mt-0.5">📜</span>
+                        <span>
+                          {t.priorLearning.takeFinalTest}
+                          {': '}
+                          {lang === 'te' && link.title_te ? link.title_te : link.title_en}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
                 </ul>
               </div>
 
