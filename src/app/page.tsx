@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
 import { getCachedCourses, getCachedPaths, getCachedStats, getCachedTestimonials, getCachedWidgets } from '@/lib/homeData'
+import { getLaunchAt, isLive } from '@/lib/launch'
 import HomeContent from '@/components/HomeContent'
 
 export default async function HomePage() {
@@ -13,7 +14,15 @@ export default async function HomePage() {
 
   return (
     <Suspense>
-      <HomeContent courses={courses} paths={paths} stats={stats} testimonials={testimonials} widgets={widgets} />
+      <HomeContent
+        courses={courses}
+        paths={paths}
+        stats={stats}
+        testimonials={testimonials}
+        widgets={widgets}
+        isLive={isLive()}
+        launchAt={getLaunchAt().toISOString()}
+      />
     </Suspense>
   )
 }

@@ -242,6 +242,15 @@ export const translations = {
       requiredCountry: 'Country is required',
       note: 'This information helps us personalise your learning experience.',
     },
+    launch: {
+      heading: 'Launching Soon',
+      subtitle: "We're putting the final touches on your spiritual journey. Registration is open now — full access unlocks at go-live.",
+      days: 'Days',
+      hours: 'Hours',
+      minutes: 'Minutes',
+      seconds: 'Seconds',
+      comingSoon: 'Opens at launch',
+    },
     watch: {
       backToMyCourses: 'Back to My Courses',
       additionalResources: 'Additional Resources',
@@ -561,6 +570,15 @@ export const translations = {
       requiredCity: 'నగరం అవసరం',
       requiredCountry: 'దేశం అవసరం',
       note: 'ఈ సమాచారం మీ అభ్యాస అనుభవాన్ని వ్యక్తిగతీకరించడంలో సహాయపడుతుంది.',
+    },
+    launch: {
+      heading: 'త్వరలో ప్రారంభం',
+      subtitle: 'మీ ఆధ్యాత్మిక ప్రయాణం కోసం తుది సన్నాహాలు చేస్తున్నాం. నమోదు ఇప్పుడు తెరిచి ఉంది — ప్రారంభ సమయంలో పూర్తి యాక్సెస్ లభిస్తుంది.',
+      days: 'రోజులు',
+      hours: 'గంటలు',
+      minutes: 'నిమిషాలు',
+      seconds: 'సెకన్లు',
+      comingSoon: 'ప్రారంభంలో అందుబాటులోకి వస్తుంది',
     },
     watch: {
       backToMyCourses: 'నా కోర్సులకు తిరిగి వెళ్ళు',

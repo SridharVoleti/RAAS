@@ -418,6 +418,35 @@ Two issues compounded:
 
 ---
 
+## INFRA — Routing & Middleware
+
+---
+
+### INFRA-001 · `middleware.ts` at the project root was never executed — all middleware-based route protection was silently dead code
+| | |
+|---|---|
+| **Date** | 2026-07-20 |
+| **Severity** | P1 |
+| **Status** | Fixed |
+| **Commit** | _(pending commit)_ |
+
+**Issue**
+While building the go-live countdown gate (site locked to home/register only until 2026-08-01 06:00 IST, enforced in `middleware.ts`), the new gating logic had no effect on any request — every route stayed reachable regardless of the `isLive()` check. Debugging further (an unconditional `throw` inserted at the top of the `middleware` function had zero effect on any response, even after a full dev-server restart with `.next` cleared) proved the file wasn't being executed **at all**, including the pre-existing, long-standing `protectedRoutes` and `/admin/*` auth checks already in that file.
+
+**Root Cause**
+The project uses a `src/` directory for `app/` (`src/app/...`). Next.js requires `middleware.ts` to live at `src/middleware.ts` in that layout — a project-root `middleware.ts` is silently ignored (no build warning, no error). This repo had it at the project root the whole time, so `middleware.ts` was never part of the compiled build (confirmed: `npm run build` output gained a `ƒ Middleware` bundle line only after the move — it was absent before). The `/watch`, `/payment`, `/profile`, `/certificate`, `/my-courses`, `/home`, and `/admin/*` protections that appeared to work were actually enforced independently by each page/layout's own server-side `getAdminUser()`/session checks, not by middleware — middleware-level protection had been dead since this code was first written.
+
+**Solution**
+- Moved `middleware.ts` → `src/middleware.ts` (verified via `npm run build`: `ƒ Middleware   88.5 kB` now appears in the route summary, and via `next dev`: `○ Compiling /middleware ...` now logs on server start, neither of which happened before).
+- Re-verified the full route matrix live (`curl` against a running dev server) after the move: locked routes (`/explore`, `/watch/*`, `/my-courses`, `/donate`, `/payment/*`, `/profile`, `/certificate/*`, `/home`, `/exam/*`, `/my-certificates`, `/verify-mobile`, `/forgot-password`, non-auth `/api/*`) now correctly 307-redirect; allowed routes (`/`, `/register`, `/login`, `/onboarding`, `/api/auth/*`) and `/admin/*` (own gate) behave correctly.
+
+**Prevention for Future Projects**
+- When a Next.js project uses `src/app`, always place `middleware.ts` (and any other root-level special file — `instrumentation.ts`, etc.) inside `src/`, not the project root. Next.js does not warn on a misplaced root-level middleware file; it just never runs.
+- When adding logic to an existing `middleware.ts` and it appears to have zero effect, don't assume a logic bug first — verify the file is actually executing (an unconditional `throw` or `console.log` at the top of the function, checked against the dev server terminal log, is a fast way to confirm) before debugging the logic itself.
+- Any route protection that's supposed to be enforced by middleware should be spot-checked with a live request (`curl`) against a running dev server as part of verification, not just unit tests of the pure logic — unit tests of `isLive()`/`getLaunchAt()` alone would never have caught this, since the bug was entirely about the file never being loaded.
+
+---
+
 ## BUILD — Build & Compilation
 
 ---

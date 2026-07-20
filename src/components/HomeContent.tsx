@@ -9,6 +9,7 @@ import CourseDetailOverlay from '@/components/CourseDetailOverlay'
 import PriorLearningDialog from '@/components/PriorLearningDialog'
 import TestimonialDialog from '@/components/TestimonialDialog'
 import WelcomeVideoDialog from '@/components/WelcomeVideoDialog'
+import LaunchCountdown from '@/components/LaunchCountdown'
 import { createClient } from '@/lib/supabase/client'
 import type { Course, LearningPath, Testimonial, TextWidget } from '@/types'
 import type { HomeStats } from '@/lib/homeData'
@@ -35,9 +36,11 @@ interface Props {
   stats: HomeStats
   testimonials: Testimonial[]
   widgets: TextWidget[]
+  isLive: boolean
+  launchAt: string
 }
 
-export default function HomeContent({ courses, paths, stats, testimonials, widgets }: Props) {
+export default function HomeContent({ courses, paths, stats, testimonials, widgets, isLive, launchAt }: Props) {
   const { lang, t } = useLang()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -55,6 +58,8 @@ export default function HomeContent({ courses, paths, stats, testimonials, widge
   }, [searchParams, router])
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const locked = !isLive && !isAdmin
   const [voiceDialogOpen, setVoiceDialogOpen] = useState(false)
   const [plDialogOpen, setPlDialogOpen] = useState(false)
 
@@ -69,6 +74,7 @@ export default function HomeContent({ courses, paths, stats, testimonials, widge
   }, [searchParams, router])
 
   function handleGuruRegister() {
+    if (locked) return
     if (isLoggedIn) setPlDialogOpen(true)
     else router.push(`/login?returnTo=${encodeURIComponent('/?pl=1')}`)
   }
@@ -91,9 +97,20 @@ export default function HomeContent({ courses, paths, stats, testimonials, widge
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.getSession().then(({ data: { session } }) => { setIsLoggedIn(!!session) })
+
+    async function syncIsAdmin(userId?: string) {
+      if (!userId) { setIsAdmin(false); return }
+      const { data } = await supabase.from('profiles').select('is_admin').eq('id', userId).maybeSingle()
+      setIsAdmin(!!data?.is_admin)
+    }
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsLoggedIn(!!session)
+      syncIsAdmin(session?.user.id)
+    })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsLoggedIn(!!session)
+      syncIsAdmin(session?.user.id)
     })
     return () => subscription.unsubscribe()
   }, [])
@@ -106,6 +123,8 @@ export default function HomeContent({ courses, paths, stats, testimonials, widge
 
   return (
     <div className="min-h-screen bg-brand-bg">
+      {locked && <LaunchCountdown launchAt={launchAt} />}
+
       {/* Admin announcement widgets */}
       {announcementWidgets.map(w => (
         <div key={w.id} className="w-full bg-brand-gold/10 border-b border-brand-gold/20 px-4 py-2.5 text-center">
@@ -224,8 +243,9 @@ export default function HomeContent({ courses, paths, stats, testimonials, widge
               </div>
 
               <button
-                onClick={() => router.push(`/explore?path=${raasPath.slug}`)}
-                className="flex-1 p-8 rounded-2xl border-2 border-brand-gold bg-gradient-to-br from-brand-gold/10 via-brand-card to-brand-card hover:shadow-xl hover:shadow-brand-gold/20 cursor-pointer transition-all text-left group"
+                onClick={() => { if (!locked) router.push(`/explore?path=${raasPath.slug}`) }}
+                disabled={locked}
+                className={`flex-1 p-8 rounded-2xl border-2 border-brand-gold bg-gradient-to-br from-brand-gold/10 via-brand-card to-brand-card transition-all text-left group ${locked ? 'opacity-70 cursor-not-allowed' : 'hover:shadow-xl hover:shadow-brand-gold/20 cursor-pointer'}`}
               >
                 <h2 className="text-brand-gold font-bold text-2xl sm:text-3xl group-hover:text-yellow-300 transition-colors">
                   {raasPath.name}
@@ -284,8 +304,9 @@ export default function HomeContent({ courses, paths, stats, testimonials, widge
                 return (
                   <button
                     key={path.id}
-                    onClick={() => router.push(`/explore?path=${path.slug}`)}
-                    className="p-5 rounded-xl border-2 border-brand-border bg-brand-card hover:border-brand-gold hover:bg-brand-gold/5 hover:shadow-lg hover:shadow-brand-gold/10 cursor-pointer transition-all text-left group"
+                    onClick={() => { if (!locked) router.push(`/explore?path=${path.slug}`) }}
+                    disabled={locked}
+                    className={`p-5 rounded-xl border-2 border-brand-border bg-brand-card transition-all text-left group ${locked ? 'opacity-70 cursor-not-allowed' : 'hover:border-brand-gold hover:bg-brand-gold/5 hover:shadow-lg hover:shadow-brand-gold/10 cursor-pointer'}`}
                   >
                     <h3 className="text-brand-gold font-bold text-lg group-hover:text-yellow-300 transition-colors">
                       {path.name}

@@ -9,7 +9,11 @@ import type { Profile } from '@/types'
 import EmailVerificationBanner from '@/components/EmailVerificationBanner'
 import { isSyntheticEmail } from '@/lib/validation'
 
-export default function Navbar() {
+interface Props {
+  isLive: boolean
+}
+
+export default function Navbar({ isLive }: Props) {
   const { lang, setLang, t } = useLang()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [showVerifyBanner, setShowVerifyBanner] = useState(false)
@@ -113,17 +117,21 @@ export default function Navbar() {
 
             {profile ? (
               <div className="flex items-center gap-3">
-                <Link href="/my-courses" className="text-brand-gold-secondary hover:text-brand-gold transition-colors text-sm font-medium">
-                  {t.nav.myCourses}
-                </Link>
-                {hasCertificates && (
-                  <Link href="/my-certificates" className="text-brand-gold-secondary hover:text-brand-gold transition-colors text-sm font-medium">
-                    {t.nav.myCertificates}
-                  </Link>
+                {(isLive || profile.is_admin) && (
+                  <>
+                    <Link href="/my-courses" className="text-brand-gold-secondary hover:text-brand-gold transition-colors text-sm font-medium">
+                      {t.nav.myCourses}
+                    </Link>
+                    {hasCertificates && (
+                      <Link href="/my-certificates" className="text-brand-gold-secondary hover:text-brand-gold transition-colors text-sm font-medium">
+                        {t.nav.myCertificates}
+                      </Link>
+                    )}
+                    <Link href="/donate" className="text-brand-gold-secondary hover:text-brand-gold transition-colors text-sm font-medium">
+                      {t.nav.donate}
+                    </Link>
+                  </>
                 )}
-                <Link href="/donate" className="text-brand-gold-secondary hover:text-brand-gold transition-colors text-sm font-medium">
-                  {t.nav.donate}
-                </Link>
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-brand-gold flex items-center justify-center text-brand-bg text-xs font-bold">
                     {profile.avatar_initials}
