@@ -6,6 +6,7 @@ import { CheckCircle, XCircle, Award, Clock, AlertCircle, ChevronRight, BookOpen
 import { useLang } from '@/contexts/LanguageContext'
 import { allCompleteInLanguage } from '@/lib/quiz-languages'
 import { LanguageUnavailableModal } from '@/components/LanguageUnavailableModal'
+import StarRatingInput from '@/components/StarRatingInput'
 import type { ExamQuestionPage, ExamQuestion_Public } from '@/types'
 
 type Phase = 'loading' | 'landing' | 'cooldown' | 'blocked' | 'active' | 'result'
@@ -61,6 +62,30 @@ export default function ExamPage() {
   const [result, setResult] = useState<ResultState | null>(null)
   const [error, setError] = useState('')
   const [enrolling, setEnrolling] = useState(false)
+  const [myRating, setMyRating] = useState<number | null>(null)
+  const [ratingSaved, setRatingSaved] = useState(false)
+
+  useEffect(() => {
+    if (phase !== 'result' || !result?.passed) return
+    fetch(`/api/courses/${courseId}/rating`)
+      .then(r => r.json())
+      .then((d: { rating: number | null }) => {
+        if (d.rating) { setMyRating(d.rating); setRatingSaved(true) }
+      })
+      .catch(() => {})
+  }, [phase, result?.passed, courseId])
+
+  async function submitRating(rating: number) {
+    setMyRating(rating)
+    try {
+      const res = await fetch(`/api/courses/${courseId}/rating`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating }),
+      })
+      if (res.ok) setRatingSaved(true)
+    } catch {}
+  }
 
   // Prior-learning declaration form
   const [guruName, setGuruName] = useState('')
@@ -431,7 +456,15 @@ export default function ExamPage() {
               <p className="text-brand-gold-muted text-sm mb-1">
                 {fill(tx.correctOutOf, { score: result.score, total: result.total })}
               </p>
-              <p className="text-brand-gold-muted text-sm mb-6">{tx.minRequired}</p>
+              <p className="text-brand-gold-muted text-sm mb-4">{tx.minRequired}</p>
+              <div className="mb-6">
+                <p className="text-brand-gold-muted text-xs mb-2">
+                  {ratingSaved ? t.cert.rateSubmitted : t.cert.ratePrompt}
+                </p>
+                <div className="flex justify-center">
+                  <StarRatingInput initialValue={myRating} onSubmit={submitRating} />
+                </div>
+              </div>
               <div className="flex flex-col gap-3">
                 <button
                   onClick={() => router.push(`/certificate/${courseId}`)}

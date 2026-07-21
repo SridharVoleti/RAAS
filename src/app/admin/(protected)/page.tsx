@@ -7,13 +7,13 @@ export default async function AdminDashboard() {
 
   const [
     { count: totalCourses },
-    { count: totalStudents },
+    { count: activeUsers },
     { data: revenueRows },
     { count: pendingCount },
     { data: pendingPayments },
   ] = await Promise.all([
     supabase.from('courses').select('*', { count: 'exact', head: true }).eq('is_published', true),
-    supabase.from('enrollments').select('*', { count: 'exact', head: true }).eq('is_active', true),
+    supabase.from('profiles').select('*', { count: 'exact', head: true }),
     supabase.from('payment_logs').select('amount').eq('status', 'paid'),
     supabase.from('payment_logs').select('*', { count: 'exact', head: true }).eq('status', 'created'),
     supabase.from('payment_logs')
@@ -51,7 +51,7 @@ export default async function AdminDashboard() {
 
   const STATS = [
     { label: 'Published Courses', value: totalCourses ?? 0, icon: BookOpen, color: 'text-brand-gold' },
-    { label: 'Active Students', value: totalStudents ?? 0, icon: Users, color: 'text-brand-success' },
+    { label: 'Active Users', value: activeUsers ?? 0, icon: Users, color: 'text-brand-success' },
     { label: 'Revenue (₹)', value: `₹${totalRevenue.toLocaleString('en-IN')}`, icon: IndianRupee, color: 'text-blue-400' },
     { label: 'Pending Payments', value: pendingCount ?? 0, icon: Clock, color: 'text-brand-error' },
   ]

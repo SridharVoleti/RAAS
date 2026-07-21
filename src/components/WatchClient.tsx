@@ -7,6 +7,7 @@ import { CheckCircle2, ChevronLeft, ChevronRight, BookOpen, ExternalLink, FileTe
 import { useLang } from '@/contexts/LanguageContext'
 import { allCompleteInLanguage } from '@/lib/quiz-languages'
 import { LanguageUnavailableModal } from '@/components/LanguageUnavailableModal'
+import StarRatingInput from '@/components/StarRatingInput'
 import type { Chapter, Course, CourseAnswer, CourseQuestion, Lesson, QuizQuestion_Public, QuizSubmission, QuizResult } from '@/types'
 
 // ── YouTube IFrame API types ─────────────────────────────────────────────────
@@ -212,6 +213,8 @@ export default function WatchClient({
     completedCount === totalLessons &&
     requiredChapterIds.every(id => passedChapterQuizIds.has(id))
   const [showCongrats, setShowCongrats] = useState(false)
+  const [myRating, setMyRating] = useState<number | null>(null)
+  const [ratingSaved, setRatingSaved] = useState(false)
   const completeOnMountRef = useRef(fullyComplete)
   const congratsCheckedRef = useRef(false)
 
@@ -229,9 +232,27 @@ export default function WatchClient({
           const key = sessionStorage.key(i)
           if (key?.startsWith('km_has_certs_')) sessionStorage.setItem(key, '1')
         }
+        fetch(`/api/courses/${course.id}/rating`)
+          .then(r => r.json())
+          .then((d: { rating: number | null }) => {
+            if (d.rating) { setMyRating(d.rating); setRatingSaved(true) }
+          })
+          .catch(() => {})
       })
       .catch(() => {})
   }, [fullyComplete, course.id])
+
+  async function submitRating(rating: number) {
+    setMyRating(rating)
+    try {
+      const res = await fetch(`/api/courses/${course.id}/rating`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating }),
+      })
+      if (res.ok) setRatingSaved(true)
+    } catch {}
+  }
 
   useEffect(() => {
     if (!currentLesson) return
@@ -473,7 +494,15 @@ export default function WatchClient({
               <div className="bg-brand-card border border-brand-gold/50 rounded-2xl p-8 max-w-md w-full text-center shadow-2xl">
                 <div className="text-5xl mb-3">🎉</div>
                 <h2 className="text-brand-gold font-bold text-2xl mb-2">{t.cert.congratsTitle}</h2>
-                <p className="text-brand-body text-sm mb-6">{t.cert.congratsBody}</p>
+                <p className="text-brand-body text-sm mb-4">{t.cert.congratsBody}</p>
+                <div className="mb-6">
+                  <p className="text-brand-gold-muted text-xs mb-2">
+                    {ratingSaved ? t.cert.rateSubmitted : t.cert.ratePrompt}
+                  </p>
+                  <div className="flex justify-center">
+                    <StarRatingInput initialValue={myRating} onSubmit={submitRating} />
+                  </div>
+                </div>
                 <div className="flex flex-col sm:flex-row gap-2 justify-center">
                   <button
                     onClick={() => router.push('/my-certificates')}

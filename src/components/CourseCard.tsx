@@ -57,11 +57,15 @@ export default function CourseCard({ course, onClick, isEnrolled }: CourseCardPr
           {instructor}
         </p>
 
-        {/* Rating row */}
+        {/* Rating + duration row */}
         <div className="flex items-center gap-1 mb-3">
-          <Star className="w-3.5 h-3.5 fill-brand-gold text-brand-gold" />
-          <span className="text-brand-gold text-xs font-semibold">{course.rating}</span>
-          <span className="text-brand-gold-muted text-xs">({course.review_count})</span>
+          {course.review_count > 0 && (
+            <>
+              <Star className="w-3.5 h-3.5 fill-brand-gold text-brand-gold" />
+              <span className="text-brand-gold text-xs font-semibold">{course.rating}</span>
+              <span className="text-brand-gold-muted text-xs">({course.review_count})</span>
+            </>
+          )}
           <span className="text-brand-gold-muted text-xs ml-auto">{course.duration}</span>
         </div>
 

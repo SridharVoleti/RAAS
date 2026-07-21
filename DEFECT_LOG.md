@@ -16,6 +16,32 @@ Format: newest defects at the top within each section.
 
 ---
 
+## SECURITY — Unexplained / Anomalous Changes
+
+### SECURITY-001 · `promote_sridhar_admin.sql` was silently modified to target a different user's ID instead of the owner's email
+| | |
+|---|---|
+| **Date** | 2026-07-21 |
+| **Severity** | P1 |
+| **Status** | Reverted, root cause unknown |
+| **Commit** | _(uncommitted working-tree change, reverted via `git checkout`)_ |
+
+**Issue**
+`supabase/promote_sridhar_admin.sql` (a manual one-time script the owner runs in the Supabase SQL Editor to grant themselves admin) was found locally modified: `WHERE email = 'sridhar.voleti@gmail.com'` had been changed to `WHERE id = '93fd4852-2c83-46b3-94ab-e1cf0a1fbf11'` — the profile ID of a different, non-admin student (Voleti Rama Krishnama Charyulu Dasaha, kept during the same day's student-list cleanup). Had this script been run as-is, it would have granted admin rights to that student's account instead of the owner's.
+
+**Root Cause**
+Unknown. The file's mtime (1:05:12 PM) fell inside a window where the assisting Claude Code session was only running read-only `Grep`/`Read` calls — no `Write`/`Edit`/`Bash` command from that session touched this file. Neither the project's nor the global `.claude/settings.json` had any hooks configured that could explain an automated edit. The change was never committed or run against the database.
+
+**Solution**
+Reverted via `git checkout -- supabase/promote_sridhar_admin.sql` before anything was committed or executed.
+
+**Prevention for Future Projects**
+- Always review `git status`/`git diff` for files *outside* the current task's intended scope before committing — an unrelated tracked file showing as modified is a signal to stop and investigate, not to `git add -A` past it.
+- One-time privilege-escalation scripts (anything that sets `is_admin = true`) are worth double-checking against their committed version before ever pasting them into the SQL Editor, especially if the working tree shows any uncommitted diff on them.
+- If this recurs, check for other Claude Code sessions or editors with write access to the same working tree running concurrently.
+
+---
+
 ## CONTENT — Course Category Data
 
 ### CONTENT-001 · Renaming "Scriptures" text on the explore/path page had no effect — actual label came from DB `category` field, not a translation string

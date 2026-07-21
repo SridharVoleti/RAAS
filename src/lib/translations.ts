@@ -20,9 +20,8 @@ export const translations = {
       otherHeading: 'Other Granthas',
     },
     stats: {
-      enrolled: 'Students Enrolled',
+      activeUsers: 'Active Users',
       courses: 'Courses Available',
-      rating: 'Average Rating',
       languages: 'Languages',
     },
     home: {
@@ -91,6 +90,10 @@ export const translations = {
       download: 'Download PDF',
       view: 'View',
       empty: 'No certificates yet. Complete a course to earn your first certificate.',
+      ratePrompt: 'How was your experience with this course?',
+      rateSubmitted: 'Thanks for rating this course!',
+      yourRating: 'Your rating',
+      updateRating: 'Update your rating',
       exploreCourses: 'Explore Courses',
     },
     priorLearning: {
@@ -349,9 +352,8 @@ export const translations = {
       otherHeading: 'ఇతర గ్రంథములు',
     },
     stats: {
-      enrolled: 'నమోదైన విద్యార్థులు',
+      activeUsers: 'క్రియాశీల వినియోగదారులు',
       courses: 'అందుబాటులో ఉన్న కోర్సులు',
-      rating: 'సగటు రేటింగ్',
       languages: 'భాషలు',
     },
     home: {
@@ -420,6 +422,10 @@ export const translations = {
       download: 'PDF డౌన్‌లోడ్',
       view: 'చూడండి',
       empty: 'ఇంకా పత్రాలు లేవు. మీ మొదటి పత్రం పొందడానికి ఒక కోర్సును పూర్తి చేయండి.',
+      ratePrompt: 'ఈ కోర్సుతో మీ అనుభవం ఎలా ఉంది?',
+      rateSubmitted: 'ఈ కోర్సును రేట్ చేసినందుకు ధన్యవాదాలు!',
+      yourRating: 'మీ రేటింగ్',
+      updateRating: 'మీ రేటింగ్‌ను నవీకరించండి',
       exploreCourses: 'కోర్సులు అన్వేషించు',
     },
     priorLearning: {

@@ -164,6 +164,10 @@ export const QuizSubmitSchema = z.object({
   answers: z.record(z.string(), z.enum(['a', 'b', 'c', 'd'])),
 })
 
+export const CourseRatingSchema = z.object({
+  rating: z.number().int().min(1).max(5),
+})
+
 // ── Exam ──────────────────────────────────────────────────────────────────────
 
 const ExamQuestionBaseSchema = z.object({

@@ -348,18 +348,14 @@ export default function HomeContent({ courses, paths, stats, testimonials, widge
 
       {/* Stats bar — live data cached 24h */}
       <section className="border-y border-brand-border bg-brand-card py-6 px-4">
-        <div className="max-w-4xl mx-auto grid grid-cols-3 gap-6 text-center">
+        <div className="max-w-4xl mx-auto grid grid-cols-2 gap-6 text-center">
           <div>
-            <div className="text-brand-gold font-bold text-2xl">{stats.studentsEnrolled.toLocaleString()}+</div>
-            <div className="text-brand-gold-muted text-xs mt-1">{t.stats.enrolled}</div>
+            <div className="text-brand-gold font-bold text-2xl">{stats.activeUsers.toLocaleString()}+</div>
+            <div className="text-brand-gold-muted text-xs mt-1">{t.stats.activeUsers}</div>
           </div>
           <div>
             <div className="text-brand-gold font-bold text-2xl">{stats.coursesAvailable}</div>
             <div className="text-brand-gold-muted text-xs mt-1">{t.stats.courses}</div>
-          </div>
-          <div>
-            <div className="text-brand-gold font-bold text-2xl">{stats.averageRating} ⭐</div>
-            <div className="text-brand-gold-muted text-xs mt-1">{t.stats.rating}</div>
           </div>
         </div>
       </section>

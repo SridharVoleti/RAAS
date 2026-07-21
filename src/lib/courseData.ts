@@ -208,9 +208,8 @@ export const COURSES: Course[] = [
 ]
 
 export const STATS = {
-  studentsEnrolled: 12456,
+  activeUsers: 12456,
   coursesAvailable: 12,
-  averageRating: 4.8,
   languages: 2,
 }
 

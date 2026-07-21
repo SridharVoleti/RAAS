@@ -4,9 +4,8 @@ import type { Course, LearningPath, Testimonial, TextWidget } from '@/types'
 import { COURSES, STATS } from './courseData'
 
 export interface HomeStats {
-  studentsEnrolled: number
+  activeUsers: number
   coursesAvailable: number
-  averageRating: number
   languages: number
 }
 
@@ -42,28 +41,16 @@ export const getCachedStats = unstable_cache(
     try {
       const sb = createCacheClient()
       const [
-        { count: enrolled },
+        { count: activeUsers },
         { count: coursesCount },
-        { data: ratingRows },
       ] = await Promise.all([
-        sb.from('enrollments').select('*', { count: 'exact', head: true }).eq('is_active', true),
+        sb.from('profiles').select('*', { count: 'exact', head: true }),
         sb.from('courses').select('*', { count: 'exact', head: true }).eq('is_published', true),
-        sb.from('courses').select('rating').eq('is_published', true),
       ])
 
-      const avgRating =
-        ratingRows?.length
-          ? Math.round(
-              (ratingRows.reduce((s: number, r: { rating: unknown }) => s + Number(r.rating), 0) /
-                ratingRows.length) *
-                10
-            ) / 10
-          : STATS.averageRating
-
       return {
-        studentsEnrolled: enrolled ?? STATS.studentsEnrolled,
+        activeUsers: activeUsers ?? STATS.activeUsers,
         coursesAvailable: coursesCount ?? STATS.coursesAvailable,
-        averageRating: avgRating,
         languages: 2,
       }
     } catch {

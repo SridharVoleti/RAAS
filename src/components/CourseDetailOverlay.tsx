@@ -109,11 +109,13 @@ export default function CourseDetailOverlay({ course, onClose }: Props) {
 
           {/* Meta row */}
           <div className="flex items-center gap-4 text-brand-gold-muted text-sm mb-5">
-            <div className="flex items-center gap-1">
-              <Star className="w-4 h-4 fill-brand-gold text-brand-gold" />
-              <span className="text-brand-gold font-semibold">{course.rating}</span>
-              <span>({course.review_count})</span>
-            </div>
+            {course.review_count > 0 && (
+              <div className="flex items-center gap-1">
+                <Star className="w-4 h-4 fill-brand-gold text-brand-gold" />
+                <span className="text-brand-gold font-semibold">{course.rating}</span>
+                <span>({course.review_count})</span>
+              </div>
+            )}
             <div className="flex items-center gap-1">
               <Users className="w-4 h-4" />
               <span>{course.student_count.toLocaleString()}</span>

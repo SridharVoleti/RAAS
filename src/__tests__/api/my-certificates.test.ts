@@ -20,7 +20,7 @@ function mockUserClient(enrollments: { course_id: number }[] | null, user: { id:
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
     from: vi.fn(() => {
       const b: Record<string, unknown> = {}
-      for (const m of ['select', 'eq']) b[m] = vi.fn().mockReturnValue(b)
+      for (const m of ['select', 'eq', 'in']) b[m] = vi.fn().mockReturnValue(b)
       b.then = (resolve: (v: unknown) => void) => resolve({ data: enrollments })
       return b
     }),

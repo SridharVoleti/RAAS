@@ -24,7 +24,16 @@ export async function GET() {
 
     certificates.sort((a, b) => b.completedAt.localeCompare(a.completedAt))
 
-    return NextResponse.json({ certificates })
+    const { data: ratingRows } = await supabase
+      .from('course_ratings')
+      .select('course_id, rating')
+      .eq('user_id', user.id)
+      .in('course_id', certificates.map(c => c.courseId))
+    const ratingByCourse = new Map((ratingRows ?? []).map(r => [r.course_id, r.rating]))
+
+    const withRatings = certificates.map(c => ({ ...c, myRating: ratingByCourse.get(c.courseId) ?? null }))
+
+    return NextResponse.json({ certificates: withRatings })
   } catch (err) {
     logger.error({ error: String(err) }, 'my_certificates.failed')
     return NextResponse.json({ error: 'Failed to load certificates' }, { status: 500 })

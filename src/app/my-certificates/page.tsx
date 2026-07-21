@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Award, Download, Eye } from 'lucide-react'
 import { useLang } from '@/contexts/LanguageContext'
 import { createClient } from '@/lib/supabase/client'
+import StarRatingInput from '@/components/StarRatingInput'
 
 interface EarnedCertificate {
   courseId: number
@@ -13,6 +14,7 @@ interface EarnedCertificate {
   courseTitleTe: string | null
   completedAt: string
   emoji: string
+  myRating: number | null
 }
 
 export default function MyCertificatesPage() {
@@ -38,6 +40,15 @@ export default function MyCertificatesPage() {
   // router is stable from Next.js
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  async function rateCourse(courseId: number, rating: number) {
+    setCerts(prev => prev.map(c => c.courseId === courseId ? { ...c, myRating: rating } : c))
+    await fetch(`/api/courses/${courseId}/rating`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rating }),
+    }).catch(() => {})
+  }
 
   if (loading) {
     return (
@@ -89,6 +100,16 @@ export default function MyCertificatesPage() {
                       })}
                     </p>
                   </div>
+                </div>
+                <div>
+                  <p className="text-brand-gold-muted text-xs mb-1.5">
+                    {cert.myRating ? t.cert.updateRating : t.cert.ratePrompt}
+                  </p>
+                  <StarRatingInput
+                    size="sm"
+                    initialValue={cert.myRating}
+                    onSubmit={rating => rateCourse(cert.courseId, rating)}
+                  />
                 </div>
                 <div className="flex gap-2 mt-auto">
                   <a
