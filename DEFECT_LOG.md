@@ -43,6 +43,30 @@ The visible category label wasn't a translation string at all — it was the lit
 
 ---
 
+## ADMIN — Admin Dashboard Pages
+
+### ADMIN-001 · Admin Students page crashed with "e.filter is not a function"
+| | |
+|---|---|
+| **Date** | 2026-07-21 |
+| **Severity** | P2 |
+| **Status** | Fixed |
+| **Commit** | _(pending commit)_ |
+
+**Issue**
+Opening `/admin/students` threw an uncaught `TypeError: e.filter is not a function` in the browser console and the page failed to render the student list.
+
+**Root Cause**
+`GET /api/admin/students` (`src/app/api/admin/students/route.ts`) returns a paginated shape `{ items, nextCursor }`, but the page (`src/app/admin/(protected)/students/page.tsx`) did `setStudents(d)` with the raw response instead of `d.items`, then called `students.filter(...)` directly on what was actually `{items, nextCursor}` — an object, not an array.
+
+**Solution**
+Changed the fetch handler to `setStudents(d.items ?? [])`. Pagination (`nextCursor`) isn't wired into the UI yet — the page only ever renders the first page (up to 50 students); revisit if the student count grows past that.
+
+**Prevention for Future Projects**
+When an API route returns a paginated envelope (`{items, nextCursor}` etc.), grep the consuming component for how it stores the response — a bare `setState(response)` instead of `setState(response.items)` fails silently at the type level (no TS error since `useState<Student[]>([])` doesn't catch a mismatched `.then` payload) and only surfaces at runtime as a minified `.filter is not a function` crash.
+
+---
+
 ## EXAM — Final Test & Prior Learning
 
 ---

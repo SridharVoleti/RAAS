@@ -17,7 +17,7 @@ export default function AdminStudentsPage() {
   useEffect(() => {
     fetch('/api/admin/students')
       .then(r => r.json())
-      .then(d => { setStudents(d); setLoading(false) })
+      .then(d => { setStudents(d.items ?? []); setLoading(false) })
   }, [])
 
   const filtered = students.filter(s =>
