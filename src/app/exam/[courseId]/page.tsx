@@ -67,7 +67,7 @@ export default function ExamPage() {
 
   useEffect(() => {
     if (phase !== 'result' || !result?.passed) return
-    fetch(`/api/courses/${courseId}/rating`)
+    fetch(`/api/course-ratings/${courseId}`)
       .then(r => r.json())
       .then((d: { rating: number | null }) => {
         if (d.rating) { setMyRating(d.rating); setRatingSaved(true) }
@@ -78,7 +78,7 @@ export default function ExamPage() {
   async function submitRating(rating: number) {
     setMyRating(rating)
     try {
-      const res = await fetch(`/api/courses/${courseId}/rating`, {
+      const res = await fetch(`/api/course-ratings/${courseId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rating }),

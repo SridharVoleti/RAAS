@@ -232,7 +232,7 @@ export default function WatchClient({
           const key = sessionStorage.key(i)
           if (key?.startsWith('km_has_certs_')) sessionStorage.setItem(key, '1')
         }
-        fetch(`/api/courses/${course.id}/rating`)
+        fetch(`/api/course-ratings/${course.id}`)
           .then(r => r.json())
           .then((d: { rating: number | null }) => {
             if (d.rating) { setMyRating(d.rating); setRatingSaved(true) }
@@ -245,7 +245,7 @@ export default function WatchClient({
   async function submitRating(rating: number) {
     setMyRating(rating)
     try {
-      const res = await fetch(`/api/courses/${course.id}/rating`, {
+      const res = await fetch(`/api/course-ratings/${course.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rating }),

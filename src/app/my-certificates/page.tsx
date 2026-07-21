@@ -43,7 +43,7 @@ export default function MyCertificatesPage() {
 
   async function rateCourse(courseId: number, rating: number) {
     setCerts(prev => prev.map(c => c.courseId === courseId ? { ...c, myRating: rating } : c))
-    await fetch(`/api/courses/${courseId}/rating`, {
+    await fetch(`/api/course-ratings/${courseId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ rating }),
