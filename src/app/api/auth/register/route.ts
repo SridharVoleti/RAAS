@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
 
-  const { email, password, fullName, fathersName, address, city, mobile, avatarInitials, referralSource } = body
+  const { email, password, fullName, fathersName, address, city, mobile, isd, avatarInitials, referralSource } = body
 
   if (!password) {
     return NextResponse.json({ error: 'Password is required' }, { status: 400 })
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
 
   // For mobile-only accounts: synthesise a stable auth email.
   // The domain mobile.srikrishnamargam.in is never used as a real mailbox.
-  const authEmail     = hasEmail ? email.trim() : mobileToSyntheticEmail('', mobile.trim())
+  const authEmail     = hasEmail ? email.trim() : mobileToSyntheticEmail(isd?.trim() || '+91', mobile.trim())
   const isMobileUser  = !hasEmail
 
   try {

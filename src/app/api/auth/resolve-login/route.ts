@@ -3,10 +3,23 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
 import {
   looksLikeMobile,
-  loginMobileToSyntheticEmail,
-  normalizeLoginMobile,
   normalizeMobileDigits,
+  toFullMobileDigits,
+  MOBILE_AUTH_DOMAIN,
 } from '@/lib/validation'
+
+/**
+ * A raw mobile string can be typed in more than one equivalent form
+ * (with/without the country code, with/without formatting) depending on
+ * the device and how the number was entered at registration. Expand it to
+ * every digit form we're willing to treat as the same account, so lookup
+ * doesn't depend on which form the user happens to type.
+ */
+function candidateDigits(raw: string): string[] {
+  const asTyped = normalizeMobileDigits(raw)
+  const indiaAssumed = toFullMobileDigits('+91', raw)
+  return asTyped === indiaAssumed ? [asTyped] : [asTyped, indiaAssumed]
+}
 
 /**
  * POST /api/auth/resolve-login
@@ -36,9 +49,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ authEmail: username.toLowerCase() })
   }
 
-  // Mobile login — find the correct Supabase auth email
-  const syntheticEmail   = loginMobileToSyntheticEmail(username)
-  const normalizedDigits = normalizeLoginMobile(username)
+  // Mobile login — find the correct Supabase auth email. The same account may
+  // have been registered from a different device/browser than the one logging
+  // in now, so try every digit form we'd accept as equivalent.
+  const loginCandidates = candidateDigits(username)
+  const candidateEmails = new Set(loginCandidates.map(d => `${d}@${MOBILE_AUTH_DOMAIN}`))
 
   try {
     const supabase = await createAdminClient()
@@ -49,17 +64,18 @@ export async function POST(req: Request) {
     }
 
     // 1. Mobile-only user: their Supabase auth email IS the synthetic email
-    const mobileOnlyUser = users.find(u => u.email?.toLowerCase() === syntheticEmail)
+    const mobileOnlyUser = users.find(u => candidateEmails.has((u.email ?? '').toLowerCase()))
     if (mobileOnlyUser) {
       logger.info({ userId: mobileOnlyUser.id }, 'resolve-login.mobile-only')
-      return NextResponse.json({ authEmail: syntheticEmail })
+      return NextResponse.json({ authEmail: (mobileOnlyUser.email ?? '').toLowerCase() })
     }
 
     // 2. Email+mobile user: real email in auth, mobile stored in user_metadata
     const emailMobileUser = users.find(u => {
       const meta = u.user_metadata?.mobile as string | undefined
       if (!meta) return false
-      return normalizeMobileDigits(meta) === normalizedDigits
+      const metaCandidates = candidateDigits(meta)
+      return metaCandidates.some(d => loginCandidates.includes(d))
     })
     if (emailMobileUser?.email) {
       logger.info({ userId: emailMobileUser.id }, 'resolve-login.email-mobile')

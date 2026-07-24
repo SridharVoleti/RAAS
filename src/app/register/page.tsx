@@ -7,6 +7,7 @@ import { Eye, EyeOff, CheckCircle2, Loader2, Mail, Smartphone } from 'lucide-rea
 import { useLang } from '@/contexts/LanguageContext'
 import { createClient } from '@/lib/supabase/client'
 import { getAvatarInitials } from '@/lib/utils'
+import { toFullMobileDigits, MOBILE_AUTH_DOMAIN } from '@/lib/validation'
 
 const ISD_OPTIONS = ['+91', '+1', '+44', '+61', '+971', '+65']
 
@@ -319,8 +320,7 @@ export default function RegisterPage() {
       }
 
       // Always check if the mobile is already registered (via its synthetic email)
-      const mobileDigits  = `${isd}${mobile}`.replace(/\D/g, '')
-      const syntheticEmail = `${mobileDigits}@mobile.srikrishnamargam.in`
+      const syntheticEmail = `${toFullMobileDigits(isd, mobile)}@${MOBILE_AUTH_DOMAIN}`
       const mobileRes  = await fetch('/api/auth/check-email', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -339,7 +339,8 @@ export default function RegisterPage() {
           fathersName,
           address,
           city,
-          mobile: fullMobile,
+          mobile,
+          isd,
           avatarInitials: getAvatarInitials(fullName),
           referralSource,
         }),

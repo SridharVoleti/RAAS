@@ -138,7 +138,9 @@ export default function ProfilePage() {
           </div>
           <div>
             <h1 className="text-brand-gold font-bold text-2xl">{profile?.full_name}</h1>
-            <p className="text-brand-gold-muted text-sm">{profile?.email}</p>
+            <p className="text-brand-gold-muted text-sm">
+              {profile?.email || (profile?.mobile ? `${profile.isd_code}${profile.mobile}` : '')}
+            </p>
           </div>
         </div>
 

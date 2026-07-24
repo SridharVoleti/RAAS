@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { getAdminUser, forbidden } from '@/lib/admin'
 import { logger } from '@/lib/logger'
+import { isSyntheticEmail } from '@/lib/validation'
 
 const DEFAULT_LIMIT = 50
 const MAX_LIMIT = 100
@@ -71,9 +72,10 @@ export async function GET(request: Request) {
   const result = page.map(p => {
     const enrolledCount = enrollments?.filter(e => e.user_id === p.id).length ?? 0
     const authUser = authUsers.find(u => u.id === p.id)
+    const email = authUser?.email && !isSyntheticEmail(authUser.email) ? authUser.email : ''
     return {
       ...p,
-      email: authUser?.email ?? '',
+      email,
       enrolled_courses: enrolledCount,
     }
   })

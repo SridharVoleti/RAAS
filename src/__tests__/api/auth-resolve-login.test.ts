@@ -90,6 +90,28 @@ describe('POST /api/auth/resolve-login', () => {
     expect(data.authEmail).toBe('arjuna@example.com')
   })
 
+  it('resolves a non-Indian number typed with its own country code (not assumed to be a bare Indian number)', async () => {
+    mockUsers([{ id: 'u1', email: '19876543210@mobile.srikrishnamargam.in' }])
+    const res  = await POST(makeRequest({ username: '+19876543210' }))
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.authEmail).toBe('19876543210@mobile.srikrishnamargam.in')
+  })
+
+  it('resolves mobile to real email when registered mobile metadata itself already includes the country code', async () => {
+    mockUsers([
+      {
+        id: 'u2',
+        email: 'arjuna@example.com',
+        user_metadata: { mobile: '919876543210' },
+      },
+    ])
+    const res  = await POST(makeRequest({ username: '9876543210' }))
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.authEmail).toBe('arjuna@example.com')
+  })
+
   // ── Not found ─────────────────────────────────────────────────────────────────
 
   it('returns 404 when mobile is not registered', async () => {

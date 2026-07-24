@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { parseBody, UpdateProfileSchema, ChangePasswordSchema } from '@/lib/validation'
+import { parseBody, UpdateProfileSchema, ChangePasswordSchema, isSyntheticEmail } from '@/lib/validation'
 import { getAvatarInitials } from '@/lib/utils'
 import { logger } from '@/lib/logger'
 
@@ -17,7 +17,8 @@ export async function GET() {
       .single()
 
     if (error || !data) return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
-    return NextResponse.json({ ...data, email: user.email })
+    const email = isSyntheticEmail(user.email ?? '') ? '' : (user.email ?? '')
+    return NextResponse.json({ ...data, email })
   } catch (err) {
     logger.error({ error: String(err) }, 'profile.get.failed')
     return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 })

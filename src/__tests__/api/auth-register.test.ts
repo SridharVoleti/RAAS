@@ -118,4 +118,18 @@ describe('POST /api/auth/register', () => {
     const authEmail = createUser.mock.calls[0][0].email as string
     expect(authEmail).toBe('919876543210@mobile.srikrishnamargam.in')
   })
+
+  it('mobile-only: collapses a country code the mobile field already contains (e.g. autofill stuffing the full international number into the local-number field)', async () => {
+    const createUser = mockSupabase({ data: { user: { id: 'u1' } }, error: null })
+    await POST(makeRequest({ mobile: '+91 98765 43210', isd: '+91', password: 'pass' }))
+    const authEmail = createUser.mock.calls[0][0].email as string
+    expect(authEmail).toBe('919876543210@mobile.srikrishnamargam.in')
+  })
+
+  it('mobile-only: honors a non-default ISD code', async () => {
+    const createUser = mockSupabase({ data: { user: { id: 'u1' } }, error: null })
+    await POST(makeRequest({ mobile: '9876543210', isd: '+1', password: 'pass' }))
+    const authEmail = createUser.mock.calls[0][0].email as string
+    expect(authEmail).toBe('19876543210@mobile.srikrishnamargam.in')
+  })
 })
