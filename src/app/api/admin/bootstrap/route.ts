@@ -32,7 +32,9 @@ export async function POST(req: Request) {
   const supabase = await createAdminClient()
 
   // Look up the user by email
-  const { data: { users }, error: listError } = await supabase.auth.admin.listUsers()
+  // `page` must be passed explicitly — supabase-js sends page='' when omitted,
+  // which the Auth admin API 500s on ("Database error finding users").
+  const { data: { users }, error: listError } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 })
   if (listError) return NextResponse.json({ error: listError.message }, { status: 500 })
 
   const target = users.find(u => u.email?.toLowerCase() === email.trim().toLowerCase())

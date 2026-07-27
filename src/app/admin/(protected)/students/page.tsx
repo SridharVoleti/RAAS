@@ -132,7 +132,7 @@ export default function AdminStudentsPage() {
                 <tr className="text-brand-gold-muted text-xs uppercase font-medium border-b border-brand-border bg-brand-bg">
                   <th className="text-left px-4 py-3 w-48">Name</th>
                   <th className="text-left px-4 py-3 w-48">Email</th>
-                  <th className="text-left px-4 py-3 w-40">Mobile</th>
+                  <th className="text-left px-4 py-3 w-48">Mobile</th>
                   <th className="text-left px-4 py-3 w-32">City</th>
                   <th className="text-left px-4 py-3 w-40">Country</th>
                   <th className="text-left px-4 py-3 w-28">Student ID</th>
@@ -174,7 +174,7 @@ export default function AdminStudentsPage() {
                         <input
                           value={s.mobile ?? ''}
                           onChange={e => updateField(s.id, 'mobile', e.target.value)}
-                          className={inputClass}
+                          className={`${inputClass} flex-1 min-w-[100px]`}
                         />
                       </div>
                     </td>

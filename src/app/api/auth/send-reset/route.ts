@@ -79,7 +79,9 @@ export async function POST(req: Request) {
     const supabase = await createAdminClient()
 
     // Check if the account exists
-    const { data: { users }, error: listError } = await supabase.auth.admin.listUsers({ perPage: 1000 })
+    // `page` must be passed explicitly — supabase-js sends page='' when omitted,
+    // which the Auth admin API 500s on ("Database error finding users").
+    const { data: { users }, error: listError } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 })
     if (listError) {
       logger.error({ error: listError.message }, 'send-reset.listUsers.failed')
       return NextResponse.json({ error: 'Could not verify email. Please try again.' }, { status: 500 })

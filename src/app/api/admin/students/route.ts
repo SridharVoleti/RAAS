@@ -70,8 +70,14 @@ export async function GET(request: Request) {
     .in('user_id', userIds)
     .eq('is_active', true)
 
-  // listUsers fetches up to 1000; matched against current page only
-  const { data: { users: authUsers } } = await supabase.auth.admin.listUsers({ perPage: 1000 })
+  // listUsers fetches up to 1000; matched against current page only.
+  // `page` must be passed explicitly — supabase-js sends page='' when omitted,
+  // which the Auth admin API 500s on ("Database error finding users").
+  const { data: listUsersData, error: listUsersError } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 })
+  if (listUsersError) {
+    logger.error({ err: listUsersError }, 'admin students listUsers failed')
+  }
+  const authUsers = listUsersData?.users ?? []
 
   const result = page.map(p => {
     const enrolledCount = enrollments?.filter(e => e.user_id === p.id).length ?? 0

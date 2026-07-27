@@ -57,7 +57,9 @@ export async function POST(req: Request) {
 
   try {
     const supabase = await createAdminClient()
-    const { data: { users }, error } = await supabase.auth.admin.listUsers({ perPage: 1000 })
+    // `page` must be passed explicitly — supabase-js sends page='' when omitted,
+    // which the Auth admin API 500s on ("Database error finding users").
+    const { data: { users }, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 })
     if (error) {
       logger.error({ error: error.message }, 'resolve-login.listUsers.failed')
       return NextResponse.json({ error: 'Could not resolve login' }, { status: 500 })
