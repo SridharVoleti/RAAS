@@ -44,7 +44,9 @@ export async function middleware(request: NextRequest) {
   // (for QA) may reach the rest of the site. /admin/* keeps its own gate below.
   if (!isLive() && !pathname.startsWith('/admin')) {
     const allowedPaths = ['/', '/register', '/login', '/onboarding', '/auth/callback']
-    const isAllowed = allowedPaths.includes(pathname) || pathname.startsWith('/api/auth/')
+    const isAllowed = allowedPaths.includes(pathname)
+      || pathname.startsWith('/api/auth/')
+      || pathname.startsWith('/api/public/')
 
     let isAdmin = false
     if (user) {
