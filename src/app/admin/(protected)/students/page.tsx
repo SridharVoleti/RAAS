@@ -167,7 +167,7 @@ export default function AdminStudentsPage() {
                         <select
                           value={s.isd_code}
                           onChange={e => updateField(s.id, 'isd_code', e.target.value)}
-                          className={`${inputClass} w-16 flex-shrink-0`}
+                          className={`${inputClass} !w-16 flex-shrink-0`}
                         >
                           {ISD_OPTIONS.map(code => <option key={code} value={code}>{code}</option>)}
                         </select>
