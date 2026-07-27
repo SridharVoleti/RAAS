@@ -51,82 +51,85 @@ export default function StudentHomeContent({ courses, paths }: Props) {
   return (
     <div className="min-h-screen bg-brand-bg">
       <section className="max-w-7xl mx-auto px-4 py-10">
-        {raasPath && (() => {
-          const fullName = lang === 'te' && raasPath.full_name_te ? raasPath.full_name_te : raasPath.full_name_en
-          const tagline = lang === 'te' && raasPath.tagline_te ? raasPath.tagline_te : raasPath.tagline_en
-          const count = courses.filter(c => c.path_id === raasPath.id && c.is_published).length
+        <div className="flex flex-col md:flex-row items-stretch gap-5 mb-10">
+          {/* Enrollment prerequisites — always visible, independent of path data */}
+          <div className="w-full md:w-72 lg:w-80 shrink-0 rounded-2xl border-2 border-brand-border bg-brand-card p-5">
+            <ul className="space-y-3.5">
+              <li>
+                <button
+                  onClick={() => setVideoSignal(s => s + 1)}
+                  className="flex items-start gap-2.5 text-left text-brand-gold-muted hover:text-brand-gold text-sm leading-snug transition-colors"
+                >
+                  <span aria-hidden className="mt-0.5">🎧</span>
+                  <span>{t.home.listenPrompt}</span>
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => setPlDialogOpen(true)}
+                  className="flex items-start gap-2.5 text-left text-brand-gold-muted hover:text-brand-gold text-sm leading-snug transition-colors"
+                >
+                  <span aria-hidden className="mt-0.5">🎓</span>
+                  <span>{t.home.guruPrompt}</span>
+                </button>
+              </li>
+              {examLinks.map(link => (
+                <li key={link.courseId}>
+                  <button
+                    onClick={() => router.push(`/exam/${link.courseId}`)}
+                    className="flex items-start gap-2.5 text-left text-brand-gold-muted hover:text-brand-gold text-sm leading-snug transition-colors"
+                  >
+                    <span aria-hidden className="mt-0.5">📜</span>
+                    <span>
+                      {t.priorLearning.takeFinalTest}
+                      {': '}
+                      {lang === 'te' && link.title_te ? link.title_te : link.title_en}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
 
-          return (
-            <div className="flex flex-col md:flex-row items-stretch gap-5 mb-10">
-              <div className="w-full md:w-72 lg:w-80 shrink-0 rounded-2xl border-2 border-brand-border bg-brand-card p-5">
-                <ul className="space-y-3.5">
-                  <li>
-                    <button
-                      onClick={() => setVideoSignal(s => s + 1)}
-                      className="flex items-start gap-2.5 text-left text-brand-gold-muted hover:text-brand-gold text-sm leading-snug transition-colors"
-                    >
-                      <span aria-hidden className="mt-0.5">🎧</span>
-                      <span>{t.home.listenPrompt}</span>
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => setPlDialogOpen(true)}
-                      className="flex items-start gap-2.5 text-left text-brand-gold-muted hover:text-brand-gold text-sm leading-snug transition-colors"
-                    >
-                      <span aria-hidden className="mt-0.5">🎓</span>
-                      <span>{t.home.guruPrompt}</span>
-                    </button>
-                  </li>
-                  {examLinks.map(link => (
-                    <li key={link.courseId}>
-                      <button
-                        onClick={() => router.push(`/exam/${link.courseId}`)}
-                        className="flex items-start gap-2.5 text-left text-brand-gold-muted hover:text-brand-gold text-sm leading-snug transition-colors"
-                      >
-                        <span aria-hidden className="mt-0.5">📜</span>
-                        <span>
-                          {t.priorLearning.takeFinalTest}
-                          {': '}
-                          {lang === 'te' && link.title_te ? link.title_te : link.title_en}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+          {raasPath && (() => {
+            const fullName = lang === 'te' && raasPath.full_name_te ? raasPath.full_name_te : raasPath.full_name_en
+            const tagline = lang === 'te' && raasPath.tagline_te ? raasPath.tagline_te : raasPath.tagline_en
+            const count = courses.filter(c => c.path_id === raasPath.id && c.is_published).length
 
-              <button
-                onClick={() => router.push(`/explore?path=${raasPath.slug}`)}
-                className="flex-1 p-8 rounded-2xl border-2 border-brand-gold bg-gradient-to-br from-brand-gold/10 via-brand-card to-brand-card hover:shadow-xl hover:shadow-brand-gold/20 cursor-pointer transition-all text-left group"
-              >
-                <h2 className="text-brand-gold font-bold text-2xl sm:text-3xl group-hover:text-yellow-300 transition-colors">
-                  {raasPath.name}
-                </h2>
-                {fullName && <p className="text-brand-gold-muted text-sm italic leading-snug mt-1 mb-2">{fullName}</p>}
-                <p className="text-brand-gold-muted text-sm mb-4 max-w-md">{tagline}</p>
-                <div className="flex items-center gap-3">
-                  <span className="inline-block px-3 py-1 bg-brand-gold/20 text-brand-gold text-sm rounded-full font-medium">
-                    {count} {lang === 'te' ? 'కోర్సులు' : 'courses'}
-                  </span>
-                  <span className="text-brand-gold-muted text-sm group-hover:text-brand-gold transition-colors">
-                    {lang === 'te' ? 'వీక్షించండి →' : 'View →'}
-                  </span>
+            return (
+              <>
+                <button
+                  onClick={() => router.push(`/explore?path=${raasPath.slug}`)}
+                  className="flex-1 p-8 rounded-2xl border-2 border-brand-gold bg-gradient-to-br from-brand-gold/10 via-brand-card to-brand-card hover:shadow-xl hover:shadow-brand-gold/20 cursor-pointer transition-all text-left group"
+                >
+                  <h2 className="text-brand-gold font-bold text-2xl sm:text-3xl group-hover:text-yellow-300 transition-colors">
+                    {raasPath.name}
+                  </h2>
+                  {fullName && <p className="text-brand-gold-muted text-sm italic leading-snug mt-1 mb-2">{fullName}</p>}
+                  <p className="text-brand-gold-muted text-sm mb-4 max-w-md">{tagline}</p>
+                  <div className="flex items-center gap-3">
+                    <span className="inline-block px-3 py-1 bg-brand-gold/20 text-brand-gold text-sm rounded-full font-medium">
+                      {count} {lang === 'te' ? 'కోర్సులు' : 'courses'}
+                    </span>
+                    <span className="text-brand-gold-muted text-sm group-hover:text-brand-gold transition-colors">
+                      {lang === 'te' ? 'వీక్షించండి →' : 'View →'}
+                    </span>
+                  </div>
+                </button>
+
+                <div className="relative w-full h-64 sm:h-72 md:h-auto md:w-56 lg:w-64 shrink-0 rounded-2xl overflow-hidden border-2 border-brand-gold/40">
+                  <Image
+                    src="/ramanuja-acharya.jpg"
+                    alt="Sri Ramanujacharya"
+                    fill
+                    sizes="(min-width: 768px) 256px, 100vw"
+                    className="object-cover object-top"
+                  />
                 </div>
-              </button>
-
-              <div className="relative w-full h-64 sm:h-72 md:h-auto md:w-56 lg:w-64 shrink-0 rounded-2xl overflow-hidden border-2 border-brand-gold/40">
-                <Image
-                  src="/ramanuja-acharya.jpg"
-                  alt="Sri Ramanujacharya"
-                  fill
-                  sizes="(min-width: 768px) 256px, 100vw"
-                  className="object-cover object-top"
-                />
-              </div>
-            </div>
-          )
-        })()}
+              </>
+            )
+          })()}
+        </div>
 
         {otherPaths.length > 0 && (
           <>
