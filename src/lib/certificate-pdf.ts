@@ -11,9 +11,10 @@ import type { CertificateData } from '@/lib/certificate'
 // cx = horizontal centre, baselineTop = baseline as a fraction of page height
 // from the top, maxW = max text width in points before the size shrinks to fit.
 const LAYOUT = {
-  name:   { cx: 0.600, baselineTop: 0.568, size: 26, maxW: 370 },
-  course: { cx: 0.425, baselineTop: 0.634, size: 26, maxW: 305 },
-  date:   { cx: 0.205, baselineTop: 0.940, size: 18, maxW: 110 },
+  name:      { cx: 0.510, baselineTop: 0.575, size: 26, maxW: 400 },
+  course:    { cx: 0.355, baselineTop: 0.645, size: 26, maxW: 350 },
+  studentId: { cx: 0.202, baselineTop: 0.858, size: 20, maxW: 140 },
+  date:      { cx: 0.190, baselineTop: 0.945, size: 18, maxW: 150 },
 } as const
 
 const PAGE_WIDTH = 842 // A4 landscape width in points; height follows the template's aspect ratio
@@ -75,6 +76,7 @@ export async function renderCertificatePdf(cert: CertificateData, options: Rende
 
   drawCentered(cert.studentName, LAYOUT.name)
   drawCentered(cert.courseTitleTe ?? cert.courseTitle, LAYOUT.course)
+  if (cert.studentId) drawCentered(cert.studentId, LAYOUT.studentId)
   drawCentered(formatInTimeZone(new Date(cert.completedAt), 'Asia/Kolkata', 'dd/MM/yyyy'), LAYOUT.date)
 
   if (options.specimen) {

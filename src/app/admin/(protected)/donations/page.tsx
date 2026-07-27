@@ -12,6 +12,8 @@ interface Donation {
   created_at:          string
   donor_name:          string
   donor_email:         string
+  donor_state:         string | null
+  declaration_accepted: boolean
   course_title:        string | null
 }
 
@@ -61,6 +63,8 @@ export default function AdminDonationsPage() {
               <tr className="border-b border-brand-border">
                 <th className="text-left text-brand-gold-muted font-medium px-4 py-3">Donor</th>
                 <th className="text-left text-brand-gold-muted font-medium px-4 py-3">Amount</th>
+                <th className="text-left text-brand-gold-muted font-medium px-4 py-3">State</th>
+                <th className="text-left text-brand-gold-muted font-medium px-4 py-3">Declared</th>
                 <th className="text-left text-brand-gold-muted font-medium px-4 py-3">Purpose</th>
                 <th className="text-left text-brand-gold-muted font-medium px-4 py-3">Receipt</th>
                 <th className="text-left text-brand-gold-muted font-medium px-4 py-3">Status</th>
@@ -76,6 +80,14 @@ export default function AdminDonationsPage() {
                   </td>
                   <td className="px-4 py-3 text-brand-gold font-semibold">
                     ₹{(d.amount / 100).toLocaleString('en-IN')}
+                  </td>
+                  <td className="px-4 py-3 text-brand-gold-muted">
+                    {d.donor_state ?? '—'}
+                  </td>
+                  <td className="px-4 py-3">
+                    {d.declaration_accepted
+                      ? <span className="text-green-400">Yes</span>
+                      : <span className="text-brand-gold-muted">—</span>}
                   </td>
                   <td className="px-4 py-3 text-brand-body">
                     {d.purpose === 'course' && d.course_title ? d.course_title : 'General'}

@@ -4,14 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-
-const COUNTRIES = [
-  'India', 'United States', 'United Kingdom', 'Canada', 'Australia',
-  'UAE', 'Singapore', 'Germany', 'Netherlands', 'Malaysia',
-  'Sri Lanka', 'Nepal', 'Bangladesh', 'New Zealand', 'Other',
-]
-
-const ISD_OPTIONS = ['+91', '+1', '+44', '+61', '+971', '+65', '+60', '+94', '+977', '+880']
+import { COUNTRIES, ISD_OPTIONS } from '@/lib/countries'
 
 interface ProfileData {
   full_name: string

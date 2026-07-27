@@ -4,14 +4,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useLang } from '@/contexts/LanguageContext'
 import { createClient } from '@/lib/supabase/client'
-
-const ISD_OPTIONS = ['+91', '+1', '+44', '+61', '+971', '+65', '+60', '+94', '+977', '+880']
-
-const COUNTRIES = [
-  'India', 'United States', 'United Kingdom', 'Canada', 'Australia',
-  'UAE', 'Singapore', 'Germany', 'Netherlands', 'Malaysia',
-  'Sri Lanka', 'Nepal', 'Bangladesh', 'New Zealand', 'Other',
-]
+import { COUNTRIES, ISD_OPTIONS } from '@/lib/countries'
 
 function mobileDigits(value: string): string {
   return value.replace(/\D/g, '')

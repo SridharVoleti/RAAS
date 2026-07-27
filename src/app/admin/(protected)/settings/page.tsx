@@ -11,6 +11,13 @@ type SiteSettings = {
   bank_ifsc:            string
   bank_qr_url:          string
   welcome_video_url:    string
+  intl_bank_account_holder: string
+  intl_bank_name:           string
+  intl_account_number:      string
+  intl_swift_bic:           string
+  intl_iban:                string
+  intl_qr_url:               string
+  intl_payment_instructions: string
 }
 
 const EMPTY: SiteSettings = {
@@ -21,6 +28,13 @@ const EMPTY: SiteSettings = {
   bank_ifsc:           '',
   bank_qr_url:         '',
   welcome_video_url:   '',
+  intl_bank_account_holder: '',
+  intl_bank_name:           '',
+  intl_account_number:      '',
+  intl_swift_bic:           '',
+  intl_iban:                '',
+  intl_qr_url:               '',
+  intl_payment_instructions: '',
 }
 
 export default function AdminSettingsPage() {
@@ -75,6 +89,22 @@ export default function AdminSettingsPage() {
     )
   }
 
+  function textareaField(label: string, key: keyof SiteSettings, placeholder: string, hint?: string) {
+    return (
+      <div>
+        <label className="block text-brand-body text-sm font-medium mb-1">{label}</label>
+        {hint && <p className="text-brand-gold-muted text-xs mb-1.5">{hint}</p>}
+        <textarea
+          rows={3}
+          value={settings[key]}
+          onChange={e => setSettings(s => ({ ...s, [key]: e.target.value }))}
+          placeholder={placeholder}
+          className="w-full px-3 py-2 bg-brand-bg border border-brand-border rounded-lg text-brand-body text-sm placeholder:text-brand-gold-muted focus:outline-none focus:border-brand-gold transition-colors resize-y"
+        />
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-40">
@@ -110,6 +140,29 @@ export default function AdminSettingsPage() {
 
         {field('UPI QR Code Image URL', 'bank_qr_url', 'https://…/qr.png',
           'Optional. If set, a QR code image is shown on the donation page.')}
+
+        <h2 className="text-brand-gold font-semibold text-base border-b border-brand-border pb-3 pt-2">
+          International Payment Details
+        </h2>
+        <p className="text-brand-gold-muted text-xs -mt-3">
+          Shown to non-Indian students purchasing course access ($25/course — a sale, not a donation, so FCRA does not apply).
+        </p>
+
+        {field('Account Holder Name', 'intl_bank_account_holder', 'e.g. Krishnamargam Trust')}
+
+        {field('Bank Name', 'intl_bank_name', 'e.g. State Bank of India')}
+
+        {field('Account Number / IBAN', 'intl_account_number', 'e.g. 123456789012')}
+
+        {field('SWIFT / BIC Code', 'intl_swift_bic', 'e.g. SBININBB123')}
+
+        {field('IBAN (if applicable)', 'intl_iban', 'e.g. GB29 NWBK 6016 1331 9268 19')}
+
+        {field('Payment QR Code Image URL', 'intl_qr_url', 'https://…/qr.png',
+          'Optional. E.g. a Wise or PayPal QR code.')}
+
+        {textareaField('Additional Instructions', 'intl_payment_instructions',
+          'e.g. Please include your registered email in the transfer reference.')}
 
         <h2 className="text-brand-gold font-semibold text-base border-b border-brand-border pb-3 pt-2">
           Welcome Video

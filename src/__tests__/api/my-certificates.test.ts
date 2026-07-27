@@ -44,6 +44,7 @@ describe('GET /api/my-certificates', () => {
         ok: true,
         data: {
           studentName: 'Arjuna Kumar',
+          studentId: '100001',
           courseTitle: `Course ${courseId}`,
           courseTitleTe: null,
           completedAt: courseId === 1 ? '2024-06-01T10:00:00Z' : '2024-07-01T10:00:00Z',

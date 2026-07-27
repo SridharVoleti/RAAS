@@ -5,6 +5,7 @@ const CHAPTER_QUIZ_PASS_SCORE = 3
 
 export interface CertificateData {
   studentName: string
+  studentId: string | null
   courseTitle: string
   courseTitleTe: string | null
   completedAt: string
@@ -145,7 +146,7 @@ export async function getCertificate(courseId: number): Promise<CertificateResul
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name')
+    .select('full_name, student_id')
     .eq('id', user.id)
     .single()
 
@@ -153,6 +154,7 @@ export async function getCertificate(courseId: number): Promise<CertificateResul
     ok: true,
     data: {
       studentName:   profile?.full_name ?? 'Student',
+      studentId:     profile?.student_id != null ? String(profile.student_id) : null,
       courseTitle:   courseInfo?.title_en ?? '',
       courseTitleTe: courseInfo?.title_te ?? null,
       completedAt,

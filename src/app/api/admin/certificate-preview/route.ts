@@ -40,18 +40,21 @@ export async function GET(req: Request) {
     if (!course) return NextResponse.json({ error: 'Course not found' }, { status: 404 })
 
     let studentName = customName ?? ''
+    let studentId: string | null = null
     if (!studentName && userId) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('full_name')
+        .select('full_name, student_id')
         .eq('id', userId)
         .single()
       if (!profile) return NextResponse.json({ error: 'Student not found' }, { status: 404 })
       studentName = profile.full_name ?? 'Student'
+      studentId = profile.student_id != null ? String(profile.student_id) : null
     }
 
     const pdfBytes = await renderCertificatePdf({
       studentName,
+      studentId,
       courseTitle:   course.title_en ?? '',
       courseTitleTe: course.title_te ?? null,
       completedAt:   date ? new Date(date).toISOString() : new Date().toISOString(),

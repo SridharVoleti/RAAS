@@ -2,12 +2,15 @@ import { NextResponse } from 'next/server'
 import Razorpay from 'razorpay'
 import { createClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
+import { isIndianLocation } from '@/lib/indian-states'
 import { z } from 'zod'
 
 const DonateSchema = z.object({
-  amount:   z.number().int().min(10).max(100000), // rupees, min ₹10 max ₹1,00,000
-  purpose:  z.enum(['general', 'course']).default('general'),
-  courseId: z.number().int().optional(),
+  amount:              z.number().int().min(10).max(100000), // rupees, min ₹10 max ₹1,00,000
+  purpose:             z.enum(['general', 'course']).default('general'),
+  courseId:            z.number().int().optional(),
+  state:               z.string().min(1),
+  declarationAccepted: z.boolean(),
 })
 
 export async function POST(req: Request) {
@@ -16,7 +19,18 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
-  const { amount, purpose, courseId } = parsed.data
+  const { amount, purpose, courseId, state, declarationAccepted } = parsed.data
+
+  if (!isIndianLocation(state)) {
+    return NextResponse.json(
+      { error: 'Donations from outside India cannot be accepted — Sri Krishnamargam Trust is not FCRA-registered.' },
+      { status: 403 },
+    )
+  }
+
+  if (!declarationAccepted) {
+    return NextResponse.json({ error: 'You must accept the donor declaration to proceed.' }, { status: 400 })
+  }
 
   if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
     logger.error({}, 'donate.initiate.razorpay_keys_missing')
@@ -42,16 +56,18 @@ export async function POST(req: Request) {
     })
 
     const { error } = await supabase.from('donations').insert({
-      user_id:           user.id,
-      amount:            amountPaise,
+      user_id:              user.id,
+      amount:               amountPaise,
       purpose,
-      course_id:         courseId ?? null,
-      status:            'created',
-      razorpay_order_id: order.id,
+      course_id:            courseId ?? null,
+      status:               'created',
+      razorpay_order_id:    order.id,
+      donor_state:          state,
+      declaration_accepted: declarationAccepted,
     })
     if (error) throw error
 
-    logger.info({ userId: user.id, amount, purpose, orderId: order.id }, 'donate.initiated')
+    logger.info({ userId: user.id, amount, purpose, state, orderId: order.id }, 'donate.initiated')
 
     return NextResponse.json({
       razorpayOrderId: order.id,

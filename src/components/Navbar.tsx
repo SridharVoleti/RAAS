@@ -127,6 +127,11 @@ export default function Navbar({ isLive }: Props) {
                         {t.nav.myCertificates}
                       </Link>
                     )}
+                    {profile.country && profile.country !== 'India' && (
+                      <Link href="/my-invoices" className="text-brand-gold-secondary hover:text-brand-gold transition-colors text-sm font-medium">
+                        {t.nav.myInvoices}
+                      </Link>
+                    )}
                     <Link href="/donate" className="text-brand-gold-secondary hover:text-brand-gold transition-colors text-sm font-medium">
                       {t.nav.donate}
                     </Link>

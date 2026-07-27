@@ -5,6 +5,10 @@ import { useRouter } from 'next/navigation'
 import { Heart, Copy, Check } from 'lucide-react'
 import { useLang } from '@/contexts/LanguageContext'
 import { createClient } from '@/lib/supabase/client'
+import { StateSelect } from '@/components/StateSelect'
+import { FcraNotice } from '@/components/FcraNotice'
+import { DonorDeclaration } from '@/components/DonorDeclaration'
+import { OUTSIDE_INDIA } from '@/lib/indian-states'
 
 import type { RazorpayOptions } from '@/types'
 
@@ -39,6 +43,8 @@ export default function DonatePage() {
   const [bank, setBank]               = useState<BankSettings>({})
   const [customAmount, setCustomAmount] = useState('')
   const [selected, setSelected]       = useState<number | null>(100)
+  const [state, setState]             = useState('')
+  const [declarationAccepted, setDeclarationAccepted] = useState(false)
   const [loading, setLoading]         = useState(false)
   const [done, setDone]               = useState(false)
   const [error, setError]             = useState<string | null>(null)
@@ -59,10 +65,14 @@ export default function DonatePage() {
   }, [router])
 
   const amount = customAmount.trim() !== '' ? parseInt(customAmount, 10) : (selected ?? 0)
+  const isForeign = state === OUTSIDE_INDIA
 
   async function handleDonate() {
     if (!userId) return
     if (!amount || amount < 10) { setError(t.donate.minAmount); return }
+    if (!state) { setError(t.donate.stateRequired); return }
+    if (isForeign) { setError(t.donate.foreignBlocked); return }
+    if (!declarationAccepted) { setError(t.donate.declarationRequired); return }
 
     setLoading(true)
     setError(null)
@@ -71,7 +81,7 @@ export default function DonatePage() {
       const res = await fetch('/api/donate/initiate', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ amount, purpose: 'general' }),
+        body:    JSON.stringify({ amount, purpose: 'general', state, declarationAccepted }),
       })
       if (!res.ok) {
         const body = await res.json() as { error?: string }
@@ -172,6 +182,19 @@ export default function DonatePage() {
             className="w-full px-3 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-brand-body text-sm placeholder:text-brand-gold-muted focus:outline-none focus:border-brand-gold transition-colors"
           />
 
+          <StateSelect
+            value={state}
+            onChange={setState}
+            label={t.donate.stateLabel}
+            placeholder={t.donate.statePlaceholder}
+            outsideIndiaLabel={t.donate.outsideIndia}
+          />
+
+          {isForeign && <FcraNotice />}
+          {state && !isForeign && (
+            <DonorDeclaration checked={declarationAccepted} onChange={setDeclarationAccepted} />
+          )}
+
           {error && (
             <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
               {error}
@@ -180,7 +203,7 @@ export default function DonatePage() {
 
           <button
             onClick={handleDonate}
-            disabled={loading || !amount || amount < 10}
+            disabled={loading || !amount || amount < 10 || !state || isForeign || !declarationAccepted}
             className="w-full py-3 bg-brand-gold text-brand-bg rounded-xl font-bold text-sm hover:bg-yellow-400 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
           >
             <Heart className="w-4 h-4" />

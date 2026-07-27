@@ -9,6 +9,13 @@ const PUBLIC_KEYS = [
   'bank_ifsc',
   'bank_qr_url',
   'welcome_video_url',
+  'intl_bank_account_holder',
+  'intl_bank_name',
+  'intl_account_number',
+  'intl_swift_bic',
+  'intl_iban',
+  'intl_qr_url',
+  'intl_payment_instructions',
 ]
 
 export async function GET() {

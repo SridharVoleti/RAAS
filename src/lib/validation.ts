@@ -34,6 +34,13 @@ export const PaymentConfirmSchema = z.object({
   paymentLogId: z.number().int().positive(),
 })
 
+// ── International course purchase (non-Indian students, manual bank/QR payment) ──
+
+export const CoursePurchaseInitiateSchema = z.object({
+  courseId:  z.number().int().positive(),
+  reference: z.string().max(200).optional(),
+})
+
 // ── Enrollment ───────────────────────────────────────────────────────────────
 
 export const EnrollFreeSchema = z.object({
@@ -314,6 +321,22 @@ export const UpdateProfileSchema = z.object({
 
 export const ChangePasswordSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters'),
+})
+
+// Admin editing another student's profile — more lenient than self-service UpdateProfileSchema
+// since this is a data-correction tool, not the registration form.
+export const AdminUpdateProfileSchema = z.object({
+  full_name:       z.string().min(1).max(100).optional(),
+  username:        z.string().max(50).nullable().optional(),
+  fathers_name:    z.string().max(100).nullable().optional(),
+  address:         z.string().max(300).nullable().optional(),
+  referral_source: z.string().max(200).nullable().optional(),
+  mobile:          z.string().max(20).nullable().optional(),
+  isd_code:        z.string().max(10).optional(),
+  city:            z.string().max(100).nullable().optional(),
+  country:         z.string().min(1).max(100).optional(),
+  student_id:      z.number().int().positive().nullable().optional(),
+  preferred_lang:  z.enum(['en', 'te']).optional(),
 })
 
 // ── Mobile / login helpers ────────────────────────────────────────────────────

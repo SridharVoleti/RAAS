@@ -13,7 +13,7 @@ export async function GET() {
     .from('donations')
     .select(`
       id, amount, purpose, status, receipt_number,
-      razorpay_payment_id, created_at, course_id,
+      razorpay_payment_id, created_at, course_id, donor_state, declaration_accepted,
       courses ( title_en ),
       profiles!donations_user_id_fkey ( full_name )
     `)
@@ -41,6 +41,8 @@ export async function GET() {
     receipt_number:      d.receipt_number,
     razorpay_payment_id: d.razorpay_payment_id,
     created_at:          d.created_at,
+    donor_state:         d.donor_state ?? null,
+    declaration_accepted: d.declaration_accepted ?? false,
     donor_name:          (d.profiles as { full_name?: string } | null)?.full_name ?? '',
     donor_email:         emailMap[d.user_id as string] ?? '',
     course_title:        (d.courses as { title_en?: string } | null)?.title_en ?? null,

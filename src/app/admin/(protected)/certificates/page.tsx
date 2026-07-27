@@ -97,6 +97,8 @@ export default function AdminCertificatesPage() {
     }
   }
 
+  const totalIssued = awards.reduce((sum, a) => sum + a.awardedCount, 0)
+
   const canGenerate = courseId !== '' && (customName.trim() !== '' || userId !== '')
 
   function buildUrl(): string {
@@ -123,14 +125,25 @@ export default function AdminCertificatesPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-brand-gold font-bold text-2xl flex items-center gap-2">
-          <Award className="w-6 h-6" />
-          Certificates
-        </h1>
-        <p className="text-brand-gold-muted text-sm mt-1">
-          Certificates awarded per course, and a test generator.
-        </p>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-brand-gold font-bold text-2xl flex items-center gap-2">
+            <Award className="w-6 h-6" />
+            Certificates
+          </h1>
+          <p className="text-brand-gold-muted text-sm mt-1">
+            Certificates awarded per course, and a test generator.
+          </p>
+        </div>
+        <div className="bg-brand-card border border-brand-gold/30 rounded-xl px-5 py-3 flex items-center gap-3">
+          <Award className="w-7 h-7 text-brand-gold" />
+          <div>
+            <div className="text-brand-gold font-bold text-2xl leading-none">
+              {awardsLoading ? '—' : totalIssued}
+            </div>
+            <div className="text-brand-gold-muted text-xs mt-1">Unique certificates issued</div>
+          </div>
+        </div>
       </div>
 
       {error && (

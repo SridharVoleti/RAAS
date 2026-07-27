@@ -32,7 +32,11 @@ export async function GET(request: Request) {
 
   let query = supabase
     .from('profiles')
-    .select('id, full_name, avatar_initials, created_at, is_admin, student_id')
+    .select(`
+      id, full_name, avatar_initials, created_at, is_admin, student_id,
+      username, fathers_name, address, referral_source,
+      mobile, isd_code, city, country, preferred_lang
+    `)
     .eq('is_admin', false)
     .order('created_at', { ascending: false })
     .limit(limit + 1)
