@@ -11,11 +11,15 @@ import type { CertificateData } from '@/lib/certificate'
 // cx = horizontal centre, baselineTop = baseline as a fraction of page height
 // from the top, maxW = max text width in points before the size shrinks to fit.
 const LAYOUT = {
-  name:      { cx: 0.510, baselineTop: 0.575, size: 26, maxW: 400 },
-  course:    { cx: 0.355, baselineTop: 0.645, size: 26, maxW: 350 },
+  name:      { cx: 0.510, baselineTop: 0.556, size: 26, maxW: 400 },
+  course:    { cx: 0.355, baselineTop: 0.619, size: 26, maxW: 350 },
   studentId: { cx: 0.202, baselineTop: 0.858, size: 20, maxW: 140 },
   date:      { cx: 0.190, baselineTop: 0.945, size: 18, maxW: 150 },
 } as const
+
+// Signature image: cx = horizontal centre, bottomTop = its bottom edge as a
+// fraction of page height from the top (sits just above the signatory line).
+const SIGNATURE = { cx: 0.720, bottomTop: 0.868, width: 130 } as const
 
 const PAGE_WIDTH = 842 // A4 landscape width in points; height follows the template's aspect ratio
 const INK = rgb(0.12, 0.08, 0.3)
@@ -51,6 +55,7 @@ export async function renderCertificatePdf(cert: CertificateData, options: Rende
   const telugu = await doc.embedFont(readAsset('fonts', 'NotoSansTelugu-Bold.ttf'), { subset: true })
   const latin = await doc.embedFont(StandardFonts.TimesRomanBoldItalic)
   const template = await doc.embedJpg(readAsset('certificate-template.jpg'))
+  const signature = await doc.embedPng(readAsset('signature.png'))
 
   const W = PAGE_WIDTH
   const H = Math.round(W * template.height / template.width)
@@ -78,6 +83,15 @@ export async function renderCertificatePdf(cert: CertificateData, options: Rende
   drawCentered(cert.courseTitleTe ?? cert.courseTitle, LAYOUT.course)
   if (cert.studentId) drawCentered(cert.studentId, LAYOUT.studentId)
   drawCentered(formatInTimeZone(new Date(cert.completedAt), 'Asia/Kolkata', 'dd/MM/yyyy'), LAYOUT.date)
+
+  const sigWidth = SIGNATURE.width
+  const sigHeight = sigWidth * (signature.height / signature.width)
+  page.drawImage(signature, {
+    x: SIGNATURE.cx * W - sigWidth / 2,
+    y: H - SIGNATURE.bottomTop * H,
+    width: sigWidth,
+    height: sigHeight,
+  })
 
   if (options.specimen) {
     const text = 'SPECIMEN'
