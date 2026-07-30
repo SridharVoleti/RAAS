@@ -19,14 +19,17 @@ CREATE INDEX IF NOT EXISTS idx_course_purchases_status  ON course_purchases(stat
 
 ALTER TABLE course_purchases ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own course purchases" ON course_purchases;
 CREATE POLICY "Users can view own course purchases"
   ON course_purchases FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own course purchases" ON course_purchases;
 CREATE POLICY "Users can insert own course purchases"
   ON course_purchases FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Service role full access on course_purchases" ON course_purchases;
 CREATE POLICY "Service role full access on course_purchases"
   ON course_purchases FOR ALL
   USING (true)
