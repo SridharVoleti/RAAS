@@ -11,15 +11,17 @@ import type { CertificateData } from '@/lib/certificate'
 // cx = horizontal centre, baselineTop = baseline as a fraction of page height
 // from the top, maxW = max text width in points before the size shrinks to fit.
 const LAYOUT = {
-  name:      { cx: 0.510, baselineTop: 0.556, size: 26, maxW: 400 },
+  name:      { cx: 0.577, baselineTop: 0.556, size: 26, maxW: 350 },
   course:    { cx: 0.355, baselineTop: 0.619, size: 26, maxW: 350 },
   studentId: { cx: 0.202, baselineTop: 0.858, size: 20, maxW: 140 },
-  date:      { cx: 0.190, baselineTop: 0.945, size: 18, maxW: 150 },
+  date:      { cx: 0.190, baselineTop: 0.934, size: 18, maxW: 150 },
 } as const
 
 // Signature image: cx = horizontal centre, bottomTop = its bottom edge as a
 // fraction of page height from the top (sits just above the signatory line).
-const SIGNATURE = { cx: 0.720, bottomTop: 0.868, width: 130 } as const
+// rotateDeg tilts it for a natural hand-signed look (counter-clockwise about
+// its own centre, computed below so the tilt doesn't shift its position).
+const SIGNATURE = { cx: 0.775, bottomTop: 0.868, width: 130, rotateDeg: 6 } as const
 
 const PAGE_WIDTH = 842 // A4 landscape width in points; height follows the template's aspect ratio
 const INK = rgb(0.12, 0.08, 0.3)
@@ -86,11 +88,17 @@ export async function renderCertificatePdf(cert: CertificateData, options: Rende
 
   const sigWidth = SIGNATURE.width
   const sigHeight = sigWidth * (signature.height / signature.width)
+  // pdf-lib rotates drawImage about its (x, y) anchor (the bottom-left corner
+  // before rotation), so offset the anchor by the rotated centre so the
+  // signature still lands on SIGNATURE.cx after tilting.
+  const sigAngleRad = (SIGNATURE.rotateDeg * Math.PI) / 180
+  const sigCenterDx = (sigWidth / 2) * Math.cos(sigAngleRad) - (sigHeight / 2) * Math.sin(sigAngleRad)
   page.drawImage(signature, {
-    x: SIGNATURE.cx * W - sigWidth / 2,
+    x: SIGNATURE.cx * W - sigCenterDx,
     y: H - SIGNATURE.bottomTop * H,
     width: sigWidth,
     height: sigHeight,
+    rotate: degrees(SIGNATURE.rotateDeg),
   })
 
   if (options.specimen) {
