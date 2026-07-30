@@ -211,8 +211,8 @@ export default function DonatePage() {
           </button>
         </div>
 
-        {/* Bank details card */}
-        {hasBank && (
+        {/* Bank details card — Indian donations only; foreign contributions are FCRA-blocked above */}
+        {hasBank && !isForeign && (
           <div className="bg-brand-card border border-brand-border rounded-2xl p-6 space-y-3">
             <p className="text-brand-gold text-sm font-semibold border-b border-brand-border pb-2">
               Or donate directly via bank / UPI
@@ -234,7 +234,8 @@ export default function DonatePage() {
             )}
 
             {bank.bank_qr_url && (
-              <div className="flex justify-center pt-1">
+              <div className="flex flex-col items-center gap-2 pt-1">
+                <p className="text-brand-gold-muted text-xs font-medium">Temporary Account</p>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={bank.bank_qr_url} alt="UPI QR Code" className="w-36 h-36 rounded-lg border border-brand-border" />
               </div>
