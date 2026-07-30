@@ -49,7 +49,7 @@ export default function DonatePage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const hasBank = bank.bank_upi_id || bank.bank_account_number
+  const hasBank = bank.bank_upi_id || bank.bank_account_number || bank.bank_qr_url
 
   return (
     <div className="min-h-screen bg-brand-bg flex items-center justify-center px-4 py-12">
