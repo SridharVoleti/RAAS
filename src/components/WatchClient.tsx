@@ -780,13 +780,16 @@ function QuizPlayer({ lessonId, questions, bestSubmission, alreadyPassed, lang, 
   const question = questions[qIdx]
   const selected = question ? answers[question.id] : undefined
   const isLast = qIdx === questions.length - 1
+  // Site language may not have full quiz translations — fall back to Telugu
+  // (the language content is authored in) rather than blocking the quiz.
+  const effectiveLang = allCompleteInLanguage(questions, lang) ? lang : 'te'
 
   function getOptionText(q: QuizQuestion_Public, opt: 'a' | 'b' | 'c' | 'd') {
-    return (q[`option_${opt}_${lang}` as keyof QuizQuestion_Public] as string | undefined) || ''
+    return (q[`option_${opt}_${effectiveLang}` as keyof QuizQuestion_Public] as string | undefined) || ''
   }
 
   function getQuestion(q: QuizQuestion_Public) {
-    return (lang === 'te' ? q.question_te : q.question_en) || ''
+    return (effectiveLang === 'te' ? q.question_te : q.question_en) || ''
   }
 
   async function handleNext() {
@@ -827,7 +830,7 @@ function QuizPlayer({ lessonId, questions, bestSubmission, alreadyPassed, lang, 
   const pct = total > 0 ? Math.round((score / total) * 100) : 0
   const passed = pct >= QUIZ_PASS_PCT
 
-  if (phase === 'question' && !allCompleteInLanguage(questions, lang)) {
+  if (phase === 'question' && !allCompleteInLanguage(questions, effectiveLang)) {
     return (
       <LanguageUnavailableModal
         message={tQuiz.languageUnavailable}
@@ -909,13 +912,16 @@ function ChapterQuizPlayer({ chapterId, chapterTitle, bestSubmission, alreadyPas
   const question = questions[qIdx]
   const selected = question ? answers[question.id] : undefined
   const isLast = qIdx === questions.length - 1
+  // Site language may not have full quiz translations — fall back to Telugu
+  // (the language content is authored in) rather than blocking the quiz.
+  const effectiveLang = allCompleteInLanguage(questions, lang) ? lang : 'te'
 
   function getOptionText(q: QuizQuestion_Public, opt: 'a' | 'b' | 'c' | 'd') {
-    return (q[`option_${opt}_${lang}` as keyof QuizQuestion_Public] as string | undefined) || ''
+    return (q[`option_${opt}_${effectiveLang}` as keyof QuizQuestion_Public] as string | undefined) || ''
   }
 
   function getQuestion(q: QuizQuestion_Public) {
-    return (lang === 'te' ? q.question_te : q.question_en) || ''
+    return (effectiveLang === 'te' ? q.question_te : q.question_en) || ''
   }
 
   async function handleNext() {
@@ -999,7 +1005,7 @@ function ChapterQuizPlayer({ chapterId, chapterTitle, bestSubmission, alreadyPas
     )
   }
 
-  if (phase === 'question' && !allCompleteInLanguage(questions, lang)) {
+  if (phase === 'question' && !allCompleteInLanguage(questions, effectiveLang)) {
     return (
       <LanguageUnavailableModal
         message={tQuiz.languageUnavailable}
