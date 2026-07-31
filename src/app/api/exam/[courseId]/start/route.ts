@@ -110,8 +110,20 @@ export async function POST(
     byChapter.set(key, arr)
   }
 
+  // Fisher-Yates: unbiased, unlike sort(() => Math.random() - 0.5).
   function shuffle(pool: number[]): number[] {
-    return pool.slice().sort(() => Math.random() - 0.5)
+    const arr = pool.slice()
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[arr[i], arr[j]] = [arr[j], arr[i]]
+    }
+    return arr
+  }
+
+  // Round a shortfall-case exam length up to the nearest 10 (e.g. half of 35 = 17.5 -> 20),
+  // capped at the actual bank size so it never asks for more questions than exist.
+  function roundUpToTen(n: number, cap: number): number {
+    return Math.min(cap, Math.ceil(n / 10) * 10)
   }
 
   // Named chapters first (sorted alphabetically), then uncategorized
@@ -123,11 +135,11 @@ export async function POST(
   if (enrollment.exam_only) {
     // Prior-learning final test: 100 questions drawn round-robin across chapters
     // for equal weightage. Not every course has a 100-question bank — if it has
-    // fewer, the paper is half the available bank (rounded up), not the whole
-    // thing, so a 50-question course gets a 25-question paper, not a 50-question one.
+    // fewer, the paper is half the available bank, rounded up to the nearest 10
+    // (e.g. a 35-question bank gives a 20-question paper), not the whole bank.
     const target = allQRows.length >= EXAM_ONLY_QUESTION_TARGET
       ? EXAM_ONLY_QUESTION_TARGET
-      : Math.ceil(allQRows.length / 2)
+      : roundUpToTen(allQRows.length / 2, allQRows.length)
     const pools = chapterOrder.map(name => shuffle(byChapter.get(name)!))
     const picked: number[][] = pools.map(() => [])
     let total = 0

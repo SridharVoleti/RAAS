@@ -204,7 +204,7 @@ describe('POST /api/exam/[courseId]/start', () => {
     expect(inserted.question_sequence).toHaveLength(20)
   })
 
-  it('rounds up when half the bank is not a whole number (odd-sized bank)', async () => {
+  it('rounds the half-bank target up to the nearest 10 (35 questions -> 20)', async () => {
     const insertChain = chain({ data: { id: 'sess-3' }, error: null })
     mockUser(makeFrom({
       exam_sessions: [chain({ data: null }), insertChain],
@@ -214,7 +214,7 @@ describe('POST /api/exam/[courseId]/start', () => {
       courses: chain({ data: { id: 1, title_en: 'X' } }),
       exam_sessions: chain(),
       exam_questions: [
-        chain({ data: makeBankRows(41, 4) }),
+        chain({ data: makeBankRows(35, 4) }),
         questionRowsChain(() => 'a'),
       ],
     }))
@@ -222,7 +222,28 @@ describe('POST /api/exam/[courseId]/start', () => {
     const res = await startExam(new Request('http://localhost/'), courseParams)
     expect(res.status).toBe(200)
     const inserted = insertChain.insert.mock.calls[0][0]
-    expect(inserted.question_sequence).toHaveLength(21)
+    expect(inserted.question_sequence).toHaveLength(20)
+  })
+
+  it('caps the rounded-up target at the bank size when rounding would exceed it', async () => {
+    const insertChain = chain({ data: { id: 'sess-4' }, error: null })
+    mockUser(makeFrom({
+      exam_sessions: [chain({ data: null }), insertChain],
+    }))
+    mockAdmin(makeFrom({
+      enrollments: chain({ data: { is_active: true, exam_only: true } }),
+      courses: chain({ data: { id: 1, title_en: 'X' } }),
+      exam_sessions: chain(),
+      exam_questions: [
+        chain({ data: makeBankRows(7, 4) }),
+        questionRowsChain(() => 'a'),
+      ],
+    }))
+
+    const res = await startExam(new Request('http://localhost/'), courseParams)
+    expect(res.status).toBe(200)
+    const inserted = insertChain.insert.mock.calls[0][0]
+    expect(inserted.question_sequence).toHaveLength(7)
   })
 
   it('creates an untimed 5-per-chapter session for regular course students', async () => {
