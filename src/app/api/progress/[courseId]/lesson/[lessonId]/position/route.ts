@@ -7,9 +7,12 @@ export async function POST(
 ) {
   try {
     const { courseId, lessonId } = await params
-    const { positionSeconds } = await req.json()
+    const { positionSeconds, watchedSeconds } = await req.json()
     if (typeof positionSeconds !== 'number' || !Number.isFinite(positionSeconds) || positionSeconds < 0) {
       return NextResponse.json({ error: 'Invalid positionSeconds' }, { status: 400 })
+    }
+    if (watchedSeconds !== undefined && (typeof watchedSeconds !== 'number' || !Number.isFinite(watchedSeconds) || watchedSeconds < 0)) {
+      return NextResponse.json({ error: 'Invalid watchedSeconds' }, { status: 400 })
     }
 
     const supabase = await createClient()
@@ -21,6 +24,7 @@ export async function POST(
       course_id: Number(courseId),
       lesson_id: Number(lessonId),
       position_seconds: Math.floor(positionSeconds),
+      ...(watchedSeconds !== undefined ? { watched_seconds: Math.floor(watchedSeconds) } : {}),
     }, { onConflict: 'user_id,lesson_id' })
 
     if (error) throw error

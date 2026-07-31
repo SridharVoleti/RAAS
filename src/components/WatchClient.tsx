@@ -35,12 +35,16 @@ type YTPlayer = {
   destroy: () => void
   getCurrentTime: () => number
   getDuration: () => number
+  getPlaybackRate: () => number
 }
 
 const QUIZ_PASS_PCT = 80
 // A lesson only counts as "watched" if genuine playback (not seek-jumps) covers
 // this fraction of the video. Prevents marking complete by dragging to the end.
 const MIN_WATCH_RATIO = 0.85
+// Buffer added on top of the expected per-tick advance (poll interval × playback
+// rate) before a delta is treated as a seek-jump rather than genuine playback —
+// keeps 1.5x/2x speeds from being mistaken for skipping ahead.
 const SEEK_JUMP_TOLERANCE_SEC = 2
 const CHAPTER_QUIZ_PASS_SCORE = 3
 const POSITION_SAVE_INTERVAL_SEC = 10
@@ -60,6 +64,7 @@ interface Props {
   completedLessonIds: number[]
   initialLessonIndex: number
   lessonPositions?: Record<number, number>
+  lessonWatchedSeconds?: Record<number, number>
   quizQuestions?: QuizQuestion_Public[]
   quizSubmissions?: QuizSubmission[]
   chapters?: Chapter[]
@@ -92,6 +97,7 @@ function isLastLessonInChapter(lesson: Lesson, allLessons: Lesson[]): boolean {
 
 export default function WatchClient({
   course, lessons, completedLessonIds, initialLessonIndex, lessonPositions: initialLessonPositions = {},
+  lessonWatchedSeconds: initialLessonWatchedSeconds = {},
   quizQuestions = [], quizSubmissions = [],
   chapters = [], chapterQuestionCounts = {}, chapterSubmissions = [],
   isAdmin = false,
@@ -102,6 +108,7 @@ export default function WatchClient({
   const [currentIdx, setCurrentIdx] = useState(initialLessonIndex)
   const [completedIds, setCompletedIds] = useState<Set<number>>(new Set(completedLessonIds))
   const [lessonPositions, setLessonPositions] = useState<Record<number, number>>(initialLessonPositions)
+  const [lessonWatchedSeconds, setLessonWatchedSeconds] = useState<Record<number, number>>(initialLessonWatchedSeconds)
   const [viewingQuiz, setViewingQuiz] = useState(false)
   const [chapterQuizState, setChapterQuizState] = useState<{ chapterId: number; chapterTitle: string } | null>(null)
   const [passedQuizIds, setPassedQuizIds] = useState<Set<number>>(() => new Set(
@@ -309,7 +316,9 @@ export default function WatchClient({
     // Persist the outgoing lesson's last known position, then switch tracking to the new one.
     stopWatchPolling()
     activeLessonIdRef.current = currentLesson.id
-    watchedSecondsRef.current = 0
+    // Seed from previously-credited watch time so resuming after closing the
+    // app doesn't wipe out time genuinely watched in an earlier session.
+    watchedSecondsRef.current = lessonWatchedSeconds[currentLesson.id] ?? 0
     lastSampleTimeRef.current = null
     if (playerReadyRef.current && playerRef.current) {
       const resumeAt = lessonPositions[currentLesson.id] ?? 0
@@ -322,11 +331,13 @@ export default function WatchClient({
   function savePosition(lessonId: number, seconds: number) {
     const rounded = Math.floor(seconds)
     if (rounded < 1) return
+    const watched = Math.floor(watchedSecondsRef.current)
     setLessonPositions(prev => ({ ...prev, [lessonId]: rounded }))
+    setLessonWatchedSeconds(prev => ({ ...prev, [lessonId]: watched }))
     fetch(`/api/progress/${course.id}/lesson/${lessonId}/position`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ positionSeconds: rounded }),
+      body: JSON.stringify({ positionSeconds: rounded, watchedSeconds: watched }),
     }).catch(() => {})
   }
 
@@ -352,8 +363,11 @@ export default function WatchClient({
         const delta = current - last
         // Only credit forward playback within tolerance as "watched" —
         // large jumps (seeking ahead) don't count, so dragging to the
-        // end doesn't fake a full watch.
-        if (delta > 0 && delta <= SEEK_JUMP_TOLERANCE_SEC) {
+        // end doesn't fake a full watch. Tolerance scales with playback
+        // rate so watching at 1.5x/2x speed isn't mistaken for skipping.
+        const rate = player.getPlaybackRate?.() || 1
+        const maxDelta = rate + SEEK_JUMP_TOLERANCE_SEC
+        if (delta > 0 && delta <= maxDelta) {
           watchedSecondsRef.current += delta
         }
       }

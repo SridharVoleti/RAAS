@@ -74,7 +74,7 @@ export default async function WatchPage({
       .order('order_index'),
     supabase
       .from('video_playback_progress')
-      .select('lesson_id, position_seconds, updated_at')
+      .select('lesson_id, position_seconds, watched_seconds, updated_at')
       .eq('user_id', user.id)
       .eq('course_id', course.id)
       .order('updated_at', { ascending: false }),
@@ -137,8 +137,10 @@ export default async function WatchPage({
   const completedLessonIds = (progressRows || []).map(p => p.lesson_id as number)
 
   const lessonPositions: Record<number, number> = {}
+  const lessonWatchedSeconds: Record<number, number> = {}
   for (const row of (playbackRows ?? [])) {
     lessonPositions[row.lesson_id as number] = row.position_seconds as number
+    lessonWatchedSeconds[row.lesson_id as number] = (row.watched_seconds as number) ?? 0
   }
 
   // No explicit ?lesson= param: resume the most recently watched lesson.
@@ -158,6 +160,7 @@ export default async function WatchPage({
       completedLessonIds={completedLessonIds}
       initialLessonIndex={initialIdx}
       lessonPositions={lessonPositions}
+      lessonWatchedSeconds={lessonWatchedSeconds}
       quizQuestions={(quizQuestions ?? []) as QuizQuestion_Public[]}
       quizSubmissions={(quizSubmissions ?? []) as QuizSubmission[]}
       chapters={allChapters}
