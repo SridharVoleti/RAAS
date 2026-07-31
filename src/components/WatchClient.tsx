@@ -780,9 +780,9 @@ function QuizPlayer({ lessonId, questions, bestSubmission, alreadyPassed, lang, 
   const question = questions[qIdx]
   const selected = question ? answers[question.id] : undefined
   const isLast = qIdx === questions.length - 1
-  // Site language may not have full quiz translations — fall back to Telugu
-  // (the language content is authored in) rather than blocking the quiz.
-  const effectiveLang = allCompleteInLanguage(questions, lang) ? lang : 'te'
+  // Quiz content is only reliably authored in Telugu right now — load it in
+  // Telugu regardless of site language rather than gating on completeness.
+  const effectiveLang = 'te'
 
   function getOptionText(q: QuizQuestion_Public, opt: 'a' | 'b' | 'c' | 'd') {
     return (q[`option_${opt}_${effectiveLang}` as keyof QuizQuestion_Public] as string | undefined) || ''
@@ -912,9 +912,9 @@ function ChapterQuizPlayer({ chapterId, chapterTitle, bestSubmission, alreadyPas
   const question = questions[qIdx]
   const selected = question ? answers[question.id] : undefined
   const isLast = qIdx === questions.length - 1
-  // Site language may not have full quiz translations — fall back to Telugu
-  // (the language content is authored in) rather than blocking the quiz.
-  const effectiveLang = allCompleteInLanguage(questions, lang) ? lang : 'te'
+  // Quiz content is only reliably authored in Telugu right now — load it in
+  // Telugu regardless of site language rather than gating on completeness.
+  const effectiveLang = 'te'
 
   function getOptionText(q: QuizQuestion_Public, opt: 'a' | 'b' | 'c' | 'd') {
     return (q[`option_${opt}_${effectiveLang}` as keyof QuizQuestion_Public] as string | undefined) || ''
