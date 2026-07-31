@@ -4,8 +4,6 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { CheckCircle, XCircle, Award, Clock, AlertCircle, ChevronRight, BookOpen, GraduationCap } from 'lucide-react'
 import { useLang } from '@/contexts/LanguageContext'
-import { allCompleteInLanguage } from '@/lib/quiz-languages'
-import { LanguageUnavailableModal } from '@/components/LanguageUnavailableModal'
 import StarRatingInput from '@/components/StarRatingInput'
 import type { ExamQuestionPage, ExamQuestion_Public } from '@/types'
 
@@ -53,7 +51,7 @@ function fill(template: string, vars: Record<string, string | number>): string {
 export default function ExamPage() {
   const { courseId } = useParams() as { courseId: string }
   const router = useRouter()
-  const { lang, setLang, t } = useLang()
+  const { t } = useLang()
   const tx = t.exam
 
   const [phase, setPhase] = useState<Phase>('loading')
@@ -257,11 +255,11 @@ export default function ExamPage() {
   activeRef.current = active
 
   function getOption(q: ExamQuestion_Public, opt: 'a' | 'b' | 'c' | 'd'): string {
-    return (q[`option_${opt}_${lang}` as keyof ExamQuestion_Public] as string | undefined) || ''
+    return q[`option_${opt}_te`] || ''
   }
 
   function getQuestion(q: ExamQuestion_Public): string {
-    return (lang === 'te' ? q.question_te : q.question_en) || ''
+    return q.question_te || ''
   }
 
   // ─── Loading ─────────────────────────────────────────────
@@ -333,15 +331,6 @@ export default function ExamPage() {
   if (phase === 'active' && active) {
     const { page } = active
 
-    if (!allCompleteInLanguage(page.questions, lang)) {
-      return (
-        <LanguageUnavailableModal
-          message={tx.languageUnavailable}
-          switchLabel={tx.switchToTelugu}
-          onSwitch={() => setLang('te')}
-        />
-      )
-    }
     const from = page.question_offset + 1
     const to = page.question_offset + page.questions.length
     const pct = Math.round((page.question_offset / page.total_questions) * 100)

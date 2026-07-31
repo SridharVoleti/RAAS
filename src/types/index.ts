@@ -227,16 +227,11 @@ export interface ExamQuestion {
   course_id: number
   chapter_id?: number
   chapter_name?: string
-  question_en: string
-  question_te?: string
-  option_a_en: string
-  option_a_te?: string
-  option_b_en: string
-  option_b_te?: string
-  option_c_en: string
-  option_c_te?: string
-  option_d_en: string
-  option_d_te?: string
+  question_te: string
+  option_a_te: string
+  option_b_te: string
+  option_c_te: string
+  option_d_te: string
   correct_option: 'a' | 'b' | 'c' | 'd'
   created_at: string
 }

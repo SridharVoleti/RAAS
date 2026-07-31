@@ -898,16 +898,13 @@ function ChapterQuizPlayer({ chapterId, chapterTitle, bestSubmission, alreadyPas
   const question = questions[qIdx]
   const selected = question ? answers[question.id] : undefined
   const isLast = qIdx === questions.length - 1
-  // Quiz content is authored in Telugu, but some rows have it mis-stored in
-  // the English column (e.g. exam_questions has question text in question_en
-  // with question_te blank) — fall back rather than show a blank question.
+  // exam_questions (the chapter/final-exam bank) is Telugu-only content.
   function getOptionText(q: QuizQuestion_Public, opt: 'a' | 'b' | 'c' | 'd') {
-    return (q[`option_${opt}_te` as keyof QuizQuestion_Public] as string | undefined)
-      || (q[`option_${opt}_en` as keyof QuizQuestion_Public] as string | undefined) || ''
+    return (q[`option_${opt}_te` as keyof QuizQuestion_Public] as string | undefined) || ''
   }
 
   function getQuestion(q: QuizQuestion_Public) {
-    return q.question_te || q.question_en || ''
+    return q.question_te || ''
   }
 
   async function handleNext() {

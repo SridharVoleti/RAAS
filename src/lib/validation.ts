@@ -181,34 +181,15 @@ const ExamQuestionBaseSchema = z.object({
   course_id:    z.number().int().positive(),
   chapter_id:   z.number().int().positive().optional(),
   chapter_name: z.string().max(200).optional(),
-  question_en:    z.string().max(2000).optional().default(''),
-  question_te:    z.string().max(2000).optional().default(''),
-  option_a_en:    z.string().max(500).optional().default(''),
-  option_a_te:    z.string().max(500).optional().default(''),
-  option_b_en:    z.string().max(500).optional().default(''),
-  option_b_te:    z.string().max(500).optional().default(''),
-  option_c_en:    z.string().max(500).optional().default(''),
-  option_c_te:    z.string().max(500).optional().default(''),
-  option_d_en:    z.string().max(500).optional().default(''),
-  option_d_te:    z.string().max(500).optional().default(''),
+  question_te:    z.string().min(1).max(2000),
+  option_a_te:    z.string().min(1).max(500),
+  option_b_te:    z.string().min(1).max(500),
+  option_c_te:    z.string().min(1).max(500),
+  option_d_te:    z.string().min(1).max(500),
   correct_option: z.enum(['a', 'b', 'c', 'd']),
 })
 
-function refineExamBilingual(
-  d: z.infer<typeof ExamQuestionBaseSchema>,
-  ctx: z.RefinementCtx
-) {
-  if (!d.question_en?.trim() && !d.question_te?.trim())
-    ctx.addIssue({ code: 'custom', message: 'At least one language question is required', path: ['question_en'] })
-  for (const opt of ['a', 'b', 'c', 'd'] as const) {
-    const en = d[`option_${opt}_en` as keyof typeof d] as string | undefined
-    const te = d[`option_${opt}_te` as keyof typeof d] as string | undefined
-    if (!en?.trim() && !te?.trim())
-      ctx.addIssue({ code: 'custom', message: `At least one language text for option ${opt} is required`, path: [`option_${opt}_en`] })
-  }
-}
-
-export const CreateExamQuestionSchema = ExamQuestionBaseSchema.superRefine(refineExamBilingual)
+export const CreateExamQuestionSchema = ExamQuestionBaseSchema
 export const UpdateExamQuestionSchema = ExamQuestionBaseSchema.partial().extend({
   correct_option: z.enum(['a', 'b', 'c', 'd']).optional(),
 })

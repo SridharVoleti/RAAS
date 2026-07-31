@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, Pencil, Trash2, ChevronDown, Upload, X } from 'lucide-react'
+import { Plus, Pencil, Trash2, ChevronDown, Upload, Download, X } from 'lucide-react'
 import type { Chapter, Course, ExamQuestion } from '@/types'
 
 type ImportRow = {
@@ -49,11 +49,11 @@ function parseCSV(text: string): string[][] {
 const BLANK_FORM = {
   chapter_id:   undefined as number | undefined,
   chapter_name: '',
-  question_en: '', question_te: '',
-  option_a_en: '', option_a_te: '',
-  option_b_en: '', option_b_te: '',
-  option_c_en: '', option_c_te: '',
-  option_d_en: '', option_d_te: '',
+  question_te: '',
+  option_a_te: '',
+  option_b_te: '',
+  option_c_te: '',
+  option_d_te: '',
   correct_option: 'a' as 'a' | 'b' | 'c' | 'd',
 }
 
@@ -111,15 +111,10 @@ export default function ExamQuestionsPage() {
     setForm({
       chapter_id:   q.chapter_id,
       chapter_name: q.chapter_name || '',
-      question_en:  q.question_en,
       question_te:  q.question_te || '',
-      option_a_en:  q.option_a_en,
       option_a_te:  q.option_a_te || '',
-      option_b_en:  q.option_b_en,
       option_b_te:  q.option_b_te || '',
-      option_c_en:  q.option_c_en,
       option_c_te:  q.option_c_te || '',
-      option_d_en:  q.option_d_en,
       option_d_te:  q.option_d_te || '',
       correct_option: q.correct_option,
     })
@@ -198,12 +193,13 @@ export default function ExamQuestionsPage() {
   }
 
   function formIsValid() {
-    const hasQuestion = form.question_en.trim() || form.question_te.trim()
-    const hasA = form.option_a_en.trim() || form.option_a_te.trim()
-    const hasB = form.option_b_en.trim() || form.option_b_te.trim()
-    const hasC = form.option_c_en.trim() || form.option_c_te.trim()
-    const hasD = form.option_d_en.trim() || form.option_d_te.trim()
-    return !!(hasQuestion && hasA && hasB && hasC && hasD)
+    return !!(
+      form.question_te.trim() &&
+      form.option_a_te.trim() &&
+      form.option_b_te.trim() &&
+      form.option_c_te.trim() &&
+      form.option_d_te.trim()
+    )
   }
 
   async function handleSave() {
@@ -215,15 +211,10 @@ export default function ExamQuestionsPage() {
       course_id:    selectedCourseId,
       chapter_id:   form.chapter_id,
       chapter_name: form.chapter_name.trim() || undefined,
-      question_en:  form.question_en,
       question_te:  form.question_te,
-      option_a_en:  form.option_a_en,
       option_a_te:  form.option_a_te,
-      option_b_en:  form.option_b_en,
       option_b_te:  form.option_b_te,
-      option_c_en:  form.option_c_en,
       option_c_te:  form.option_c_te,
-      option_d_en:  form.option_d_en,
       option_d_te:  form.option_d_te,
       correct_option: form.correct_option,
     }
@@ -269,6 +260,13 @@ export default function ExamQuestionsPage() {
         {selectedCourseId && (
           <div className="flex gap-2">
             <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleFileSelect} />
+            <a
+              href="/api/admin/exam-questions/template"
+              className="flex items-center gap-2 px-4 py-2 border border-brand-border text-brand-gold-muted hover:text-brand-gold hover:border-brand-gold rounded-lg transition-colors text-sm"
+            >
+              <Download className="w-4 h-4" />
+              Download Template
+            </a>
             <button
               onClick={() => fileInputRef.current?.click()}
               className="flex items-center gap-2 px-4 py-2 border border-brand-border text-brand-gold-muted hover:text-brand-gold hover:border-brand-gold rounded-lg transition-colors text-sm"
@@ -371,10 +369,10 @@ export default function ExamQuestionsPage() {
                       )}
                       <span className="text-brand-gold-muted text-xs">#{q.id}</span>
                     </div>
-                    <p className="text-brand-body text-sm mb-2 line-clamp-2">{q.question_en || q.question_te}</p>
+                    <p className="text-brand-body text-sm mb-2 line-clamp-2">{q.question_te}</p>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
                       {(['a', 'b', 'c', 'd'] as const).map(opt => {
-                        const text = (q[`option_${opt}_en` as keyof ExamQuestion] as string) || (q[`option_${opt}_te` as keyof ExamQuestion] as string) || ''
+                        const text = q[`option_${opt}_te` as keyof ExamQuestion] as string || ''
                         return (
                           <span key={opt} className={`text-xs ${q.correct_option === opt ? 'text-brand-success font-semibold' : 'text-brand-gold-muted'}`}>
                             {opt.toUpperCase()}. {text}
@@ -435,25 +433,14 @@ export default function ExamQuestionsPage() {
             </div>
 
             {/* Question */}
-            <div className="grid grid-cols-1 gap-3 mb-4">
-              <div>
-                <label className="block text-brand-gold-muted text-xs mb-1">Question (English)</label>
-                <textarea
-                  rows={3}
-                  value={form.question_en}
-                  onChange={e => setForm(f => ({ ...f, question_en: e.target.value }))}
-                  className={`${inputCls} resize-none`}
-                />
-              </div>
-              <div>
-                <label className="block text-brand-gold-muted text-xs mb-1">Question (Telugu)</label>
-                <textarea
-                  rows={2}
-                  value={form.question_te}
-                  onChange={e => setForm(f => ({ ...f, question_te: e.target.value }))}
-                  className={`${inputCls} resize-none`}
-                />
-              </div>
+            <div className="mb-4">
+              <label className="block text-brand-gold-muted text-xs mb-1">Question</label>
+              <textarea
+                rows={3}
+                value={form.question_te}
+                onChange={e => setForm(f => ({ ...f, question_te: e.target.value }))}
+                className={`${inputCls} resize-none`}
+              />
             </div>
 
             {/* Options */}
@@ -474,14 +461,7 @@ export default function ExamQuestionsPage() {
                   </div>
                   <input
                     type="text"
-                    placeholder="English"
-                    value={form[`option_${opt}_en` as keyof typeof form] as string}
-                    onChange={e => setForm(f => ({ ...f, [`option_${opt}_en`]: e.target.value }))}
-                    className="w-full bg-brand-bg border border-brand-border text-brand-body rounded px-2 py-1.5 text-xs mb-1.5"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Telugu"
+                    placeholder={`Option ${opt.toUpperCase()}`}
                     value={form[`option_${opt}_te` as keyof typeof form] as string}
                     onChange={e => setForm(f => ({ ...f, [`option_${opt}_te`]: e.target.value }))}
                     className="w-full bg-brand-bg border border-brand-border text-brand-body rounded px-2 py-1.5 text-xs"

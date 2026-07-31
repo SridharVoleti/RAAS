@@ -20,16 +20,11 @@ export async function PATCH(
   const update: Record<string, unknown> = {}
   if (body.chapter_id     !== undefined) update.chapter_id     = body.chapter_id ?? null
   if (body.chapter_name   !== undefined) update.chapter_name   = body.chapter_name?.trim() || null
-  if (body.question_en    !== undefined) update.question_en    = body.question_en
-  if (body.question_te    !== undefined) update.question_te    = body.question_te || null
-  if (body.option_a_en    !== undefined) update.option_a_en    = body.option_a_en
-  if (body.option_a_te    !== undefined) update.option_a_te    = body.option_a_te || null
-  if (body.option_b_en    !== undefined) update.option_b_en    = body.option_b_en
-  if (body.option_b_te    !== undefined) update.option_b_te    = body.option_b_te || null
-  if (body.option_c_en    !== undefined) update.option_c_en    = body.option_c_en
-  if (body.option_c_te    !== undefined) update.option_c_te    = body.option_c_te || null
-  if (body.option_d_en    !== undefined) update.option_d_en    = body.option_d_en
-  if (body.option_d_te    !== undefined) update.option_d_te    = body.option_d_te || null
+  if (body.question_te    !== undefined) update.question_te    = body.question_te
+  if (body.option_a_te    !== undefined) update.option_a_te    = body.option_a_te
+  if (body.option_b_te    !== undefined) update.option_b_te    = body.option_b_te
+  if (body.option_c_te    !== undefined) update.option_c_te    = body.option_c_te
+  if (body.option_d_te    !== undefined) update.option_d_te    = body.option_d_te
   if (body.correct_option !== undefined) update.correct_option = body.correct_option
 
   const { data, error } = await supabase

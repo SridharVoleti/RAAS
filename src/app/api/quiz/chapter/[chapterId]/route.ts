@@ -40,7 +40,7 @@ export async function GET(
   // Pick N random questions from the exam bank for this chapter
   const { data: questions, error } = await adminSupabase
     .from('exam_questions')
-    .select('id, chapter_id, question_en, question_te, option_a_en, option_a_te, option_b_en, option_b_te, option_c_en, option_c_te, option_d_en, option_d_te')
+    .select('id, chapter_id, question_te, option_a_te, option_b_te, option_c_te, option_d_te')
     .eq('chapter_id', chapterIdNum)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
