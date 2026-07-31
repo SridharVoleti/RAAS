@@ -122,8 +122,12 @@ export async function POST(
 
   if (enrollment.exam_only) {
     // Prior-learning final test: 100 questions drawn round-robin across chapters
-    // for equal weightage; if the bank has fewer, every question is used.
-    const target = Math.min(EXAM_ONLY_QUESTION_TARGET, allQRows.length)
+    // for equal weightage. Not every course has a 100-question bank — if it has
+    // fewer, the paper is half the available bank (rounded up), not the whole
+    // thing, so a 50-question course gets a 25-question paper, not a 50-question one.
+    const target = allQRows.length >= EXAM_ONLY_QUESTION_TARGET
+      ? EXAM_ONLY_QUESTION_TARGET
+      : Math.ceil(allQRows.length / 2)
     const pools = chapterOrder.map(name => shuffle(byChapter.get(name)!))
     const picked: number[][] = pools.map(() => [])
     let total = 0

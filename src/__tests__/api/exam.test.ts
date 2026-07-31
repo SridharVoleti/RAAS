@@ -183,7 +183,7 @@ describe('POST /api/exam/[courseId]/start', () => {
     expect(data.questions[0]).not.toHaveProperty('correct_option')
   })
 
-  it('uses the whole bank when it has fewer than 100 questions', async () => {
+  it('uses half the bank (rounded up), not the whole thing, when it has fewer than 100 questions', async () => {
     const insertChain = chain({ data: { id: 'sess-2' }, error: null })
     mockUser(makeFrom({
       exam_sessions: [chain({ data: null }), insertChain],
@@ -201,7 +201,28 @@ describe('POST /api/exam/[courseId]/start', () => {
     const res = await startExam(new Request('http://localhost/'), courseParams)
     expect(res.status).toBe(200)
     const inserted = insertChain.insert.mock.calls[0][0]
-    expect(inserted.question_sequence).toHaveLength(40)
+    expect(inserted.question_sequence).toHaveLength(20)
+  })
+
+  it('rounds up when half the bank is not a whole number (odd-sized bank)', async () => {
+    const insertChain = chain({ data: { id: 'sess-3' }, error: null })
+    mockUser(makeFrom({
+      exam_sessions: [chain({ data: null }), insertChain],
+    }))
+    mockAdmin(makeFrom({
+      enrollments: chain({ data: { is_active: true, exam_only: true } }),
+      courses: chain({ data: { id: 1, title_en: 'X' } }),
+      exam_sessions: chain(),
+      exam_questions: [
+        chain({ data: makeBankRows(41, 4) }),
+        questionRowsChain(() => 'a'),
+      ],
+    }))
+
+    const res = await startExam(new Request('http://localhost/'), courseParams)
+    expect(res.status).toBe(200)
+    const inserted = insertChain.insert.mock.calls[0][0]
+    expect(inserted.question_sequence).toHaveLength(21)
   })
 
   it('creates an untimed 5-per-chapter session for regular course students', async () => {
