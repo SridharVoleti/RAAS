@@ -97,6 +97,32 @@ When an API route returns a paginated envelope (`{items, nextCursor}` etc.), gre
 
 ---
 
+### EXAM-002 · Chapter/final-exam questions showed blank text — Telugu content had landed in the English column; English fields removed entirely
+| | |
+|---|---|
+| **Date** | 2026-07-31 |
+| **Severity** | P1 |
+| **Status** | Fixed |
+| **Commit** | `9a8fc1e`, `3690766` |
+
+**Issue**
+A student reported the chapter-end quiz showing populated answer options but a blank question. Separately, an earlier attempt to fix a "switch to Telugu" popup blocking the same quiz (see QUIZ-002) surfaced the same symptom once questions were forced to render in Telugu.
+
+**Root Cause**
+`exam_questions` (the shared bank behind chapter quizzes and the 100-question prior-learning final exam) had its Telugu question text stored in the `question_en` column for every sampled row, with `question_te` left as an empty string — while the four option columns were correctly populated in `option_*_te`. Direct inspection via the Supabase REST API (service-role key) confirmed this: `question_en` held real Telugu text, `question_te` was `''`. The current CSV importer (`/api/admin/exam-questions/import`) and admin form both write correctly to `_te` today, so this was legacy data from an earlier import path, not a live bug in the importer.
+
+**Solution**
+- Backfill migration (`20260731_exam_questions_drop_english.sql`) copies `question_en`/`option_*_en` into the `_te` columns wherever `_te` was blank, recovering the mislabeled content.
+- Removed `question_en`/`option_a_en..d_en` from the `exam_questions` table entirely, and from the admin CRUD routes, validation schema, CSV import, admin form/list UI, and both consumers (`ChapterQuizPlayer` in `WatchClient.tsx` and `src/app/exam/[courseId]/page.tsx`) — they now read `question_te`/`option_*_te` directly with no per-language branching.
+- Added a "Download Template" button (`/api/admin/exam-questions/template`) so admins have an in-app reference for the (already Telugu-only) 7-column CSV format, reducing the chance of a future import landing content in the wrong column.
+- Lesson quizzes (`quiz_questions` table, `QuizPlayer` component) were left untouched — that content genuinely has both languages.
+
+**Prevention for Future Projects**
+- When a table has parallel language columns and only one is authoritative, don't rely on "pick whichever language is complete" fallback logic to paper over bad data forever — verify the actual column contents directly (a quick REST/SQL spot-check) before trusting a completeness check, since a mislabeled-but-non-empty column will pass an "is it populated" test while being in the wrong place.
+- If a whole feature only ever gets content in one language in practice, don't keep the unused language's schema/UI/validation "just in case" — it's exactly the kind of dead surface where content can silently land in the wrong column without anyone noticing until a student sees a blank field.
+
+---
+
 ### EXAM-001 · Guru-declared student saw no link to the final exam; enrollment couldn't self-heal after `has_exam` was turned on late
 | | |
 |---|---|
@@ -222,6 +248,28 @@ Never silently break on Supabase errors for critical data fetches. Always log th
 
 ---
 
+### QUIZ-002 · "Switch to Telugu" popup blocked quizzes from loading at all
+| | |
+|---|---|
+| **Date** | 2026-07-31 |
+| **Severity** | P1 |
+| **Status** | Fixed |
+| **Commit** | `14c6f1b`, `0d3880b`, `ddb4bc1` |
+
+**Issue**
+Students reported quizzes "not running" — instead of the quiz, a modal kept appearing asking them to switch the site language to Telugu, with no way past it.
+
+**Root Cause**
+`QuizPlayer`/`ChapterQuizPlayer` in `WatchClient.tsx` gated rendering on `allCompleteInLanguage(questions, lang)` (`lang` = site-wide UI language), showing a blocking `LanguageUnavailableModal` whenever the current site language's question/option text wasn't fully populated for every question in the set. For chapter quizzes this was compounded by EXAM-002 (Telugu text mislabeled into the English column), so the check failed for *both* languages depending on where the mislabeled content sat.
+
+**Solution**
+Iterated to the simplest fix: removed the blocking modal and the completeness gate entirely from both quiz components. Lesson quizzes fall back `question_te || question_en` per field (still bilingual, just resilient instead of blocking). Chapter/final-exam quizzes were later simplified further under EXAM-002 once English was dropped from that content entirely.
+
+**Prevention for Future Projects**
+- A "content isn't available in this language" gate should never be a hard block with no escape — if translations are ever incomplete, prefer silently falling back to whatever language *is* populated over stopping the user's task cold. Save the interstitial-with-a-button pattern for cases where the user's choice actually changes behavior, not for masking a data gap.
+
+---
+
 ### QUIZ-001 · Previously added quiz question invisible — live DB still on course-level schema, per-lesson queries failed silently
 | | |
 |---|---|
@@ -245,6 +293,36 @@ Two parallel quiz implementations wrote to the same tables with different keys. 
 - `create table if not exists` is not a schema sync — it silently skips when a table with the same name exists in any shape. Verify applied schema against the live DB (e.g. probe expected columns) after running migrations.
 - Don't keep two API surfaces writing the same table with different foreign keys; delete the old surface when re-keying a feature.
 - Don't blindly coalesce Supabase `data: null` to `[]` for required data — check `error` and log/surface it, otherwise schema drift hides as "no rows".
+
+---
+
+## VIDEO — Lesson Video Playback
+
+---
+
+### VIDEO-001 · Resuming a video after closing the app lost watch-time credit, wrongly failing the completion check
+| | |
+|---|---|
+| **Date** | 2026-07-31 |
+| **Severity** | P2 |
+| **Status** | Fixed |
+| **Commit** | `a61097f` |
+
+**Issue**
+A student watched 5 minutes of a 20-minute lesson video, closed the app, came back later, and watched the rest to the end — but never got the completion tick. Report: "it should not punish me by saying you jumped ahead and not finish the lesson fully."
+
+**Root Cause**
+`WatchClient.tsx` tracks "genuinely watched seconds" (`watchedSecondsRef`) as an anti-skip measure — only forward playback within a small tolerance counts, so dragging the scrubber to the end doesn't fake completion. This counter lived only in a React ref and reset to `0` on every page load / lesson switch. Only the last playback *position* was ever persisted to `video_playback_progress`, never the accumulated watched-time credit. So resuming at 5:00 was correct, but watching the remaining 15 of 20 minutes only registered as 75% watched — under the 85% completion threshold — even though the student had genuinely watched the whole thing across two sessions.
+Separately, the anti-skip tolerance was a flat 2-second cap on each 1-second poll's video-time delta, which doesn't account for playback speed — at 1.5x/2x the video timeline genuinely advances faster than 2 seconds per poll, so fast playback was borderline/incorrectly treated as skipping.
+
+**Solution**
+- Added `watched_seconds` column to `video_playback_progress` (`20260731_video_watched_seconds.sql`); the position-save endpoint and `WatchClient` now persist it on the same cadence as position (every 10s, on pause, on lesson switch, on unmount).
+- On resume/lesson-switch, `watchedSecondsRef` is seeded from the persisted value instead of reset to `0`.
+- Seek-jump tolerance now scales with the player's actual `getPlaybackRate()` instead of a flat constant, so 1.5x/2x playback is credited correctly.
+
+**Prevention for Future Projects**
+- Any anti-cheat/progress counter that lives only in memory (a ref, component state) needs an explicit persistence story if the feature is expected to survive a page reload — "we already persist position" is not the same guarantee as "we persist everything needed to re-derive correctness."
+- Tolerance thresholds computed against real-time polling intervals (e.g. "delta per 1-second tick") must account for any variable the user controls that changes the expected delta — here, playback speed. A hardcoded tolerance silently assumes 1x speed.
 
 ---
 
