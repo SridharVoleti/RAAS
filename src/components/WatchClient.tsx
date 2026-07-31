@@ -5,8 +5,6 @@ import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { CheckCircle2, ChevronLeft, ChevronRight, BookOpen, ExternalLink, FileText, HelpCircle, Layers, Loader2, MessageSquare, Trash2 } from 'lucide-react'
 import { useLang } from '@/contexts/LanguageContext'
-import { allCompleteInLanguage } from '@/lib/quiz-languages'
-import { LanguageUnavailableModal } from '@/components/LanguageUnavailableModal'
 import StarRatingInput from '@/components/StarRatingInput'
 import type { Chapter, Course, CourseAnswer, CourseQuestion, Lesson, QuizQuestion_Public, QuizSubmission, QuizResult } from '@/types'
 
@@ -774,7 +772,6 @@ function QuizPlayer({ lessonId, questions, bestSubmission, alreadyPassed, lang, 
   const [result, setResult] = useState<QuizResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
-  const { setLang } = useLang()
 
   const OPTIONS: Array<'a' | 'b' | 'c' | 'd'> = ['a', 'b', 'c', 'd']
   const question = questions[qIdx]
@@ -830,16 +827,6 @@ function QuizPlayer({ lessonId, questions, bestSubmission, alreadyPassed, lang, 
   const pct = total > 0 ? Math.round((score / total) * 100) : 0
   const passed = pct >= QUIZ_PASS_PCT
 
-  if (phase === 'question' && !allCompleteInLanguage(questions, effectiveLang)) {
-    return (
-      <LanguageUnavailableModal
-        message={tQuiz.languageUnavailable}
-        switchLabel={tQuiz.switchToTelugu}
-        onSwitch={() => setLang('te')}
-      />
-    )
-  }
-
   return (
     <QuizShell
       header={tQuiz.testYourKnowledge}
@@ -889,7 +876,6 @@ function ChapterQuizPlayer({ chapterId, chapterTitle, bestSubmission, alreadyPas
   const [result, setResult] = useState<QuizResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
-  const { setLang } = useLang()
 
   useEffect(() => {
     if (alreadyPassed) return
@@ -1002,16 +988,6 @@ function ChapterQuizPlayer({ chapterId, chapterTitle, bestSubmission, alreadyPas
           )}
         </div>
       </div>
-    )
-  }
-
-  if (phase === 'question' && !allCompleteInLanguage(questions, effectiveLang)) {
-    return (
-      <LanguageUnavailableModal
-        message={tQuiz.languageUnavailable}
-        switchLabel={tQuiz.switchToTelugu}
-        onSwitch={() => setLang('te')}
-      />
     )
   }
 
