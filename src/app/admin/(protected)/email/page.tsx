@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { CheckCircle, Info } from 'lucide-react'
+import { CheckCircle, Info, Send } from 'lucide-react'
 
 const VARIABLES = [
   { token: '{{name}}',      desc: "Student's full name" },
@@ -17,6 +17,10 @@ export default function AdminEmailPage() {
   const [saving, setSaving]   = useState(false)
   const [saved, setSaved]     = useState(false)
   const [error, setError]     = useState('')
+
+  const [testTo, setTestTo]         = useState('')
+  const [testSending, setTestSending] = useState(false)
+  const [testResult, setTestResult]   = useState<{ ok: boolean; message: string } | null>(null)
 
   useEffect(() => {
     fetch('/api/admin/email-templates/enrollment')
@@ -51,6 +55,28 @@ export default function AdminEmailPage() {
     setBody(prev => prev + token)
   }
 
+  async function handleTestSend() {
+    setTestSending(true)
+    setTestResult(null)
+    try {
+      const res = await fetch('/api/admin/email/test-send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(testTo.trim() ? { to: testTo.trim() } : {}),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setTestResult({ ok: true, message: `Sent to ${data.to}${data.emailId ? ` (id: ${data.emailId})` : ''}` })
+      } else {
+        setTestResult({ ok: false, message: data.error ?? 'Send failed' })
+      }
+    } catch {
+      setTestResult({ ok: false, message: 'Request failed' })
+    } finally {
+      setTestSending(false)
+    }
+  }
+
   return (
     <div className="space-y-6 max-w-3xl">
       <div>
@@ -58,6 +84,38 @@ export default function AdminEmailPage() {
         <p className="text-brand-gold-muted text-sm mt-1">
           Customize the enrollment confirmation email sent to students.
         </p>
+      </div>
+
+      {/* Resend test send */}
+      <div className="bg-brand-card border border-brand-border rounded-xl p-5 space-y-3">
+        <div className="flex items-center gap-2 text-brand-gold text-sm font-semibold">
+          <Send className="w-4 h-4" />
+          Send Test Email
+        </div>
+        <p className="text-brand-gold-muted text-xs">
+          Sends a one-off test email via Resend to confirm the integration is working. Defaults to your admin email.
+        </p>
+        <div className="flex items-center gap-3">
+          <input
+            type="email"
+            value={testTo}
+            onChange={e => setTestTo(e.target.value)}
+            placeholder="you@example.com (optional)"
+            className="flex-1 bg-brand-bg border border-brand-border rounded-lg px-3 py-2 text-brand-body text-sm focus:outline-none focus:border-brand-gold placeholder-brand-gold-muted/50"
+          />
+          <button
+            onClick={handleTestSend}
+            disabled={testSending}
+            className="px-4 py-2 bg-brand-gold text-brand-bg rounded-lg text-sm font-semibold hover:bg-brand-gold/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+          >
+            {testSending ? 'Sending…' : 'Send Test'}
+          </button>
+        </div>
+        {testResult && (
+          <p className={`text-sm ${testResult.ok ? 'text-brand-success' : 'text-brand-error'}`}>
+            {testResult.message}
+          </p>
+        )}
       </div>
 
       {loading ? (
