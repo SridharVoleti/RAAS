@@ -21,7 +21,7 @@ export const translations = {
       otherHeading: 'Other Granthas',
     },
     stats: {
-      activeUsers: 'Active Users',
+      activeUsers: 'Active Students',
       courses: 'Courses Available',
       languages: 'Languages',
     },
@@ -390,7 +390,7 @@ export const translations = {
       otherHeading: 'ఇతర గ్రంథములు',
     },
     stats: {
-      activeUsers: 'క్రియాశీల వినియోగదారులు',
+      activeUsers: 'విద్యార్థులు',
       courses: 'అందుబాటులో ఉన్న కోర్సులు',
       languages: 'భాషలు',
     },
