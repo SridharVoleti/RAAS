@@ -23,20 +23,17 @@ function ResetPasswordForm() {
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
   const [sessionReady, setSessionReady] = useState(false)
-  const [debugLog, setDebugLog] = useState<string[]>([])
 
-  // Wait for Supabase to exchange the hash token and fire PASSWORD_RECOVERY
+  // Wait for Supabase to exchange the recovery hash token into a session.
+  // Supabase only fires PASSWORD_RECOVERY when the browser had no prior
+  // session; if the user was already signed in (e.g. via Google), it fires
+  // SIGNED_IN/INITIAL_SESSION instead — so gate on the recovery link being
+  // present in the URL rather than one specific event name.
   useEffect(() => {
-    const initialHash = typeof window !== 'undefined' ? window.location.hash : ''
-    setDebugLog(prev => [...prev, `mount: hash=${initialHash ? initialHash.slice(0, 40) + '…' : '(empty)'}`])
+    const isRecoveryLink = typeof window !== 'undefined' && window.location.hash.includes('type=recovery')
 
-    supabase.auth.getSession().then(({ data, error }) => {
-      setDebugLog(prev => [...prev, `getSession: session=${data.session ? 'yes' : 'no'} error=${error?.message ?? 'none'}`])
-    })
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      setDebugLog(prev => [...prev, `event: ${event}`])
-      if (event === 'PASSWORD_RECOVERY') {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (isRecoveryLink && session && (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
         setSessionReady(true)
       }
     })
@@ -114,12 +111,6 @@ function ResetPasswordForm() {
         {error && (
           <div className="mb-4 p-3 rounded-lg bg-brand-error/10 border border-brand-error/30 text-brand-error text-sm">
             {error}
-          </div>
-        )}
-
-        {debugLog.length > 0 && (
-          <div className="mb-4 p-3 rounded-lg bg-black/40 border border-brand-border text-[10px] font-mono text-brand-gold-muted whitespace-pre-wrap break-all">
-            {debugLog.join('\n')}
           </div>
         )}
 
