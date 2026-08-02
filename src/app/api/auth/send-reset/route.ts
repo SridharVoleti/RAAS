@@ -93,11 +93,10 @@ export async function POST(req: Request) {
     }
 
     // Generate the recovery link via Supabase Admin (no email sent by Supabase)
-    const requestedRedirectTo = `${APP_URL}/auth/reset-password`
     const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
       type: 'recovery',
       email,
-      options: { redirectTo: requestedRedirectTo },
+      options: { redirectTo: `${APP_URL}/auth/reset-password` },
     })
 
     if (linkError || !linkData?.properties?.action_link) {
@@ -106,9 +105,6 @@ export async function POST(req: Request) {
     }
 
     const resetLink = linkData.properties.action_link
-    const actualRedirectTo = (() => {
-      try { return new URL(resetLink).searchParams.get('redirect_to') } catch { return null }
-    })()
 
     // Send via Resend SDK directly — same path that already works for enrollment emails
     const resend = new Resend(process.env.RESEND_API_KEY)
@@ -124,8 +120,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Failed to send email. Please try again.' }, { status: 500 })
     }
 
-    logger.info({ email, requestedRedirectTo, actualRedirectTo }, 'send-reset.sent')
-    return NextResponse.json({ success: true, debug: { appUrl: APP_URL, requestedRedirectTo, actualRedirectTo } })
+    logger.info({ email }, 'send-reset.sent')
+    return NextResponse.json({ success: true })
   } catch (err) {
     logger.error({ error: String(err) }, 'send-reset.failed')
     return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
