@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Plus, Pencil, Trash2, Eye, EyeOff, Upload } from 'lucide-react'
+import { Plus, Pencil, Trash2, Eye, EyeOff, Upload, Users } from 'lucide-react'
 import ConfirmModal from '@/components/admin/ConfirmModal'
 import CourseImportModal from '@/components/admin/CourseImportModal'
 
@@ -129,6 +129,11 @@ export default function AdminCoursesPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1 justify-end">
+                        <Link href={`/admin/courses/${course.id}/students`}
+                          title="View enrolled students"
+                          className="p-1.5 text-brand-gold-muted hover:text-brand-gold transition-colors rounded">
+                          <Users className="w-3.5 h-3.5" />
+                        </Link>
                         <Link href={`/admin/courses/${course.id}`}
                           className="p-1.5 text-brand-gold-muted hover:text-brand-gold transition-colors rounded">
                           <Pencil className="w-3.5 h-3.5" />
