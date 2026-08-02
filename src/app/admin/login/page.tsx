@@ -82,7 +82,7 @@ export default function AdminLoginPage() {
                 required
                 autoFocus
                 className="w-full px-4 py-2.5 bg-brand-bg border border-brand-border rounded-lg text-brand-body placeholder:text-brand-gold-muted focus:outline-none focus:border-brand-gold transition-colors"
-                placeholder="admin@krishnamargam.in"
+                placeholder="admin@srikrishnamargam.in"
               />
             </div>
             <div>

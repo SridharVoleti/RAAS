@@ -3,8 +3,8 @@ import { Resend } from 'resend'
 import { createAdminClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
 
-const FROM = process.env.RESEND_FROM_EMAIL ?? 'Krishnamargam <noreply@krishnamargam.com>'
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://krishnamargam.com'
+const FROM = process.env.RESEND_FROM_EMAIL ?? 'Krishnamargam <noreply@srikrishnamargam.in>'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://srikrishnamargam.in'
 
 function buildResetEmail(resetLink: string): string {
   return `<!DOCTYPE html>

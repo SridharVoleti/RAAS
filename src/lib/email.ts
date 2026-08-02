@@ -161,7 +161,7 @@ export function renderHtml(body: string, subject: string, cfg: BrandConfig): str
 
 const BRAND: BrandConfig = {
   fromEmail:      process.env.RESEND_FROM_EMAIL ?? 'Krishnamargam <noreply@srikrishnamargam.in>',
-  appUrl:         process.env.NEXT_PUBLIC_APP_URL ?? 'https://krishnamargam.com',
+  appUrl:         process.env.NEXT_PUBLIC_APP_URL ?? 'https://srikrishnamargam.in',
   primaryColor:   '#f0b429',
   bgColor:        '#1a0f00',
   cardBg:         '#120a00',
