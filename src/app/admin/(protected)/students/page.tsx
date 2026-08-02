@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Users, Save, Check } from 'lucide-react'
+import { Users, Save, Check, KeyRound } from 'lucide-react'
 import { COUNTRIES, ISD_OPTIONS } from '@/lib/countries'
+import ResetPasswordModal from '@/components/admin/ResetPasswordModal'
 
 interface Student {
   id: string
@@ -42,6 +43,7 @@ export default function AdminStudentsPage() {
   const [savingId, setSavingId] = useState<string | null>(null)
   const [savedId, setSavedId] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [resetTarget, setResetTarget] = useState<Student | null>(null)
 
   useEffect(() => {
     fetch('/api/admin/students')
@@ -249,16 +251,25 @@ export default function AdminStudentsPage() {
                       {new Date(s.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </td>
                     <td className="px-4 py-2.5 text-right pt-3">
-                      <button
-                        onClick={() => handleSave(s)}
-                        disabled={!isDirty(s) || savingId === s.id}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-success/10 text-brand-success border border-brand-success/30 text-xs font-semibold rounded-lg hover:bg-brand-success/20 transition-colors ml-auto disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        {savedId === s.id
-                          ? <Check className="w-3.5 h-3.5" />
-                          : <Save className="w-3.5 h-3.5" />}
-                        {savingId === s.id ? 'Saving…' : savedId === s.id ? 'Saved' : 'Save'}
-                      </button>
+                      <div className="flex items-center gap-1.5 justify-end">
+                        <button
+                          onClick={() => setResetTarget(s)}
+                          title="Reset password"
+                          className="p-1.5 text-brand-gold-muted hover:text-brand-gold border border-brand-border hover:border-brand-gold rounded-lg transition-colors"
+                        >
+                          <KeyRound className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleSave(s)}
+                          disabled={!isDirty(s) || savingId === s.id}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-success/10 text-brand-success border border-brand-success/30 text-xs font-semibold rounded-lg hover:bg-brand-success/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {savedId === s.id
+                            ? <Check className="w-3.5 h-3.5" />
+                            : <Save className="w-3.5 h-3.5" />}
+                          {savingId === s.id ? 'Saving…' : savedId === s.id ? 'Saved' : 'Save'}
+                        </button>
+                      </div>
                       {errors[s.id] && (
                         <p className="text-brand-error text-[11px] mt-1 max-w-[110px] ml-auto text-right">{errors[s.id]}</p>
                       )}
@@ -270,6 +281,14 @@ export default function AdminStudentsPage() {
           </div>
         )}
       </div>
+
+      {resetTarget && (
+        <ResetPasswordModal
+          studentId={resetTarget.id}
+          studentName={resetTarget.full_name}
+          onClose={() => setResetTarget(null)}
+        />
+      )}
     </div>
   )
 }
