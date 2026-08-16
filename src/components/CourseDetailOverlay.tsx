@@ -174,7 +174,11 @@ export default function CourseDetailOverlay({ course, onClose }: Props) {
 
         {/* Sticky footer */}
         <div className="sticky bottom-0 bg-brand-card border-t border-brand-border p-4 flex items-center justify-end">
-          {isEnrolled ? (
+          {course.lesson_count === 0 ? (
+            <span className="px-6 py-2.5 bg-brand-border text-brand-gold-muted font-semibold rounded-lg">
+              {t.course.comingSoon}
+            </span>
+          ) : isEnrolled ? (
             <button
               onClick={() => router.push(`/watch/${course.slug}`)}
               className="px-6 py-2.5 bg-brand-success text-brand-bg font-semibold rounded-lg hover:bg-green-400 transition-colors"

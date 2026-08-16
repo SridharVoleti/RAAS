@@ -48,6 +48,7 @@ export const translations = {
       whatYouLearn: "What You'll Learn",
       students: 'students',
       reviews: 'reviews',
+      comingSoon: 'Coming Soon',
     },
     auth: {
       signIn: 'Sign In',
@@ -417,6 +418,7 @@ export const translations = {
       whatYouLearn: 'మీరు నేర్చుకుంటారు',
       students: 'విద్యార్థులు',
       reviews: 'సమీక్షలు',
+      comingSoon: 'త్వరలో అందుబాటులోకి వస్తుంది',
     },
     auth: {
       signIn: 'లాగిన్',

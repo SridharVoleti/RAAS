@@ -48,6 +48,7 @@ export interface Course {
   rating: number
   review_count: number
   student_count: number
+  lesson_count?: number
   has_quiz: boolean
   has_exam?: boolean
   order_index: number

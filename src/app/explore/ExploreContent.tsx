@@ -19,6 +19,7 @@ export default function ExploreContent() {
   const [courses, setCourses] = useState<Course[]>([])
   const [paths, setPaths] = useState<LearningPath[]>([])
   const [enrolledIds, setEnrolledIds] = useState<Set<number>>(new Set())
+  const [enrollmentCounts, setEnrollmentCounts] = useState<Record<number, number>>({})
 
   useEffect(() => {
     getCourses({ limit: 100 })
@@ -31,6 +32,10 @@ export default function ExploreContent() {
       .then(res => (res.ok ? res.json() : []))
       .then((data: { course_id: number }[]) => setEnrolledIds(new Set(data.map(c => c.course_id))))
       .catch(() => {})
+    fetch('/api/courses/enrollment-counts')
+      .then(res => (res.ok ? res.json() : { counts: {} }))
+      .then((data: { counts: Record<string, number> }) => setEnrollmentCounts(data.counts))
+      .catch(() => {})
   }, [])
 
   const activePath = pathParam ? paths.find(p => p.slug === pathParam) ?? null : null
@@ -42,10 +47,12 @@ export default function ExploreContent() {
     : null
 
   const filtered = useMemo(() => {
-    let c = courses.filter(x => x.is_published)
+    let c = courses
+      .filter(x => x.is_published)
+      .map(x => ({ ...x, student_count: enrollmentCounts[x.id] ?? x.student_count }))
     if (pathId !== null) c = c.filter(x => x.path_id === pathId)
     return c
-  }, [courses, pathId])
+  }, [courses, pathId, enrollmentCounts])
 
   const sorted = useMemo(() => [...filtered].sort((a, b) => b.student_count - a.student_count), [filtered])
 

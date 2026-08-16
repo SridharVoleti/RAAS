@@ -75,7 +75,7 @@ describe('getCourses', () => {
     vi.mocked(mockSupabaseClient.from).mockReturnValue(mockQuery as any)
 
     const result = await getCourses()
-    expect(result).toEqual([expectedCourse])
+    expect(result).toEqual([{ ...expectedCourse, lesson_count: 1 }])
   })
 
   it('should apply limit and offset for pagination', async () => {
@@ -150,11 +150,11 @@ describe('getCourses', () => {
     vi.mocked(mockSupabaseClient.from).mockReturnValue(mockQuery as any)
 
     const result1 = await getCourses()
-    expect(result1).toEqual([expectedCourse])
+    expect(result1).toEqual([{ ...expectedCourse, lesson_count: 1 }])
 
     // Second call should use cache
     const result2 = await getCourses()
-    expect(result2).toEqual([expectedCourse])
+    expect(result2).toEqual([{ ...expectedCourse, lesson_count: 1 }])
     expect(result1 === result2).toBe(true) // Same reference from cache
 
     // Should only call database once

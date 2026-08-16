@@ -15,11 +15,18 @@ export default function CourseCard({ course, onClick, isEnrolled }: CourseCardPr
   const title = lang === 'te' ? course.title_te : course.title_en
   const subtitle = lang === 'te' ? course.title_en : course.title_te
   const instructor = lang === 'te' ? course.instructor_te : course.instructor_en
+  // undefined means the lesson count wasn't fetched (e.g. seed-data fallback) — assume available
+  const hasLessons = course.lesson_count === undefined || course.lesson_count > 0
 
   return (
     <div
-      onClick={() => onClick(course)}
-      className="bg-brand-card border border-brand-border rounded-xl overflow-hidden cursor-pointer hover:border-brand-gold transition-all duration-200 hover:shadow-lg hover:shadow-brand-gold/10 group"
+      onClick={() => { if (hasLessons) onClick(course) }}
+      aria-disabled={!hasLessons}
+      className={
+        hasLessons
+          ? 'bg-brand-card border border-brand-border rounded-xl overflow-hidden cursor-pointer hover:border-brand-gold transition-all duration-200 hover:shadow-lg hover:shadow-brand-gold/10 group'
+          : 'bg-brand-card border border-brand-border rounded-xl overflow-hidden cursor-not-allowed opacity-50 grayscale'
+      }
     >
       {/* Emoji thumbnail */}
       <div
@@ -76,9 +83,15 @@ export default function CourseCard({ course, onClick, isEnrolled }: CourseCardPr
 
         {/* Action */}
         <div className="flex items-center justify-end">
-          <button className="px-3 py-1 bg-brand-gold text-brand-bg text-xs font-semibold rounded-lg hover:bg-yellow-400 transition-colors">
-            {isEnrolled ? t.course.continueLearning : t.course.enroll}
-          </button>
+          {hasLessons ? (
+            <button className="px-3 py-1 bg-brand-gold text-brand-bg text-xs font-semibold rounded-lg hover:bg-yellow-400 transition-colors">
+              {isEnrolled ? t.course.continueLearning : t.course.enroll}
+            </button>
+          ) : (
+            <span className="px-3 py-1 bg-brand-border text-brand-gold-muted text-xs font-semibold rounded-lg">
+              {t.course.comingSoon}
+            </span>
+          )}
         </div>
       </div>
     </div>

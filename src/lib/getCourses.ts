@@ -4,9 +4,9 @@ import { COURSES } from '@/lib/courseData'
 
 type CourseRow = Course & { lessons?: { id: number }[] }
 
-function stripLessons(row: CourseRow): Course {
-  const { lessons: _lessons, ...course } = row
-  return course
+function withLessonCount(row: CourseRow): Course {
+  const { lessons, ...course } = row
+  return { ...course, lesson_count: lessons?.length ?? 0 }
 }
 
 // Simple in-memory cache with TTL
@@ -84,7 +84,7 @@ export async function getCourses(options?: {
       return COURSES as Course[]
     }
 
-    const courses = (data as CourseRow[]).map(stripLessons)
+    const courses = (data as CourseRow[]).map(withLessonCount)
     setCachedData(cacheKey, courses)
     return courses
   } catch (err) {
