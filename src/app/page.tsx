@@ -6,7 +6,7 @@ import HomeContent from '@/components/HomeContent'
 import MobileHomeContent from '@/components/MobileHomeContent'
 
 function isMobileUserAgent(userAgent: string) {
-  return /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(userAgent)
+  return /Mobi|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent)
 }
 
 export default async function HomePage() {
