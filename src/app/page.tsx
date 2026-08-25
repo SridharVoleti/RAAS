@@ -1,7 +1,13 @@
 import { Suspense } from 'react'
+import { headers } from 'next/headers'
 import { getCachedCourses, getCachedPaths, getCachedStats, getCachedTestimonials, getCachedWidgets } from '@/lib/homeData'
 import { getLaunchAt, isLive } from '@/lib/launch'
 import HomeContent from '@/components/HomeContent'
+import MobileHomeContent from '@/components/MobileHomeContent'
+
+function isMobileUserAgent(userAgent: string) {
+  return /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(userAgent)
+}
 
 export default async function HomePage() {
   const [courses, paths, stats, testimonials, widgets] = await Promise.all([
@@ -12,17 +18,21 @@ export default async function HomePage() {
     getCachedWidgets(),
   ])
 
+  const requestHeaders = await headers()
+  const mobile = isMobileUserAgent(requestHeaders.get('user-agent') ?? '')
+  const sharedProps = {
+    courses,
+    paths,
+    stats,
+    testimonials,
+    widgets,
+    isLive: isLive(),
+    launchAt: getLaunchAt().toISOString(),
+  }
+
   return (
     <Suspense>
-      <HomeContent
-        courses={courses}
-        paths={paths}
-        stats={stats}
-        testimonials={testimonials}
-        widgets={widgets}
-        isLive={isLive()}
-        launchAt={getLaunchAt().toISOString()}
-      />
+      {mobile ? <MobileHomeContent {...sharedProps} /> : <HomeContent {...sharedProps} />}
     </Suspense>
   )
 }
