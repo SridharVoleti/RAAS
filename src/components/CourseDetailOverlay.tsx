@@ -77,6 +77,28 @@ export default function CourseDetailOverlay({ course, onClose }: Props) {
   const description = lang === 'te' ? course.description_te : course.description_en
   const instructor = lang === 'te' ? course.instructor_te : course.instructor_en
 
+  const actionButton =
+    course.lesson_count === 0 ? (
+      <span className="block w-full text-center px-6 py-3 bg-brand-border text-brand-gold-muted font-semibold rounded-lg">
+        {t.course.comingSoon}
+      </span>
+    ) : isEnrolled ? (
+      <button
+        onClick={() => router.push(`/watch/${course.slug}`)}
+        className="w-full px-6 py-3 bg-brand-success text-brand-bg font-semibold rounded-lg hover:bg-green-400 transition-colors"
+      >
+        {t.course.continueLearning}
+      </button>
+    ) : (
+      <button
+        onClick={handleEnroll}
+        disabled={enrolling}
+        className="w-full px-6 py-3 bg-brand-gold text-brand-bg font-semibold rounded-lg hover:bg-yellow-400 transition-colors disabled:opacity-70"
+      >
+        {enrolling ? '...' : course.is_free ? t.course.enrollFree : t.course.enroll}
+      </button>
+    )
+
   return (
     <>
       {/* Backdrop */}
@@ -102,7 +124,7 @@ export default function CourseDetailOverlay({ course, onClose }: Props) {
         </div>
 
         {/* Content */}
-        <div className="flex-1 p-6 pb-24">
+        <div className="flex-1 p-6 pb-6 sm:pb-24">
           {/* Title */}
           <h2 className="text-brand-gold font-bold text-xl mb-1">{title}</h2>
           {subtitle && <p className="text-brand-gold-muted text-sm mb-4">{subtitle}</p>}
@@ -140,6 +162,9 @@ export default function CourseDetailOverlay({ course, onClose }: Props) {
           {/* Description */}
           <p className="text-brand-body text-sm leading-relaxed mb-5">{description}</p>
 
+          {/* Primary action – kept high so it's visible without scrolling, esp. on mobile */}
+          <div className="mb-6">{actionButton}</div>
+
           {/* Curriculum */}
           {course.curriculum && (
             <div className="mb-5">
@@ -172,8 +197,8 @@ export default function CourseDetailOverlay({ course, onClose }: Props) {
           )}
         </div>
 
-        {/* Sticky footer */}
-        <div className="sticky bottom-0 bg-brand-card border-t border-brand-border p-4 flex items-center justify-end">
+        {/* Sticky footer – desktop only; mobile uses the inline button above */}
+        <div className="sticky bottom-0 bg-brand-card border-t border-brand-border p-4 hidden sm:flex items-center justify-end">
           {course.lesson_count === 0 ? (
             <span className="px-6 py-2.5 bg-brand-border text-brand-gold-muted font-semibold rounded-lg">
               {t.course.comingSoon}
