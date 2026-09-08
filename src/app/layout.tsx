@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { LanguageProvider } from '@/contexts/LanguageContext'
 import Navbar from '@/components/Navbar'
+import MobileNavbar from '@/components/MobileNavbar'
 import Footer from '@/components/Footer'
 import { isLive } from '@/lib/launch'
 import { Analytics } from '@vercel/analytics/next'
@@ -17,7 +18,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <LanguageProvider>
-          <Navbar isLive={isLive()} />
+          <MobileNavbar />
+          <div className="hidden md:block">
+            <Navbar isLive={isLive()} />
+          </div>
           <main className="min-h-screen">{children}</main>
           <Footer />
         </LanguageProvider>
