@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Krishnamargam</string>
+    <string name="title_activity_main">Krishnamargam</string>
+    <string name="package_name">in.srikrishnamargam.app</string>
+    <string name="custom_url_scheme">in.srikrishnamargam.app</string>
+</resources>
