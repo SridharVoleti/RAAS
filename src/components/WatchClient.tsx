@@ -1287,7 +1287,7 @@ function LessonList({
                     Chapter Quiz
                   </p>
                   <p className="text-brand-gold-muted text-xs mt-0.5">
-                    {chapterQuizPassed ? 'Passed' : `5 random questions · ${chapterQuestionCounts[lesson.chapter_id]} in pool`}
+                    {chapterQuizPassed ? 'Passed' : '5 random questions'}
                   </p>
                 </div>
               </button>
